@@ -1,0 +1,9 @@
+export const VENDOR_DIR = "vendor"
+export const SECTION_BEGIN = "<!-- vendor-subtree-skill:begin -->"
+export const SECTION_END = "<!-- vendor-subtree-skill:end -->"
+export const TRAILER_URL = "vendor-source-url"
+export const TRAILER_REF = "vendor-source-ref"
+export const TRAILER_DIR = "git-subtree-dir"
+export const AGENT_DOCS = ["AGENTS.md", "CLAUDE.md"] as const
+export const VERSION = "0.3.0"
+export const FALLBACK_SCRIPT_REL = "scripts/vendor.ts"
