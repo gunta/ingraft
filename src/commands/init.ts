@@ -2,7 +2,7 @@ import { Command as Cli } from "@effect/cli"
 import { Effect } from "effect"
 import { updateAgentDocs } from "../agent-docs.ts"
 import { commitConfigChanges, repoRoot } from "../git.ts"
-import { ok } from "../log.ts"
+import { ok, withCommandTelemetry } from "../log.ts"
 import { reportOptionalPath, reportWritten } from "../reports.ts"
 import { commandInvocation } from "../script.ts"
 import { listVendored } from "../vendor-state.ts"
@@ -20,7 +20,7 @@ export const initImpl = Effect.gen(function* () {
   yield* ok(
     `Initialized. Run \`${command} add <repo>\` to vendor a repository.`
   )
-})
+}).pipe(withCommandTelemetry("init"))
 
 export const initCmd = Cli.make("init", {}, () => initImpl).pipe(
   Cli.withDescription(

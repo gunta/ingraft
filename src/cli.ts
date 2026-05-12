@@ -1,9 +1,9 @@
 import { Command as Cli } from "@effect/cli"
 import { BunContext, BunRuntime } from "@effect/platform-bun"
-import { Console, Effect, Logger } from "effect"
+import { Console, Effect, Layer, Logger } from "effect"
 import { FALLBACK_SCRIPT_REL, VERSION } from "./constants.ts"
-import { CliError } from "./errors.ts"
-import { error } from "./log.ts"
+import { CliError, formatCliError } from "./errors.ts"
+import { Git } from "./git.ts"
 import { addCmd } from "./commands/add.ts"
 import { initCmd } from "./commands/init.ts"
 import { listCmd } from "./commands/list.ts"
@@ -35,14 +35,17 @@ export const runCli = Cli.run(vendorCommand, {
   version: VERSION
 })
 
+const GitLive = Git.Default.pipe(Layer.provide(BunContext.layer))
+const LiveLayer = Layer.mergeAll(BunContext.layer, GitLive)
+
 export const main = runCli(process.argv).pipe(
   Effect.catchTag("CliError", (cause: CliError) =>
-    error(cause.message).pipe(
+    Console.error(formatCliError(cause)).pipe(
       Effect.zipRight(Effect.sync(() => process.exit(cause.code)))
     )
   ),
   Effect.provide(Logger.pretty),
-  Effect.provide(BunContext.layer)
+  Effect.provide(LiveLayer)
 )
 
 export const runMain = () => BunRuntime.runMain(main)

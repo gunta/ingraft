@@ -10,7 +10,7 @@ import {
   git,
   repoRoot
 } from "../git.ts"
-import { info, ok, warn } from "../log.ts"
+import { info, ok, warn, withCommandTelemetry } from "../log.ts"
 import { inferRepoName, normalizeRepoUrl } from "../repo.ts"
 import { reportOptionalPath, reportWritten } from "../reports.ts"
 import { commandInvocation } from "../script.ts"
@@ -89,13 +89,21 @@ export const addImpl = ({
     const existing = yield* findByName(cwd, finalName)
     if (Option.isSome(existing)) {
       return yield* die(
-        `A vendored repo named '${finalName}' already exists at '${existing.value.prefix}'. Use \`update ${finalName}\`.`,
+        {
+          title: `Vendored repo '${finalName}' already exists`,
+          detail: `It is already registered at '${existing.value.prefix}'.`,
+          hint: `Use \`vendor update ${finalName}\` to pull upstream changes.`
+        },
         4
       )
     }
     if (yield* fs.exists(path.resolve(cwd, finalPrefix))) {
       return yield* die(
-        `Path '${finalPrefix}' already exists. Choose a different --prefix or remove it first.`,
+        {
+          title: `Path '${finalPrefix}' already exists`,
+          detail: "The subtree target must be an empty path managed by this tool.",
+          hint: "Choose a different --prefix or remove the existing path first."
+        },
         4
       )
     }
@@ -117,7 +125,11 @@ export const addImpl = ({
     )
     if (subtree.exitCode !== 0) {
       return yield* die(
-        `git subtree add failed:\n${subtree.stderr.trim() || subtree.stdout.trim()}`,
+        {
+          title: "git subtree add failed",
+          detail: subtree.stderr.trim() || subtree.stdout.trim(),
+          hint: "Check that the repo URL and ref are reachable, then retry."
+        },
         3
       )
     }
@@ -131,7 +143,7 @@ export const addImpl = ({
     yield* commitConfigChanges(cwd, `vendor: register ${finalName}`)
 
     yield* ok(`Vendored '${finalName}' at ${finalPrefix}/.`)
-  })
+  }).pipe(withCommandTelemetry("add"))
 
 export const addCmd = Cli.make(
   "add",

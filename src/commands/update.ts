@@ -3,7 +3,7 @@ import { Effect, Option } from "effect"
 import { updateAgentDocs } from "../agent-docs.ts"
 import { TRAILER_DIR, TRAILER_REF, TRAILER_URL } from "../constants.ts"
 import { assertCleanTree, commitConfigChanges, git, repoRoot } from "../git.ts"
-import { error, info, ok, warn } from "../log.ts"
+import { error, info, ok, warn, withCommandTelemetry } from "../log.ts"
 import { reportWritten } from "../reports.ts"
 import { commandInvocation } from "../script.ts"
 import { listVendored, type VendoredRepo } from "../vendor-state.ts"
@@ -41,7 +41,11 @@ export const updateImpl = ({
     } else {
       if (Option.isNone(name)) {
         return yield* die(
-          "Specify a name or use --all. Usage: vendor update <name|--all>",
+          {
+            title: "No update target specified",
+            detail: "The update command needs one vendored repo name or --all.",
+            hint: "Usage: vendor update <name> or vendor update --all"
+          },
           2
         )
       }
@@ -50,7 +54,10 @@ export const updateImpl = ({
       )
       if (!target) {
         return yield* die(
-          `No vendored repo named '${name.value}'. Use \`list\` to see what's vendored.`,
+          {
+            title: `No vendored repo named '${name.value}'`,
+            hint: "Run `vendor list` to see what's vendored."
+          },
           4
         )
       }
@@ -92,9 +99,16 @@ export const updateImpl = ({
     yield* commitConfigChanges(cwd, "vendor: refresh agent doc after update")
 
     if (failed.length > 0) {
-      return yield* die(`Update failed for: ${failed.join(", ")}`, 3)
+      return yield* die(
+        {
+          title: "One or more updates failed",
+          detail: `Failed repositories: ${failed.join(", ")}`,
+          hint: "Review the git error above, resolve conflicts if any, and retry the failed names."
+        },
+        3
+      )
     }
-  })
+  }).pipe(withCommandTelemetry("update"))
 
 export const updateCmd = Cli.make(
   "update",

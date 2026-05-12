@@ -2,6 +2,7 @@ import { Command as Cli } from "@effect/cli"
 import { Effect } from "effect"
 import { updateAgentDocs } from "../agent-docs.ts"
 import { commitConfigChanges, repoRoot } from "../git.ts"
+import { withCommandTelemetry } from "../log.ts"
 import { reportOptionalPath, reportWritten } from "../reports.ts"
 import { commandInvocation } from "../script.ts"
 import { listVendored } from "../vendor-state.ts"
@@ -16,7 +17,7 @@ export const refreshImpl = Effect.gen(function* () {
   const settings = yield* updateVscodeSettings(cwd)
   yield* reportOptionalPath(cwd, settings)
   yield* commitConfigChanges(cwd, "vendor: refresh agent docs")
-})
+}).pipe(withCommandTelemetry("refresh"))
 
 export const refreshCmd = Cli.make("refresh", {}, () => refreshImpl).pipe(
   Cli.withDescription(

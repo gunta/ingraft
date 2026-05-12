@@ -1,5 +1,5 @@
 import { FileSystem, Path } from "@effect/platform"
-import { Effect, Option, Schema } from "effect"
+import { Effect, Either, Option, ParseResult, Schema } from "effect"
 import { TRAILER_DIR, TRAILER_REF, TRAILER_URL } from "./constants.ts"
 import { git } from "./git.ts"
 
@@ -14,7 +14,19 @@ export const VendoredRepoSchema = Schema.Struct({
 
 export type VendoredRepo = typeof VendoredRepoSchema.Type
 
-const decodeVendoredRepo = Schema.decodeUnknownSync(VendoredRepoSchema)
+const decodeVendoredRepo = Schema.decodeUnknownEither(VendoredRepoSchema, {
+  errors: "all"
+})
+
+export interface VendoredLogDiagnostic {
+  readonly record: string
+  readonly reason: string
+}
+
+export interface VendoredLogParseResult {
+  readonly repos: ReadonlyArray<VendoredRepo>
+  readonly diagnostics: ReadonlyArray<VendoredLogDiagnostic>
+}
 
 export const gitLogFormat = [
   "%H",
@@ -24,8 +36,11 @@ export const gitLogFormat = [
   `%(trailers:key=${TRAILER_REF},valueonly)`
 ].join("%x00")
 
-export const parseVendoredLog = (stdout: string): ReadonlyArray<VendoredRepo> => {
+export const parseVendoredLogWithDiagnostics = (
+  stdout: string
+): VendoredLogParseResult => {
   const byPrefix = new Map<string, VendoredRepo>()
+  const diagnostics: VendoredLogDiagnostic[] = []
   const records = stdout
     .split("\x1e")
     .map((record) => record.trim())
@@ -36,16 +51,29 @@ export const parseVendoredLog = (stdout: string): ReadonlyArray<VendoredRepo> =>
       .split("\x00")
       .map((part) => part.trim())
     const name = prefix?.replace(/\/+$/, "").split("/").pop() ?? ""
-    try {
-      const repo = decodeVendoredRepo({ name, prefix, url, ref, sha, date })
-      if (!byPrefix.has(repo.prefix)) byPrefix.set(repo.prefix, repo)
-    } catch {
-      // Ignore malformed historical commits. They are not valid vendor state.
+    const decoded = decodeVendoredRepo({ name, prefix, url, ref, sha, date })
+    if (Either.isRight(decoded)) {
+      if (!byPrefix.has(decoded.right.prefix)) {
+        byPrefix.set(decoded.right.prefix, decoded.right)
+      }
+    } else {
+      diagnostics.push({
+        record,
+        reason: `Invalid vendored repo record for prefix '${prefix ?? ""}': ${ParseResult.TreeFormatter.formatErrorSync(
+          decoded.left
+        )}`
+      })
     }
   }
 
-  return [...byPrefix.values()].sort((a, b) => a.name.localeCompare(b.name))
+  return {
+    repos: [...byPrefix.values()].sort((a, b) => a.name.localeCompare(b.name)),
+    diagnostics
+  }
 }
+
+export const parseVendoredLog = (stdout: string): ReadonlyArray<VendoredRepo> =>
+  parseVendoredLogWithDiagnostics(stdout).repos
 
 export const listVendored = (cwd: string) =>
   Effect.gen(function* () {
@@ -63,9 +91,14 @@ export const listVendored = (cwd: string) =>
 
     if (result.exitCode !== 0) return [] as VendoredRepo[]
 
-    const parsed = parseVendoredLog(result.stdout)
+    const parsed = parseVendoredLogWithDiagnostics(result.stdout)
+    yield* Effect.forEach(
+      parsed.diagnostics,
+      (diagnostic) => Effect.logDebug(diagnostic.reason),
+      { discard: true }
+    )
     const present: VendoredRepo[] = []
-    for (const repo of parsed) {
+    for (const repo of parsed.repos) {
       const exists = yield* fs.exists(path.resolve(cwd, repo.prefix))
       if (exists) present.push(repo)
     }

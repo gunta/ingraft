@@ -2,6 +2,7 @@ import { Command as Cli, Options } from "@effect/cli"
 import { Console, Effect } from "effect"
 import { VENDOR_DIR } from "../constants.ts"
 import { repoRoot } from "../git.ts"
+import { withCommandTelemetry } from "../log.ts"
 import { listVendored } from "../vendor-state.ts"
 
 const listJsonOption = Options.boolean("json").pipe(
@@ -32,7 +33,7 @@ export const listImpl = ({ json }: { readonly json: boolean }) =>
         `  ${repo.name.padEnd(nameWidth)}  ${repo.prefix.padEnd(prefixWidth)}  ${repo.url} @ ${repo.ref}`
       )
     }
-  })
+  }).pipe(withCommandTelemetry("list"))
 
 export const listCmd = Cli.make("list", { json: listJsonOption }, listImpl).pipe(
   Cli.withDescription(
