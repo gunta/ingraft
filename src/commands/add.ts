@@ -4,6 +4,7 @@ import { Effect, Option } from "effect"
 import {
   TRAILER_ACTION,
   TRAILER_DIR,
+  TRAILER_FILTER,
   TRAILER_REF,
   TRAILER_STRATEGY,
   TRAILER_URL,
@@ -17,7 +18,10 @@ import {
   VendoredRepoAlreadyExists,
   VersionResolutionFailed
 } from "../errors.ts"
-import { materializeFilteredRepo } from "../filtered-checkout.ts"
+import {
+  checkoutFilteredRepo,
+  materializeFilteredRepo
+} from "../filtered-checkout.ts"
 import {
   assertCleanTree,
   commitPathsIfChanged,
@@ -37,7 +41,6 @@ import {
   type VendorStrategy
 } from "../vendor-strategy.ts"
 import {
-  EMPTY_VENDOR_FILTER,
   formatVendorFilterTrailer,
   hasVendorFilter,
   type VendorFilter,
@@ -252,7 +255,7 @@ const resolveRef = ({ selector, url }: ResolveRefParams) => {
 
 const filterTrailer = (filter: VendorFilter): string => {
   const value = formatVendorFilterTrailer(filter)
-  return value.length === 0 ? "" : `\nvendor-filter: ${value}`
+  return value.length === 0 ? "" : `\n${TRAILER_FILTER}: ${value}`
 }
 
 const subtreeAddMessage = ({
@@ -306,21 +309,22 @@ const addSubtree = ({
           filter,
           prefix: finalPrefix,
           ref: finalRef,
-          target: finalPrefix,
           url
         })
-        yield* commitPathsIfChanged({
+        const message = subtreeAddMessage({
+          filter,
+          name: finalName,
+          prefix: finalPrefix,
+          ref: finalRef,
+          strategy: "subtree",
+          url
+        })
+        const committed = yield* commitPathsIfChanged({
           cwd,
           paths: [finalPrefix],
-          message: subtreeAddMessage({
-            filter,
-            name: finalName,
-            prefix: finalPrefix,
-            ref: finalRef,
-            strategy: "subtree",
-            url
-          })
+          message
         })
+        if (!committed) yield* emptyCommit({ cwd, message })
       })
     : git(
         [
@@ -444,6 +448,7 @@ const cloneVendorRepo = ({
 const addSubmodule = ({
   cwd,
   existingRepos: _existingRepos,
+  filter,
   finalName,
   finalPrefix,
   finalRef,
@@ -500,6 +505,7 @@ const addSubmodule = ({
 const addCloneIgnore = ({
   cwd,
   existingRepos,
+  filter,
   finalName,
   finalPrefix,
   finalRef,
@@ -642,7 +648,7 @@ export const addImpl = ({
       cwd,
       repos,
       commitMessage: `vendor: register ${finalName}`,
-      vscode: true
+      editorSettings: true
     })
 
     yield* ok(`Vendored '${finalName}' at ${finalPrefix}/ using ${strategy}.`)

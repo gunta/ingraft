@@ -56,7 +56,7 @@ vendor-subtree init
 # or: bun "$SKILL_DIR/scripts/vendor.ts" init
 ```
 
-This creates `AGENTS.md` (and updates `CLAUDE.md` if it exists), adds `vendor/**` exclusions to `.vscode/settings.json`, and commits.
+This creates `AGENTS.md` (and updates `CLAUDE.md` if it exists), adds editor exclusions for VS Code, Zed, and ripgrep-backed editors, and commits.
 
 ### 4 — Run the requested operation
 
@@ -65,6 +65,8 @@ vendor-subtree add Effect-TS/effect
 vendor-subtree add Effect-TS/effect --ref main
 vendor-subtree add Effect-TS/effect --tag v3.21.2
 vendor-subtree add Effect-TS/effect --release latest
+vendor-subtree add Effect-TS/effect --exclude-ext png --max-file-size 1MB
+vendor-subtree add Effect-TS/effect --exclude-dir docs --exclude '*.snap'
 vendor-subtree add Effect-TS/effect --strategy submodule
 vendor-subtree add Effect-TS/effect --strategy clone-ignore
 vendor-subtree add git@github.com:org/private-lib.git
@@ -93,11 +95,17 @@ After a successful `add`, summarize for the user: which repo, which ref, the pre
 
 - **Version selection.** Use `--ref <branch-or-sha>` for raw git refs, `--tag <tag>` for an exact git tag, or `--release <name>` / `--release latest` to resolve a GitHub/GitLab release to its tag. Use only one of these selectors.
 
+- **Filtered vendoring.** Use repeatable `--exclude <glob>`, `--exclude-dir <dir>`, `--exclude-ext <ext>`, and `--max-file-size <size>` to omit generated docs, media, fixtures, archives, or huge files. Example: `--exclude-ext png --exclude-ext jpg --max-file-size 1MB`. Filters work for `subtree` and `clone-ignore`; `submodule` rejects filters because a gitlink cannot portably encode file-level omissions.
+
 - **`vendor/` is hardcoded.** This is intentional. If the project is a Go module that uses `vendor/` for `go mod vendor`, vendor-subtree-skill will conflict. Suggest the user pass `--prefix third_party/<name>` on each `add` to use a different parent directory.
 
 - **Strategy choice matters.** `subtree` commits source and is the portable default. `submodule` commits only a gitlink plus `.gitmodules`. `clone-ignore` clones locally under `vendor/<name>/`, adds that exact path to a managed `.gitignore` section, and commits only metadata. Use `submodule` or `clone-ignore` when the repo is too large or should not be committed.
 
-- **JSONC comments in `.vscode/settings.json` are preserved.** The CLI uses `jsonc-parser` edits instead of hand-stripping comments.
+- **Editor settings are generated.** The CLI updates `.vscode/settings.json`, `.zed/settings.json`, and `.ignore`. VS Code gets search/watch/auto-import exclusions plus a Material Icon Theme `vendor` folder association. Zed gets `file_scan_exclusions`. `.ignore` keeps `vendor/` out of ripgrep-backed editor pickers.
+
+- **JSONC comments in editor settings are preserved.** The CLI uses `jsonc-parser` edits instead of hand-stripping comments.
+
+- **Ripgrep ignores `vendor/` after init.** When intentionally inspecting vendored code, use direct paths or `rg -u vendor/<name>` so `.ignore` does not hide the files.
 
 ## Commands reference
 
@@ -105,12 +113,12 @@ Run `vendor-subtree --help` or `bun "$SKILL_DIR/scripts/vendor.ts" --help` for t
 
 | Command | Behavior |
 |---|---|
-| `init` | Create the managed section in `AGENTS.md`/`CLAUDE.md`, add `vendor/**` to `.vscode/settings.json` exclusions, commit. |
-| `add <repo>` | Add a vendored repo with metadata trailers, update agent docs, commit. Flags: `--strategy subtree\|submodule\|clone-ignore`, `--ref/-r`, `--tag`, `--release`, `--prefix/-p`, `--name/-n`. |
+| `init` | Create the managed section in `AGENTS.md`/`CLAUDE.md`, add editor exclusions for VS Code, Zed, and ripgrep-backed editors, commit. |
+| `add <repo>` | Add a vendored repo with metadata trailers, update agent docs, commit. Flags: `--strategy subtree\|submodule\|clone-ignore`, `--ref/-r`, `--tag`, `--release`, `--exclude`, `--exclude-dir`, `--exclude-ext`, `--max-file-size`, `--prefix/-p`, `--name/-n`. |
 | `update <name>` / `update --all` | Pull subtree changes, update submodule gitlinks, or refresh local ignored clones, then refresh agent docs. |
 | `remove <name>` | Remove/deinit the managed repo, record a removal trailer, refresh agent docs and `.gitignore`, commit. |
 | `list` | Show vendored repos and their strategies, derived from git commit trailers. Use `--json` for machine output. |
-| `refresh` | Re-generate `AGENTS.md` section, clone-ignore `.gitignore`, and `.vscode/settings.json` from git state. Useful if files were edited by hand. |
+| `refresh` | Re-generate `AGENTS.md` section, clone-ignore `.gitignore`, and editor settings from git state. Useful if files were edited by hand. |
 
 ## Exit codes
 
@@ -128,6 +136,7 @@ vendor-source-url: https://github.com/Effect-TS/effect.git
 vendor-source-ref: main
 vendor-strategy: subtree
 vendor-action: upsert
+vendor-filter: {"exclude":[],"excludeDirs":["docs"],"excludeExtensions":["png"],"maxFileSizeBytes":1048576}
 ```
 
 `list` and `update` discover this by walking `git log` trailer placeholders for commits whose body contains `vendor-source-url:`. Parsed records are validated with Effect Schema. The repo is the single source of truth; the agent doc section and `.gitignore` clone-ignore section are derived views.

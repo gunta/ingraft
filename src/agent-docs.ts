@@ -7,6 +7,7 @@ import {
   VENDOR_DIR
 } from "./constants.ts"
 import type { VendoredRepo } from "./vendor-state.ts"
+import { hasVendorFilter } from "./vendor-filter.ts"
 
 export interface RenderVendorSectionParams {
   readonly command?: string
@@ -61,7 +62,7 @@ const vendorRepoLines = (
         "",
         ...repos.map(
           (repo) =>
-            `- **\`${repo.prefix}\`** — ${repo.strategy} — \`${repo.url}\` @ \`${repo.ref}\``
+            `- **\`${repo.prefix}\`** — ${repo.strategy}${hasVendorFilter(repo.filter) ? " filtered" : ""} — \`${repo.url}\` @ \`${repo.ref}\``
         )
       ]
 
@@ -82,7 +83,9 @@ export const renderVendorSection = ({
     `- Do NOT edit files under \`${VENDOR_DIR}/\` unless explicitly asked.`,
     `- Do NOT import from \`${VENDOR_DIR}/\` — application code imports from normal package dependencies.`,
     `- Prefer examples and patterns from \`${VENDOR_DIR}/\` over web search or generated guesses.`,
+    `- Editor search may hide \`${VENDOR_DIR}/\`; use direct paths or \`rg -u ${VENDOR_DIR}/<name>\` when intentionally inspecting vendored source.`,
     "- Strategies: `subtree` is committed source, `submodule` is a gitlink, and `clone-ignore` is a local ignored clone.",
+    "- Some repos may be filtered to omit media, generated directories, archives, fixtures, or oversized files.",
     `- Use \`${invocation} list\` to see what is vendored.`,
     `- To add or update vendored repos, run \`${invocation} add <repo>\` or \`update <name>\`.`,
     "",

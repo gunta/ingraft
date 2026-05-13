@@ -160,6 +160,8 @@ export const commitConfigChanges = ({
     const fs = yield* FileSystem.FileSystem
     const candidates = [
       ".gitignore",
+      ".ignore",
+      ".zed/settings.json",
       ".vscode/settings.json",
       "AGENTS.md",
       "CLAUDE.md"

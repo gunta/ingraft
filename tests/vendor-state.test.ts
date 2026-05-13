@@ -137,4 +137,25 @@ describe("vendor state parsing", () => {
     expect(result.diagnostics).toHaveLength(1)
     expect(result.diagnostics[0]?.reason).toContain("prefix")
   })
+
+  test("reports diagnostics for malformed filter metadata", () => {
+    const log = [
+      [
+        "sha-filtered",
+        "2026-05-13T00:00:00Z",
+        "vendor/effect",
+        "https://github.com/Effect-TS/effect.git",
+        "main",
+        "subtree",
+        "upsert",
+        "{bad json"
+      ].join("\x00")
+    ].join("\x1e")
+
+    const result = parseVendoredLogWithDiagnostics(log)
+
+    expect(result.repos).toEqual([])
+    expect(result.diagnostics).toHaveLength(1)
+    expect(result.diagnostics[0]?.reason).toContain("filter")
+  })
 })

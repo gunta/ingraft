@@ -16,8 +16,12 @@ export interface FilteredCheckoutParams {
   readonly url: string
 }
 
-export interface MaterializeFilteredRepoParams extends FilteredCheckoutParams {
+export interface MaterializeFilteredRepoParams {
+  readonly cwd: string
+  readonly filter: VendorFilter
   readonly prefix: string
+  readonly ref: string
+  readonly url: string
 }
 
 const sparseCheckoutText = (paths: ReadonlyArray<string>): string =>
@@ -98,6 +102,15 @@ export const materializeFilteredRepo = ({
         force: true,
         recursive: true
       })
+      const materializedFiles = yield* fs.readDirectory(checkout, {
+        recursive: true
+      })
+      if (materializedFiles.length === 0) {
+        yield* fs.writeFileString(
+          path.resolve(checkout, ".vendor-filter-empty"),
+          "vendor-subtree-skill: filter selected no upstream files\n"
+        )
+      }
       yield* fs.remove(target, { force: true, recursive: true })
       yield* fs.makeDirectory(path.dirname(target), { recursive: true }).pipe(
         Effect.ignore

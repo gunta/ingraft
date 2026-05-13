@@ -4,6 +4,7 @@ import { Array as Arr, Effect, Option } from "effect"
 import {
   TRAILER_ACTION,
   TRAILER_DIR,
+  TRAILER_FILTER,
   TRAILER_REF,
   TRAILER_STRATEGY,
   TRAILER_URL
@@ -15,6 +16,10 @@ import {
   VendoredRepoNotFound
 } from "../errors.ts"
 import {
+  checkoutFilteredRepo,
+  materializeFilteredRepo
+} from "../filtered-checkout.ts"
+import {
   assertCleanTree,
   commitPathsIfChanged,
   git,
@@ -25,6 +30,7 @@ import { refreshGeneratedFiles } from "../project-files.ts"
 import { RepositoryHosts } from "../repository-hosts.ts"
 import { listVendored, type VendoredRepo } from "../vendor-state.ts"
 import type { VendorStrategy } from "../vendor-strategy.ts"
+import { formatVendorFilterTrailer, hasVendorFilter } from "../vendor-filter.ts"
 
 export interface SelectUpdateTargetsParams {
   readonly all: boolean
@@ -97,8 +103,13 @@ export const selectUpdateTargets = ({
   })
 }
 
+const filterTrailer = (repo: VendoredRepo): string => {
+  const value = formatVendorFilterTrailer(repo.filter)
+  return value.length === 0 ? "" : `\n${TRAILER_FILTER}: ${value}`
+}
+
 const updateMessage = (repo: VendoredRepo) =>
-  `vendor: update ${repo.name} (${repo.url}@${repo.ref}) [${repo.strategy}]\n\n${TRAILER_DIR}: ${repo.prefix}\n${TRAILER_URL}: ${repo.url}\n${TRAILER_REF}: ${repo.ref}\n${TRAILER_STRATEGY}: ${repo.strategy}\n${TRAILER_ACTION}: upsert`
+  `vendor: update ${repo.name} (${repo.url}@${repo.ref}) [${repo.strategy}]\n\n${TRAILER_DIR}: ${repo.prefix}\n${TRAILER_URL}: ${repo.url}\n${TRAILER_REF}: ${repo.ref}\n${TRAILER_STRATEGY}: ${repo.strategy}\n${TRAILER_ACTION}: upsert${filterTrailer(repo)}`
 
 const lastGitLine = ({ stdout, stderr }: GitOutputParams): string =>
   (stderr.trim() || stdout.trim()).split("\n").slice(-1)[0] ?? "unknown error"
@@ -202,7 +213,59 @@ const updateCloneIgnore = (params: VendoredRepoCommandParams) =>
     yield* checkoutRepoRef(params)
   })
 
+const updateFilteredSubtree = ({ cwd, repo }: VendoredRepoCommandParams) =>
+  Effect.gen(function* () {
+    yield* materializeFilteredRepo({
+      cwd,
+      filter: repo.filter,
+      prefix: repo.prefix,
+      ref: repo.ref,
+      url: repo.url
+    })
+    yield* commitPathsIfChanged({
+      cwd,
+      paths: [repo.prefix],
+      message: updateMessage(repo)
+    })
+  })
+
+const updateFilteredCloneIgnore = ({ cwd, repo }: VendoredRepoCommandParams) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    yield* fs.remove(path.resolve(cwd, repo.prefix), {
+      force: true,
+      recursive: true
+    })
+    yield* checkoutFilteredRepo({
+      cwd,
+      filter: repo.filter,
+      ref: repo.ref,
+      target: repo.prefix,
+      url: repo.url
+    })
+  })
+
 const updateByStrategy = (params: VendoredRepoCommandParams) => {
+  if (hasVendorFilter(params.repo.filter)) {
+    switch (params.repo.strategy) {
+      case "subtree":
+        return updateFilteredSubtree(params)
+      case "clone-ignore":
+        return updateFilteredCloneIgnore(params)
+      case "submodule":
+        return Effect.fail(
+          new VendorStrategyCommandFailed({
+            action: "update",
+            prefix: params.repo.prefix,
+            strategy: params.repo.strategy,
+            output:
+              "submodule filter metadata cannot be applied portably from a parent repository"
+          })
+        )
+    }
+  }
+
   switch (params.repo.strategy) {
     case "subtree":
       return pullSubtree(params).pipe(
@@ -245,7 +308,8 @@ const refreshAfterUpdate = (cwd: string) =>
     yield* refreshGeneratedFiles({
       cwd,
       repos: reposAfter,
-      commitMessage: "vendor: refresh agent doc after update"
+      commitMessage: "vendor: refresh agent doc after update",
+      editorSettings: true
     })
   })
 

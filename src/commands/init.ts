@@ -16,7 +16,7 @@ export const initImpl = Effect.gen(function* () {
     cwd,
     repos,
     commitMessage: "vendor: initialize vendor-subtree-skill",
-    vscode: true
+    editorSettings: true
   })
   yield* ok(
     `Initialized. Run \`${command} add <repo>\` to vendor a repository.`
@@ -25,6 +25,6 @@ export const initImpl = Effect.gen(function* () {
 
 export const initCmd = Cli.make("init", {}, () => initImpl).pipe(
   Cli.withDescription(
-    "Bootstrap the AGENTS.md (and CLAUDE.md) section, .gitignore clone-ignore section, and .vscode/settings.json exclusions, then commit."
+    "Bootstrap the AGENTS.md (and CLAUDE.md) section, clone-ignore .gitignore entries, and editor exclusions, then commit."
   )
 )

@@ -13,6 +13,7 @@ import {
 import {
   TRAILER_ACTION,
   TRAILER_DIR,
+  TRAILER_FILTER,
   TRAILER_REF,
   TRAILER_STRATEGY,
   TRAILER_URL
@@ -21,6 +22,7 @@ import { updateGitignore } from "../gitignore.ts"
 import { info, ok, withCommandTelemetry } from "../log.ts"
 import { refreshGeneratedFiles } from "../project-files.ts"
 import { findByName, listVendored, type VendoredRepo } from "../vendor-state.ts"
+import { formatVendorFilterTrailer } from "../vendor-filter.ts"
 
 export interface RemoveCommandParams {
   readonly name: string
@@ -74,8 +76,13 @@ const removeFromGit = ({ cwd, target }: RemoveFromGitParams) =>
     Effect.asVoid
   )
 
+const filterTrailer = (target: VendoredRepo): string => {
+  const value = formatVendorFilterTrailer(target.filter)
+  return value.length === 0 ? "" : `\n${TRAILER_FILTER}: ${value}`
+}
+
 const removeMessage = (target: VendoredRepo) =>
-  `vendor: remove ${target.name} (${target.url}@${target.ref}) [${target.strategy}]\n\n${TRAILER_DIR}: ${target.prefix}\n${TRAILER_URL}: ${target.url}\n${TRAILER_REF}: ${target.ref}\n${TRAILER_STRATEGY}: ${target.strategy}\n${TRAILER_ACTION}: remove`
+  `vendor: remove ${target.name} (${target.url}@${target.ref}) [${target.strategy}]\n\n${TRAILER_DIR}: ${target.prefix}\n${TRAILER_URL}: ${target.url}\n${TRAILER_REF}: ${target.ref}\n${TRAILER_STRATEGY}: ${target.strategy}\n${TRAILER_ACTION}: remove${filterTrailer(target)}`
 
 const removeCloneIgnore = ({
   cwd,
@@ -126,7 +133,8 @@ export const removeImpl = ({ name }: RemoveCommandParams) =>
     yield* refreshGeneratedFiles({
       cwd,
       repos: reposAfter,
-      commitMessage: `vendor: refresh agent doc after removing ${target.name}`
+      commitMessage: `vendor: refresh agent doc after removing ${target.name}`,
+      editorSettings: true
     })
 
     yield* ok(`Removed '${target.name}'.`)

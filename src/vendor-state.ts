@@ -77,13 +77,25 @@ export interface FindVendoredRepoParams {
 interface VendoredLogRecordFields {
   readonly action: string
   readonly date: string
+  readonly filter: VendorFilter
   readonly name: string
   readonly prefix: string
   readonly ref: string
   readonly sha: string
   readonly strategy: string
   readonly url: string
-  readonly filter: VendorFilter
+}
+
+interface RawVendoredLogRecordFields {
+  readonly action: string
+  readonly date: string
+  readonly name: string
+  readonly prefix: string
+  readonly rawFilter: string
+  readonly ref: string
+  readonly sha: string
+  readonly strategy: string
+  readonly url: string
 }
 
 export const gitLogFormat = [
@@ -113,7 +125,7 @@ const recordPart = (
   index: number
 ): string => parts[index]?.trim() ?? ""
 
-const repoFromRecord = (record: string): VendoredLogRecordFields => {
+const rawRepoFromRecord = (record: string): RawVendoredLogRecordFields => {
   const parts = record.split("\x00")
   const sha = recordPart(parts, 0)
   const date = recordPart(parts, 1)
@@ -126,16 +138,48 @@ const repoFromRecord = (record: string): VendoredLogRecordFields => {
   const name = prefix.replace(/\/+$/, "").split("/").pop() ?? ""
   const strategy = rawStrategy === "" ? DEFAULT_VENDOR_STRATEGY : rawStrategy
   const action = rawAction === "" ? "upsert" : rawAction
-  const filter =
-    rawFilter === "" ? EMPTY_VENDOR_FILTER : parseVendorFilterTrailer(rawFilter)
-  return { action, date, filter, name, prefix, ref, sha, strategy, url }
+  return { action, date, name, prefix, rawFilter, ref, sha, strategy, url }
+}
+
+const filterFromRecord = (
+  record: string,
+  fields: RawVendoredLogRecordFields
+): Either.Either<VendorFilter, VendoredLogDiagnostic> => {
+  if (fields.rawFilter === "") return Either.right(EMPTY_VENDOR_FILTER)
+  try {
+    return Either.right(parseVendorFilterTrailer(fields.rawFilter))
+  } catch (error) {
+    return Either.left({
+      record,
+      reason: `Invalid vendored repo filter for prefix '${fields.prefix}': ${String(
+        error
+      )}`
+    })
+  }
+}
+
+const repoFromRecord = (
+  record: string
+): Either.Either<VendoredLogRecordFields, VendoredLogDiagnostic> => {
+  const fields = rawRepoFromRecord(record)
+  return Either.map(filterFromRecord(record, fields), (filter) => ({
+    action: fields.action,
+    date: fields.date,
+    filter,
+    name: fields.name,
+    prefix: fields.prefix,
+    ref: fields.ref,
+    sha: fields.sha,
+    strategy: fields.strategy,
+    url: fields.url
+  }))
 }
 
 const diagnosticFromRecord = (
   record: string,
   error: ParseResult.ParseError
 ): VendoredLogDiagnostic => {
-  const { prefix } = repoFromRecord(record)
+  const { prefix } = rawRepoFromRecord(record)
   return {
     record,
     reason: `Invalid vendored repo record for prefix '${prefix ?? ""}': ${ParseResult.TreeFormatter.formatErrorSync(
@@ -172,8 +216,16 @@ const rememberRepo = (
 const appendRecord = (
   state: VendoredLogAccumulator,
   record: string
-): VendoredLogAccumulator =>
-  Either.match(decodeVendoredRecord(repoFromRecord(record)), {
+): VendoredLogAccumulator => {
+  const parsed = repoFromRecord(record)
+  if (Either.isLeft(parsed)) {
+    return {
+      ...state,
+      diagnostics: [...state.diagnostics, parsed.left]
+    }
+  }
+
+  return Either.match(decodeVendoredRecord(parsed.right), {
     onRight: (repo) => ({
       ...state,
       byPrefix: rememberRepo(state.byPrefix, repo)
@@ -183,6 +235,7 @@ const appendRecord = (
       diagnostics: [...state.diagnostics, diagnosticFromRecord(record, error)]
     })
   })
+}
 
 export const parseVendoredLogWithDiagnostics = (
   stdout: string

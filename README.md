@@ -12,7 +12,8 @@ After one command:
 
 - `vendor/<name>/` — the external repo's source or gitlink, depending on strategy.
 - An auto-generated `<!-- vendor-subtree-skill:begin -->` section in `AGENTS.md` (and `CLAUDE.md` if present) telling every agent how to treat the vendored code.
-- `.vscode/settings.json` exclusions so the editor doesn't suggest auto-imports from, search, or watch the vendored directory.
+- Editor settings that keep vendored code out of normal workspace noise: `.vscode/settings.json`, `.zed/settings.json`, and `.ignore` for ripgrep-backed editors.
+- A VS Code Material Icon Theme folder association so `vendor/` gets a package-style folder icon when that popular icon theme is installed.
 - For `clone-ignore`, a managed `.gitignore` section that keeps local clones out of git.
 - Git trailer metadata for each add/update/remove, so `list`, `update`, and `refresh` have a source of truth.
 
@@ -72,7 +73,8 @@ vendor-subtree --help
 ## Caveats
 
 - **Dependencies are pinned by `bun.lock`.** The package commits its runtime dependencies instead of relying on Bun auto-install.
-- **`.vscode/settings.json` is parsed as JSONC.** Comments and existing formatting are preserved where possible via `jsonc-parser`.
+- **Editor settings are generated.** `.vscode/settings.json` and `.zed/settings.json` are parsed as JSONC. Comments and existing formatting are preserved where possible via `jsonc-parser`.
+- **`.ignore` affects ripgrep-backed tools.** This improves Vim/Neovim, Helix, Sublime-style fuzzy pickers, and terminal `rg` defaults by hiding `vendor/` from routine searches. Use `rg -u vendor/<name>` or a direct file path when you intentionally want to inspect vendored source.
 
 ## Usage
 
@@ -100,6 +102,8 @@ bun scripts/vendor.ts add Effect-TS/effect              # add a vendored repo
 bun scripts/vendor.ts add Effect-TS/effect --ref main   # pin a ref
 bun scripts/vendor.ts add Effect-TS/effect --tag v3.21.2
 bun scripts/vendor.ts add Effect-TS/effect --release latest
+bun scripts/vendor.ts add Effect-TS/effect --exclude-ext png --max-file-size 1MB
+bun scripts/vendor.ts add Effect-TS/effect --exclude-dir docs --exclude '*.snap'
 bun scripts/vendor.ts add Effect-TS/effect --strategy submodule
 bun scripts/vendor.ts add Effect-TS/effect --strategy clone-ignore
 bun scripts/vendor.ts add git@github.com:org/lib.git    # SSH (private)
@@ -108,13 +112,13 @@ bun scripts/vendor.ts update --all                      # pull all
 bun scripts/vendor.ts list                              # show what's vendored
 bun scripts/vendor.ts list --json                       # machine-readable
 bun scripts/vendor.ts remove Hello-World                # remove
-bun scripts/vendor.ts refresh                           # regenerate AGENTS.md + .vscode
+bun scripts/vendor.ts refresh                           # regenerate AGENTS.md + editor settings
 bun scripts/vendor.ts --completions zsh                 # generate shell completions
 ```
 
 ## How it works
 
-The tool records metadata as git trailers. `git subtree` already uses `git-subtree-dir:`; this skill also records `vendor-source-url:`, `vendor-source-ref:`, `vendor-strategy:`, and `vendor-action:` for every managed add/update/remove:
+The tool records metadata as git trailers. `git subtree` already uses `git-subtree-dir:`; this skill also records `vendor-source-url:`, `vendor-source-ref:`, `vendor-strategy:`, `vendor-action:`, and optional `vendor-filter:` metadata for every managed add/update/remove:
 
 ```
 vendor: add effect (https://github.com/Effect-TS/effect.git@main)
@@ -124,6 +128,7 @@ vendor-source-url: https://github.com/Effect-TS/effect.git
 vendor-source-ref: main
 vendor-strategy: subtree
 vendor-action: upsert
+vendor-filter: {"exclude":[],"excludeDirs":["docs"],"excludeExtensions":["png"],"maxFileSizeBytes":1048576}
 ```
 
 `list`, `update`, and `refresh` discover the current state from `git log` trailer placeholders and validate parsed records with Effect Schema. No `.vendor.json`, no hidden state.
@@ -147,6 +152,15 @@ Version selection:
 - `--release <name>` resolves a provider release to its backing tag. `--release latest` is supported for providers that expose latest release metadata through their CLI.
 
 Use only one of `--ref`, `--tag`, or `--release`.
+
+Filter selection:
+
+- `--exclude <glob>` omits repo-relative glob matches such as `*.snap` or `docs/**`. Repeat it for multiple patterns.
+- `--exclude-dir <dir>` omits an entire repo-relative directory such as `docs` or `assets/raw`. Repeat it for multiple directories.
+- `--exclude-ext <ext>` omits file extensions such as `png`, `jpg`, `mp4`, or `zip`. Repeat it for multiple extensions.
+- `--max-file-size <size>` omits files larger than the given size. Units use binary powers: `1MB` is 1,048,576 bytes; `512KB` is 524,288 bytes.
+
+Filters apply to materialized source strategies. With `subtree`, a filtered add/update commits a filtered snapshot instead of running a literal `git subtree add/pull`, because git subtree cannot exclude individual paths or blobs. With `clone-ignore`, the local clone uses partial clone plus sparse checkout so excluded paths are not checked out. `submodule` rejects filters with a typed error because a committed gitlink cannot portably encode ignored file patterns or size limits in the parent repository.
 
 ## Compatibility
 
@@ -179,11 +193,15 @@ Key modules:
 - `src/glab.ts` exposes GitLab CLI through an injectable Effect service.
 - `src/repository-hosts.ts` owns provider detection and host-specific operations behind one service.
 - `src/version.ts` resolves `--ref`, `--tag`, and `--release` selectors.
+- `src/vendor-filter.ts` parses filter options, size limits, sparse tree entries, and git trailer metadata.
+- `src/filtered-checkout.ts` owns partial clone and sparse-checkout materialization for filtered strategies.
 - `src/errors.ts` defines the typed domain error union used in the Effect error channel.
 - `src/log.ts` keeps colors and command spans consistent.
-- `src/project-files.ts` owns the shared AGENTS/CLAUDE/VS Code refresh flow.
+- `src/project-files.ts` owns the shared AGENTS/CLAUDE/editor settings refresh flow.
 - `src/vendor-state.ts` reads git trailers and validates repo records with Effect Schema diagnostics.
-- `src/vscode-settings.ts` edits JSONC settings without stripping comments.
+- `src/jsonc-settings.ts` provides the reusable JSONC merge helpers used by editor settings.
+- `src/editor-settings.ts` edits Zed settings and the cross-editor `.ignore` file.
+- `src/vscode-settings.ts` edits VS Code settings and the Material Icon Theme folder association without stripping comments.
 
 ## License
 

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Effect, Option } from "effect"
 import { selectUpdateTargets } from "../src/commands/update.ts"
+import { EMPTY_VENDOR_FILTER } from "../src/vendor-filter.ts"
 import type { VendoredRepo } from "../src/vendor-state.ts"
 
 const repo = {
@@ -9,6 +10,7 @@ const repo = {
   url: "https://github.com/Effect-TS/effect.git",
   ref: "main",
   strategy: "subtree",
+  filter: EMPTY_VENDOR_FILTER,
   sha: "sha",
   date: "date"
 } satisfies VendoredRepo

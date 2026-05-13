@@ -22,6 +22,28 @@ describe("VS Code settings", () => {
       expect(result.text).toContain(
         '"typescript.preferences.autoImportFileExcludePatterns"'
       )
+      expect(result.text).toContain(
+        '"material-icon-theme.folders.associations"'
+      )
+      expect(result.text).toContain('"vendor": "packages"')
+    }
+  })
+
+  test("keeps an existing vendor folder icon association", () => {
+    const result = mergeVscodeSettingsText(
+      [
+        "{",
+        '  "material-icon-theme.folders.associations": {',
+        '    "vendor": "lib"',
+        "  }",
+        "}"
+      ].join("\n")
+    )
+
+    expect(result._tag).toBe("Updated")
+    if (result._tag === "Updated") {
+      expect(result.text).toContain('"vendor": "lib"')
+      expect(result.text).not.toContain('"vendor": "packages"')
     }
   })
 
