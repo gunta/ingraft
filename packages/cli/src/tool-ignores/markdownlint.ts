@@ -1,5 +1,6 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
+
 import { packageJsonDependencySpec } from "../config/package-json.ts"
 import {
   VENDOR_IGNORE_DIR,
@@ -11,8 +12,8 @@ import {
 } from "./common.ts"
 
 const TOOL = "markdownlint"
-const BEGIN = "# vendor-subtree-skill: markdownlint-ignore begin"
-const END = "# vendor-subtree-skill: markdownlint-ignore end"
+const BEGIN = "# vendor-subtree: markdownlint-ignore begin"
+const END = "# vendor-subtree: markdownlint-ignore end"
 const IGNORE_FILE = ".markdownlintignore"
 const CONFIG_CANDIDATES = [
   ".markdownlint.json",
@@ -35,18 +36,11 @@ export const mergeMarkdownlintIgnoreText = (content: string): string =>
     lines: [VENDOR_IGNORE_DIR]
   })
 
-const dependencySpec = (
-  { fs, path }: ToolFileContext,
-  cwd: string,
-  packageName: string
-) =>
+const dependencySpec = ({ fs, path }: ToolFileContext, cwd: string, packageName: string) =>
   Effect.gen(function* () {
     const target = path.resolve(cwd, "package.json")
     if (!(yield* fs.exists(target))) return Option.none<string>()
-    return packageJsonDependencySpec(
-      yield* fs.readFileString(target),
-      packageName
-    )
+    return packageJsonDependencySpec(yield* fs.readFileString(target), packageName)
   })
 
 const hasDependency = (context: ToolFileContext, cwd: string, packageName: string) =>
@@ -58,8 +52,7 @@ const configPath = (context: ToolFileContext, cwd: string) =>
 const cli2ConfigPath = (context: ToolFileContext, cwd: string) =>
   firstExisting(context, cwd, CLI2_CONFIG_CANDIDATES)
 
-const ignorePath = (context: ToolFileContext, cwd: string) =>
-  context.path.resolve(cwd, IGNORE_FILE)
+const ignorePath = (context: ToolFileContext, cwd: string) => context.path.resolve(cwd, IGNORE_FILE)
 
 const isCli2Only = (context: ToolFileContext, cwd: string) =>
   Effect.gen(function* () {
@@ -82,14 +75,7 @@ const isDetected = (context: ToolFileContext, cwd: string) =>
       hasDependency(context, cwd, "markdownlint-cli2"),
       hasDependency(context, cwd, "markdownlint")
     ])
-    return (
-      Option.isSome(config) ||
-      Option.isSome(cli2Config) ||
-      hasIgnore ||
-      cli ||
-      cli2 ||
-      generic
-    )
+    return Option.isSome(config) || Option.isSome(cli2Config) || hasIgnore || cli || cli2 || generic
   })
 
 const refreshWith = (context: ToolFileContext, cwd: string) =>
@@ -141,8 +127,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
         ...(Option.isSome(cli2Config) ? { configPath: cli2Config.value } : {}),
         detected: true,
         ignored: false,
-        message:
-          "markdownlint-cli2 detected; .markdownlintignore is not supported",
+        message: "markdownlint-cli2 detected; .markdownlintignore is not supported",
         status: "unsupported",
         tool: TOOL
       })

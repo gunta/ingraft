@@ -1,6 +1,9 @@
 import { Args, Command as Cli, Options } from "@effect/cli"
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
+
+import { RepositoryAliases } from "../aliases/service.ts"
+import { info, ok, warn, withCommandTelemetry } from "../app/log.ts"
 import {
   TRAILER_ACTION,
   TRAILER_DIR,
@@ -12,6 +15,7 @@ import {
   VENDOR_DIR
 } from "../domain/constants.ts"
 import {
+  InvalidAddTargets,
   SubtreeAddFailed,
   UnsupportedVendorFilter,
   VendorPathAlreadyExists,
@@ -19,10 +23,32 @@ import {
   VendoredRepoAlreadyExists,
   VersionResolutionFailed
 } from "../domain/errors.ts"
+import { hostedRepoFromInput, inferRepoName, normalizeRepoUrl } from "../domain/repo.ts"
 import {
-  checkoutFilteredRepo,
-  materializeFilteredRepo
-} from "../project/filtered-checkout.ts"
+  formatVendorFilterTrailer,
+  hasVendorFilter,
+  type VendorFilter,
+  vendorFilterFromOptions
+} from "../domain/vendor-filter.ts"
+import { findByName, listVendored, type VendoredRepo } from "../domain/vendor-state.ts"
+import {
+  DEFAULT_VENDOR_STRATEGY,
+  effectiveVendorStrategy,
+  type VendorStrategy
+} from "../domain/vendor-strategy.ts"
+import {
+  resolveVersion,
+  type VersionSelector,
+  versionSelectorFromOptions
+} from "../domain/version.ts"
+import { PackageVersionSync, type PackageVersionResolution } from "../package-sync/service.ts"
+import { checkoutFilteredRepo, materializeFilteredRepo } from "../project/filtered-checkout.ts"
+import { updateGitignore } from "../project/gitignore.ts"
+import { ProjectFiles } from "../project/service.ts"
+import {
+  artifactRemoteWithCredentials,
+  CloudflareArtifacts
+} from "../services/cloudflare-artifacts.ts"
 import {
   assertCleanTree,
   commitPathsIfChanged,
@@ -31,37 +57,8 @@ import {
   git,
   repoRoot
 } from "../services/git.ts"
-import { updateGitignore } from "../project/gitignore.ts"
-import { info, ok, warn, withCommandTelemetry } from "../app/log.ts"
-import { inferRepoName, normalizeRepoUrl } from "../domain/repo.ts"
-import { ProjectFiles } from "../project/service.ts"
-import {
-  PackageVersionSync,
-  type PackageVersionResolution
-} from "../package-sync/service.ts"
-import {
-  artifactRemoteWithCredentials,
-  CloudflareArtifacts
-} from "../services/cloudflare-artifacts.ts"
-import { RepositoryHosts } from "../services/repository-hosts.ts"
 import { Jujutsu } from "../services/jujutsu.ts"
-import { findByName, listVendored, type VendoredRepo } from "../domain/vendor-state.ts"
-import {
-  DEFAULT_VENDOR_STRATEGY,
-  effectiveVendorStrategy,
-  type VendorStrategy
-} from "../domain/vendor-strategy.ts"
-import {
-  formatVendorFilterTrailer,
-  hasVendorFilter,
-  type VendorFilter,
-  vendorFilterFromOptions
-} from "../domain/vendor-filter.ts"
-import {
-  resolveVersion,
-  type VersionSelector,
-  versionSelectorFromOptions
-} from "../domain/version.ts"
+import { RepositoryHosts } from "../services/repository-hosts.ts"
 
 export interface AddCommandParams {
   readonly repo: string
@@ -80,6 +77,22 @@ export interface AddCommandParams {
   readonly name: Option.Option<string>
   readonly strategy: VendorStrategy
 }
+
+export interface AddManyCommandParams extends Omit<AddCommandParams, "repo"> {
+  readonly repos: ReadonlyArray<string>
+}
+
+export type AddTarget =
+  | {
+      readonly _tag: "RepositoryTarget"
+      readonly input: string
+      readonly url: string
+    }
+  | {
+      readonly _tag: "PackageTarget"
+      readonly input: string
+      readonly packageName: string
+    }
 
 interface SubtreeAddMessageParams {
   readonly name: string
@@ -171,9 +184,11 @@ interface CloudflareArtifactOptions {
 
 const addRepoArg = Args.text({ name: "repo" }).pipe(
   Args.withDescription(
-    "GitHub shorthand (owner/repo), HTTPS URL, or SSH URL of the upstream repository."
+    "GitHub shorthand (owner/repo), HTTPS/SSH URL, or npm package name to vendor."
   )
 )
+
+const addRepoArgs = addRepoArg.pipe(Args.atLeast(1))
 
 const addRefOption = Options.text("ref").pipe(
   Options.withAlias("r"),
@@ -258,9 +273,7 @@ const addPrefixOption = Options.text("prefix").pipe(
 
 const addNameOption = Options.text("name").pipe(
   Options.withAlias("n"),
-  Options.withDescription(
-    "Override the inferred name (used for the prefix path and lookups)."
-  ),
+  Options.withDescription("Override the inferred name (used for the prefix path and lookups)."),
   Options.optional
 )
 
@@ -276,16 +289,52 @@ const addStrategyOption = Options.choiceWithValue("strategy", [
   )
 )
 
-const optionOrElseEffect = <A, E, R>(
-  option: Option.Option<A>,
-  orElse: Effect.Effect<A, E, R>
-) =>
+const optionOrElseEffect = <A, E, R>(option: Option.Option<A>, orElse: Effect.Effect<A, E, R>) =>
   Option.match(option, {
     onNone: () => orElse,
     onSome: Effect.succeed
   })
 
 const syncPackageLabel = (packageName: string) => `--sync-package ${packageName}`
+
+export const classifyAddTarget = (input: string): AddTarget => {
+  const trimmed = input.trim()
+  return hostedRepoFromInput(trimmed) === null
+    ? {
+        _tag: "PackageTarget",
+        input,
+        packageName: trimmed
+      }
+    : {
+        _tag: "RepositoryTarget",
+        input,
+        url: normalizeRepoUrl(trimmed)
+      }
+}
+
+const resolutionVersionSource = (resolution: PackageVersionResolution): string =>
+  resolution.versionSource === "package-json" ? "package.json range" : resolution.versionSource
+
+const resolvePackageTarget = ({
+  cwd,
+  packageName
+}: {
+  readonly cwd: string
+  readonly packageName: string
+}) =>
+  info(`Resolving npm package '${packageName}' from installed metadata and lockfiles...`).pipe(
+    Effect.zipRight(
+      PackageVersionSync.resolvePackageSource({
+        cwd,
+        packageName
+      })
+    ),
+    Effect.tap((resolution) =>
+      info(
+        `Using ${resolution.ref} from ${packageName}@${resolution.version} (${resolutionVersionSource(resolution)}, ${resolution.source}).`
+      )
+    )
+  )
 
 const parseOptionalPositiveInteger = (value: Option.Option<string>) =>
   Option.match(value, {
@@ -319,7 +368,7 @@ const resolveSyncedPackageRef = ({
   }).pipe(
     Effect.tap((resolution) =>
       info(
-        `Using ${resolution.ref} from package.json ${packageName}@${resolution.version} (${resolution.source}).`
+        `Using ${resolution.ref} from ${packageName}@${resolution.version} (${resolutionVersionSource(resolution)}, ${resolution.source}).`
       )
     )
   )
@@ -342,8 +391,7 @@ const resolveRef = ({ cwd, selector, url }: ResolveRefParams) => {
                   url
                 })
               ),
-            onSome: (value) =>
-              info(`Using release tag '${value}'.`).pipe(Effect.as(value))
+            onSome: (value) => info(`Using release tag '${value}'.`).pipe(Effect.as(value))
           })
         )
       )
@@ -364,9 +412,7 @@ const resolveRef = ({ cwd, selector, url }: ResolveRefParams) => {
         Effect.flatMap((detected) =>
           Option.match(detected, {
             onSome: (value) =>
-              info(`Using ref '${value}' (detected from remote HEAD).`).pipe(
-                Effect.as(value)
-              ),
+              info(`Using ref '${value}' (detected from remote HEAD).`).pipe(Effect.as(value)),
             onNone: () =>
               warn("Could not detect default branch; falling back to 'main'.").pipe(
                 Effect.as("main")
@@ -419,9 +465,7 @@ const ensureNewVendorTarget = ({
     }
     const exists = yield* fs.exists(path.resolve(cwd, finalPrefix))
     if (exists) {
-      return yield* Effect.fail(
-        new VendorPathAlreadyExists({ prefix: finalPrefix })
-      )
+      return yield* Effect.fail(new VendorPathAlreadyExists({ prefix: finalPrefix }))
     }
   })
 
@@ -512,12 +556,7 @@ const strategyGitFailed = ({
     output: result.stderr.trim() || result.stdout.trim() || "unknown error"
   })
 
-const checkoutVendorRef = ({
-  cwd,
-  prefix,
-  ref,
-  strategy
-}: CheckoutVendorRefParams) =>
+const checkoutVendorRef = ({ cwd, prefix, ref, strategy }: CheckoutVendorRefParams) =>
   Effect.gen(function* () {
     const fetch = yield* git(["-C", prefix, "fetch", "--tags", "origin", ref], {
       cwd
@@ -538,24 +577,18 @@ const checkoutVendorRef = ({
     }
   })
 
-const ensureParentDirectory = ({
-  cwd,
-  prefix
-}: EnsureParentDirectoryParams) =>
+const ensureParentDirectory = ({ cwd, prefix }: EnsureParentDirectoryParams) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
-    yield* fs.makeDirectory(path.dirname(path.resolve(cwd, prefix)), {
-      recursive: true
-    }).pipe(Effect.ignore)
+    yield* fs
+      .makeDirectory(path.dirname(path.resolve(cwd, prefix)), {
+        recursive: true
+      })
+      .pipe(Effect.ignore)
   })
 
-const importArtifactRemote = ({
-  artifact,
-  name,
-  ref,
-  url
-}: ImportArtifactRemoteParams) =>
+const importArtifactRemote = ({ artifact, name, ref, url }: ImportArtifactRemoteParams) =>
   Effect.gen(function* () {
     const importName = Option.getOrElse(artifact.name, () => name)
     const imported = yield* CloudflareArtifacts.importRepo({
@@ -570,20 +603,13 @@ const importArtifactRemote = ({
     } satisfies ImportedArtifactRemote
   })
 
-const setCloneOrigin = ({
-  cwd,
-  prefix,
-  strategy,
-  url
-}: SetCloneOriginParams) =>
+const setCloneOrigin = ({ cwd, prefix, strategy, url }: SetCloneOriginParams) =>
   Effect.gen(function* () {
     const result = yield* git(["-C", prefix, "remote", "set-url", "origin", url], {
       cwd
     })
     if (result.exitCode !== 0) {
-      return yield* Effect.fail(
-        strategyGitFailed({ action: "add", prefix, result, strategy })
-      )
+      return yield* Effect.fail(strategyGitFailed({ action: "add", prefix, result, strategy }))
     }
   })
 
@@ -857,21 +883,41 @@ export const addImpl = ({
       )
     }
 
-    const url = normalizeRepoUrl(repo)
-    const finalName = yield* optionOrElseEffect(name, inferRepoName(url))
-    const finalPrefix = (
-      Option.isSome(prefix) ? prefix.value : `${VENDOR_DIR}/${finalName}`
-    ).replace(/\/+$/, "")
+    const target = classifyAddTarget(repo)
     const selector = yield* versionSelectorFromOptions({
       ref,
       tag,
       release,
       syncPackage
     })
-    const finalRef = yield* resolveRef({ cwd, url, selector })
-    const artifactDepth = yield* parseOptionalPositiveInteger(
-      cloudflareArtifactDepth
-    )
+    const packageResolution =
+      target._tag === "PackageTarget"
+        ? Option.some(
+            yield* resolvePackageTarget({
+              cwd,
+              packageName: target.packageName
+            })
+          )
+        : Option.none<PackageVersionResolution>()
+    const url =
+      target._tag === "RepositoryTarget"
+        ? target.url
+        : Option.getOrThrow(Option.getOrThrow(packageResolution).repositoryUrl)
+    const finalName = yield* optionOrElseEffect(name, inferRepoName(url))
+    const finalPrefix = (
+      Option.isSome(prefix) ? prefix.value : `${VENDOR_DIR}/${finalName}`
+    ).replace(/\/+$/, "")
+    const finalRef =
+      target._tag === "PackageTarget" && selector._tag === "Default"
+        ? Option.getOrThrow(packageResolution).ref
+        : yield* resolveRef({ cwd, url, selector })
+    const resolvedSyncPackage =
+      selector._tag === "SyncPackage"
+        ? Option.some(selector.value)
+        : target._tag === "PackageTarget" && selector._tag === "Default"
+          ? Option.some(target.packageName)
+          : Option.none<string>()
+    const artifactDepth = yield* parseOptionalPositiveInteger(cloudflareArtifactDepth)
     const artifactOptions = {
       depth: artifactDepth,
       enabled: cloudflareArtifact,
@@ -896,9 +942,7 @@ export const addImpl = ({
     yield* ensureNewVendorTarget({ cwd, finalName, finalPrefix, fs, path })
     const existingRepos = yield* listVendored(cwd)
 
-    yield* info(
-      `Adding ${finalStrategy}: ${url} @ ${finalRef} -> ${finalPrefix}/`
-    )
+    yield* info(`Adding ${finalStrategy}: ${url} @ ${finalRef} -> ${finalPrefix}/`)
     yield* addByStrategy({
       cwd,
       cloudflareArtifact: artifactOptions,
@@ -908,10 +952,7 @@ export const addImpl = ({
       finalRef,
       filter,
       strategy: finalStrategy,
-      syncPackage:
-        selector._tag === "SyncPackage"
-          ? Option.some(selector.value)
-          : Option.none(),
+      syncPackage: resolvedSyncPackage,
       url
     })
 
@@ -923,15 +964,59 @@ export const addImpl = ({
       editorSettings: true
     })
 
-    yield* ok(
-      `Vendored '${finalName}' at ${finalPrefix}/ using ${finalStrategy}.`
-    )
+    yield* ok(`Vendored '${finalName}' at ${finalPrefix}/ using ${finalStrategy}.`)
   }).pipe(withCommandTelemetry("add"))
+
+export const addManyImpl = ({ repos, ...params }: AddManyCommandParams) =>
+  Effect.gen(function* () {
+    const expandedTargets = yield* RepositoryAliases.expand(repos)
+    const expandedRepos = expandedTargets.map((target) => target.target)
+
+    if (expandedRepos.length === 0) {
+      return yield* Effect.fail(
+        new InvalidAddTargets({
+          reason: "No add targets remain after alias expansion.",
+          targets: repos
+        })
+      )
+    }
+
+    yield* Effect.forEach(
+      expandedTargets,
+      (target) =>
+        target.alias === undefined
+          ? Effect.void
+          : info(`Alias '${target.alias}' -> ${target.target}`),
+      { discard: true }
+    )
+
+    if (expandedRepos.length > 1 && (Option.isSome(params.name) || Option.isSome(params.prefix))) {
+      return yield* Effect.fail(
+        new InvalidAddTargets({
+          reason: "--name and --prefix can only be used when adding one target.",
+          targets: expandedRepos
+        })
+      )
+    }
+
+    yield* Effect.forEach(
+      expandedRepos,
+      (repo) =>
+        addImpl({
+          ...params,
+          repo
+        }),
+      { concurrency: 1, discard: true }
+    )
+    if (expandedRepos.length > 1) {
+      yield* ok(`Processed ${expandedRepos.length} vendor add target(s).`)
+    }
+  }).pipe(withCommandTelemetry("add-many"))
 
 export const addCmd = Cli.make(
   "add",
   {
-    repo: addRepoArg,
+    repos: addRepoArgs,
     ref: addRefOption,
     tag: addTagOption,
     release: addReleaseOption,
@@ -947,9 +1032,9 @@ export const addCmd = Cli.make(
     name: addNameOption,
     strategy: addStrategyOption
   },
-  addImpl
+  addManyImpl
 ).pipe(
   Cli.withDescription(
-    "Add a new vendored repository using subtree, submodule, or clone-ignore strategy metadata."
+    "Add one or more vendored repositories, aliases, or npm packages using subtree, submodule, or clone-ignore strategy metadata."
   )
 )

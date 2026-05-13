@@ -1,6 +1,9 @@
-import { createInterface } from "node:readline/promises"
 import { stdin as input, stdout as output } from "node:process"
+import { createInterface } from "node:readline/promises"
+
 import { Console, Effect } from "effect"
+
+import { renderSection, renderTable } from "../app/ui.ts"
 
 export interface SelectionChoice {
   readonly description?: string
@@ -12,10 +15,7 @@ export interface SelectManyParams {
   readonly message: string
 }
 
-export const parseSelectionInput = (
-  text: string,
-  count: number
-): ReadonlyArray<number> => {
+export const parseSelectionInput = (text: string, count: number): ReadonlyArray<number> => {
   const normalized = text.trim().toLowerCase()
   if (normalized === "" || normalized === "none" || normalized === "n") return []
   if (normalized === "all" || normalized === "*") {
@@ -42,13 +42,18 @@ export const parseSelectionInput = (
 }
 
 const formatChoices = (choices: ReadonlyArray<SelectionChoice>): string =>
-  choices
-    .map((choice, index) =>
-      choice.description
-        ? `${index + 1}. ${choice.label} - ${choice.description}`
-        : `${index + 1}. ${choice.label}`
-    )
-    .join("\n")
+  renderSection({
+    title: "Choices",
+    content: renderTable({
+      columns: [
+        { header: "#", value: (_choice, index) => String(index + 1) },
+        { header: "Task", value: (choice: SelectionChoice) => choice.label },
+        { header: "Source", value: (choice) => choice.description ?? "-" }
+      ],
+      empty: "No choices available.",
+      rows: choices
+    })
+  })
 
 const selectMany = ({ choices, message }: SelectManyParams) =>
   Effect.gen(function* () {

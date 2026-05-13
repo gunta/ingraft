@@ -1,11 +1,12 @@
 import { Command as Cli } from "@effect/cli"
 import { Effect } from "effect"
-import { repoRoot } from "../services/git.ts"
+
 import { ok, withCommandTelemetry } from "../app/log.ts"
-import { ProjectFiles } from "../project/service.ts"
 import { RuntimeConfig } from "../app/runtime.ts"
-import { commandInvocation } from "../project/script.ts"
 import { listVendored } from "../domain/vendor-state.ts"
+import { commandInvocation } from "../project/script.ts"
+import { ProjectFiles } from "../project/service.ts"
+import { repoRoot } from "../services/git.ts"
 
 export const initImpl = Effect.gen(function* () {
   const cwd = yield* repoRoot
@@ -15,16 +16,14 @@ export const initImpl = Effect.gen(function* () {
   yield* ProjectFiles.refresh({
     cwd,
     repos,
-    commitMessage: "vendor: initialize vendor-subtree-skill",
+    commitMessage: "vendor: initialize vendor-subtree",
     editorSettings: true
   })
-  yield* ok(
-    `Initialized. Run \`${command} add <repo>\` to vendor a repository.`
-  )
+  yield* ok(`Initialized. Run \`${command} add <repo>\` to vendor a repository.`)
 }).pipe(withCommandTelemetry("init"))
 
 export const initCmd = Cli.make("init", {}, () => initImpl).pipe(
   Cli.withDescription(
-    "Bootstrap the AGENTS.md (and CLAUDE.md) section, clone-ignore .gitignore entries, and editor exclusions, then commit."
+    "Bootstrap agent docs, .gitignore, .gitattributes, editor settings, and tool ignores, then commit."
   )
 )

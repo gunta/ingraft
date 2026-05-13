@@ -17,13 +17,8 @@ export const scriptRelTo = ({ cwd, argv }: ScriptInvocationParams): string => {
 export const bunInvocation = (params: ScriptInvocationParams): string =>
   `bun ${scriptRelTo(params)}`
 
-export const commandInvocation = ({
-  cwd,
-  argv
-}: ScriptInvocationParams): string => {
+export const commandInvocation = ({ cwd, argv }: ScriptInvocationParams): string => {
   const raw = argv[1]
   const root = cwd.endsWith("/") ? cwd : `${cwd}/`
-  return raw && raw.startsWith(root)
-    ? bunInvocation({ cwd, argv })
-    : "vendor-subtree"
+  return raw && raw.startsWith(root) ? bunInvocation({ cwd, argv }) : "bunx vendor-subtree@latest"
 }

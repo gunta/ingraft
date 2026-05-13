@@ -1,10 +1,6 @@
 import { Schema } from "effect"
 
-export const VENDOR_STRATEGIES = [
-  "subtree",
-  "submodule",
-  "clone-ignore"
-] as const
+export const VENDOR_STRATEGIES = ["subtree", "submodule", "clone-ignore"] as const
 
 export const VendorStrategySchema = Schema.Literal(...VENDOR_STRATEGIES)
 

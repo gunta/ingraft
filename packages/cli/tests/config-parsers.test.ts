@@ -1,10 +1,9 @@
 import { describe, expect, test } from "bun:test"
+
 import { Option } from "effect"
-import {
-  packageJsonHasDependency,
-  packageJsonDependencySpec
-} from "../src/config/package-json.ts"
+
 import { jsObjectHasArrayValue } from "../src/config/javascript-source.ts"
+import { packageJsonHasDependency, packageJsonDependencySpec } from "../src/config/package-json.ts"
 import { tomlHasPath, tomlPathHasArrayValue } from "../src/config/toml.ts"
 import { tsObjectHasArrayValue } from "../src/config/typescript-source.ts"
 import { yamlHasPath } from "../src/config/yaml.ts"
@@ -22,9 +21,7 @@ describe("non-destructive config parsers", () => {
     }`
 
     expect(packageJsonHasDependency(text, ["typescript"])).toBe(true)
-    expect(Option.getOrUndefined(packageJsonDependencySpec(text, "effect"))).toBe(
-      "^3.21.2"
-    )
+    expect(Option.getOrUndefined(packageJsonDependencySpec(text, "effect"))).toBe("^3.21.2")
   })
 
   test("reads TOML sections and array values without string matching", () => {
@@ -34,9 +31,7 @@ describe("non-destructive config parsers", () => {
     `
 
     expect(tomlHasPath(text, ["tool", "ruff"])).toBe(true)
-    expect(tomlPathHasArrayValue(text, ["tool", "ruff", "exclude"], "vendor")).toBe(
-      true
-    )
+    expect(tomlPathHasArrayValue(text, ["tool", "ruff", "exclude"], "vendor")).toBe(true)
   })
 
   test("reads YAML documents through the document parser", () => {

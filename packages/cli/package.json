@@ -2,31 +2,36 @@
   "name": "vendor-subtree",
   "version": "0.3.0",
   "description": "Vendor external git repositories into a project for coding agents.",
-  "type": "module",
+  "license": "MIT",
   "bin": {
     "vendor-subtree": "./dist/bin/vendor-subtree.js"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/src/cli.d.ts",
-      "default": "./dist/src/cli.js"
-    }
   },
   "files": [
     "dist",
     "README.md",
     "LICENSE"
   ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/cli.d.ts",
+      "default": "./dist/src/cli.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && chmod +x dist/bin/vendor-subtree.js",
+    "build": "tsc -p tsconfig.build.json && mkdir -p dist/src/aliases && cp src/aliases/repository-aliases.json dist/src/aliases/repository-aliases.json && chmod +x dist/bin/vendor-subtree.js",
+    "check": "bun run lint && bun run format:check && bun run typecheck && bun run test",
     "dev": "bun scripts/vendor.ts",
+    "format": "oxfmt . --write",
+    "format:check": "oxfmt . --check",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
     "test": "bun test tests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "engines": {
-    "node": ">=20.11"
-  },
-  "license": "MIT",
   "dependencies": {
     "@effect/cli": "^0.75.1",
     "@effect/platform": "^0.96.1",
@@ -39,5 +44,8 @@
     "jsonc-parser": "^3.3.1",
     "ts-morph": "28.0.0",
     "yaml": "2.9.0"
+  },
+  "engines": {
+    "node": ">=20.11"
   }
 }

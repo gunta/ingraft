@@ -1,5 +1,6 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
+
 import {
   firstExisting,
   hasVendorPattern,
@@ -11,8 +12,8 @@ import {
 } from "./common.ts"
 
 const TOOL = "Prettier"
-const BEGIN = "# vendor-subtree-skill: prettier-ignore begin"
-const END = "# vendor-subtree-skill: prettier-ignore end"
+const BEGIN = "# vendor-subtree: prettier-ignore begin"
+const END = "# vendor-subtree: prettier-ignore end"
 const CONFIG_CANDIDATES = [
   ".prettierrc",
   ".prettierrc.json",

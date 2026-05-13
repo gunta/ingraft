@@ -1,13 +1,12 @@
 import { describe, expect, test } from "bun:test"
+
 import { Option } from "effect"
-import { EMPTY_VENDOR_FILTER } from "../src/domain/vendor-filter.ts"
+
 import { dependencyVendorTasks } from "../src/commands/deps.ts"
+import { EMPTY_VENDOR_FILTER } from "../src/domain/vendor-filter.ts"
 import type { DependencyVendorCandidate } from "../src/package-sync/service.ts"
 
-const matched = (
-  packageName: string,
-  repositoryUrl: string
-): DependencyVendorCandidate => ({
+const matched = (packageName: string, repositoryUrl: string): DependencyVendorCandidate => ({
   manifestPath: "package.json",
   packageName,
   packageSpec: "^1.0.0",
@@ -15,7 +14,11 @@ const matched = (
   section: "dependencies",
   source: "npm",
   status: "matched",
-  suggestedName: repositoryUrl.split("/").at(-1)?.replace(/\.git$/, "") ?? "repo",
+  suggestedName:
+    repositoryUrl
+      .split("/")
+      .at(-1)
+      ?.replace(/\.git$/, "") ?? "repo",
   syncPackage: packageName,
   version: "1.0.0"
 })

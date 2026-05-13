@@ -1,4 +1,5 @@
 import { Effect, Option } from "effect"
+
 import { ok } from "../app/log.ts"
 
 export interface RelativePathParams {
@@ -20,11 +21,9 @@ export const relativeTo = ({ root, path }: RelativePathParams): string =>
   path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path
 
 export const reportWritten = ({ cwd, paths }: ReportWrittenParams) =>
-  Effect.forEach(
-    paths,
-    (path) => ok(`Updated ${relativeTo({ root: cwd, path })}`),
-    { discard: true }
-  )
+  Effect.forEach(paths, (path) => ok(`Updated ${relativeTo({ root: cwd, path })}`), {
+    discard: true
+  })
 
 export const reportOptionalPath = ({ cwd, path }: ReportOptionalPathParams) =>
   Option.match(path, {

@@ -1,20 +1,11 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
+
 import { tomlHasPath } from "../config/toml.ts"
-import {
-  firstExisting,
-  hasVendorPattern,
-  report,
-  type ToolFileContext
-} from "./common.ts"
+import { firstExisting, hasVendorPattern, report, type ToolFileContext } from "./common.ts"
 
 const TOOL = "mypy"
-const CONFIG_CANDIDATES = [
-  "mypy.ini",
-  ".mypy.ini",
-  "setup.cfg",
-  "pyproject.toml"
-] as const
+const CONFIG_CANDIDATES = ["mypy.ini", ".mypy.ini", "setup.cfg", "pyproject.toml"] as const
 
 const configPath = (context: ToolFileContext, cwd: string) =>
   firstExisting(context, cwd, CONFIG_CANDIDATES)
@@ -62,18 +53,15 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class MypyIgnore extends Effect.Service<MypyIgnore>()(
-  "vendor-subtree/MypyIgnore",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      const context = { fs, path }
-      return {
-        doctor: (cwd: string) => doctorWith(context, cwd),
-        refresh: (_cwd: string) => Effect.succeed(Option.none<string>())
-      }
-    })
-  }
-) {}
+export class MypyIgnore extends Effect.Service<MypyIgnore>()("vendor-subtree/MypyIgnore", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const context = { fs, path }
+    return {
+      doctor: (cwd: string) => doctorWith(context, cwd),
+      refresh: (_cwd: string) => Effect.succeed(Option.none<string>())
+    }
+  })
+}) {}

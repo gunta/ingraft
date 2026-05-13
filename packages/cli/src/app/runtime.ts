@@ -22,10 +22,7 @@ const liveRuntimeConfig = (): RuntimeConfigShape => ({
   exit: (code) => Effect.sync((): never => process.exit(code))
 })
 
-export class RuntimeConfig extends Effect.Service<RuntimeConfig>()(
-  "vendor-subtree/RuntimeConfig",
-  {
-    accessors: true,
-    sync: liveRuntimeConfig
-  }
-) {}
+export class RuntimeConfig extends Effect.Service<RuntimeConfig>()("vendor-subtree/RuntimeConfig", {
+  accessors: true,
+  sync: liveRuntimeConfig
+}) {}

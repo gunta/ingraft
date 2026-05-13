@@ -1,16 +1,12 @@
 import { describe, expect, test } from "bun:test"
-import { mergePrettierIgnoreText } from "../src/tool-ignores/prettier.ts"
+
 import { mergeZedSettingsText } from "../src/editors/zed.ts"
+import { mergePrettierIgnoreText } from "../src/tool-ignores/prettier.ts"
 
 describe("editor settings", () => {
   test("does not add Zed scan exclusions because that hides vendor from LSPs", () => {
     const result = mergeZedSettingsText(
-      [
-        "{",
-        "  // keep this comment",
-        '  "file_scan_exclusions": ["**/.git"]',
-        "}"
-      ].join("\n")
+      ["{", "  // keep this comment", '  "file_scan_exclusions": ["**/.git"]', "}"].join("\n")
     )
 
     expect(result._tag).toBe("Unchanged")
@@ -31,7 +27,7 @@ describe("editor settings", () => {
   test("adds a managed Prettier ignore section for formatting only", () => {
     const result = mergePrettierIgnoreText("dist/\n")
 
-    expect(result).toContain("# vendor-subtree-skill: prettier-ignore begin")
+    expect(result).toContain("# vendor-subtree: prettier-ignore begin")
     expect(result).toContain("vendor/")
     expect(result).toContain("dist/")
   })

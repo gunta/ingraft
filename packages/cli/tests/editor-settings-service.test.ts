@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
+
 import { Effect } from "effect"
+
 import { EditorSettings } from "../src/editors/service.ts"
 
 describe("editor settings service", () => {

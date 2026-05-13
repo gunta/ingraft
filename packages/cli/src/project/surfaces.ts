@@ -1,24 +1,19 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect } from "effect"
-import {
-  AGENT_DOCS,
-  SECTION_BEGIN,
-  SECTION_END
-} from "../domain/constants.ts"
-import {
-  mergeIntellijFileColorsText,
-  mergeIntellijVendorScopeText
-} from "../editors/intellij.ts"
+
+import { AGENT_DOCS, SECTION_BEGIN, SECTION_END } from "../domain/constants.ts"
+import type { VendoredRepo } from "../domain/vendor-state.ts"
+import { mergeIntellijFileColorsText, mergeIntellijVendorScopeText } from "../editors/intellij.ts"
 import { mergeVscodeSettingsText } from "../editors/vscode.ts"
+import {
+  GITATTRIBUTES_VENDOR_BEGIN,
+  GITATTRIBUTES_VENDOR_END,
+  mergeGitattributesText
+} from "./gitattributes.ts"
 
-export type ProjectSurfaceKind = "agent" | "editor"
+export type ProjectSurfaceKind = "agent" | "editor" | "repository"
 
-export type ProjectSurfaceStatus =
-  | "absent"
-  | "configured"
-  | "invalid"
-  | "managed"
-  | "present"
+export type ProjectSurfaceStatus = "absent" | "configured" | "invalid" | "managed" | "present"
 
 export interface ProjectSurfaceReport {
   readonly _tag: "ProjectSurfaceReport"
@@ -33,19 +28,20 @@ export interface ProjectSurfaceReport {
 export interface ProjectSurfacesReport {
   readonly agentFiles: ReadonlyArray<ProjectSurfaceReport>
   readonly editorFiles: ReadonlyArray<ProjectSurfaceReport>
+  readonly repositoryFiles: ReadonlyArray<ProjectSurfaceReport>
 }
 
 export interface ProjectSurfacesDoctorParams {
   readonly cwd: string
+  readonly repos?: ReadonlyArray<VendoredRepo>
 }
 
 interface SurfaceSpec {
+  readonly absentMessage?: string
   readonly kind: ProjectSurfaceKind
   readonly name: string
   readonly path: string
-  readonly detector?: (
-    content: string
-  ) => Pick<ProjectSurfaceReport, "message" | "status">
+  readonly detector?: (content: string) => Pick<ProjectSurfaceReport, "message" | "status">
 }
 
 interface DetectSurfaceParams {
@@ -100,9 +96,7 @@ const agentSpecs: ReadonlyArray<SurfaceSpec> = [
   }
 ]
 
-const vscodeDetector = (
-  content: string
-): Pick<ProjectSurfaceReport, "message" | "status"> => {
+const vscodeDetector = (content: string): Pick<ProjectSurfaceReport, "message" | "status"> => {
   const merged = mergeVscodeSettingsText(content)
   switch (merged._tag) {
     case "Invalid":
@@ -124,10 +118,7 @@ const vscodeDetector = (
 }
 
 const mergeDetector =
-  (
-    merge: (content: string) => ReturnType<typeof mergeVscodeSettingsText>,
-    invalidLabel: string
-  ) =>
+  (merge: (content: string) => ReturnType<typeof mergeVscodeSettingsText>, invalidLabel: string) =>
   (content: string): Pick<ProjectSurfaceReport, "message" | "status"> => {
     const merged = merge(content)
     switch (merged._tag) {
@@ -149,14 +140,39 @@ const mergeDetector =
     }
   }
 
-const intellijScopeDetector = mergeDetector(
-  mergeIntellijVendorScopeText,
-  "scope"
-)
-const intellijFileColorsDetector = mergeDetector(
-  mergeIntellijFileColorsText,
-  "file colors"
-)
+const intellijScopeDetector = mergeDetector(mergeIntellijVendorScopeText, "scope")
+const intellijFileColorsDetector = mergeDetector(mergeIntellijFileColorsText, "file colors")
+
+const gitattributesDetector =
+  (
+    repos: ReadonlyArray<VendoredRepo> | undefined
+  ): ((content: string) => Pick<ProjectSurfaceReport, "message" | "status">) =>
+  (content: string) => {
+    const hasManagedSection =
+      content.includes(GITATTRIBUTES_VENDOR_BEGIN) && content.includes(GITATTRIBUTES_VENDOR_END)
+    if (repos === undefined) {
+      return hasManagedSection
+        ? {
+            message: "GitHub diff hiding configured for subtree vendor paths",
+            status: "configured"
+          }
+        : {
+            message: "present; refresh can add GitHub diff hiding",
+            status: "present"
+          }
+    }
+
+    const prefixes = repos.filter((repo) => repo.strategy === "subtree").map((repo) => repo.prefix)
+    return mergeGitattributesText({ content, prefixes }) === content
+      ? {
+          message: "GitHub diff hiding configured for subtree vendor paths",
+          status: "configured"
+        }
+      : {
+          message: "present; refresh can update GitHub diff hiding",
+          status: "present"
+        }
+  }
 
 const editorSpecs: ReadonlyArray<SurfaceSpec> = [
   {
@@ -199,13 +215,28 @@ const editorSpecs: ReadonlyArray<SurfaceSpec> = [
   }
 ]
 
-const absentReport = (
-  absolutePath: string,
-  spec: SurfaceSpec
-): ProjectSurfaceReport => ({
+const repositorySpecs = (
+  repos: ReadonlyArray<VendoredRepo> | undefined
+): ReadonlyArray<SurfaceSpec> => {
+  const subtreeCount = repos?.filter((repo) => repo.strategy === "subtree").length ?? undefined
+  return [
+    {
+      absentMessage:
+        subtreeCount === 0
+          ? "not needed; no subtree vendor paths"
+          : "refresh can create GitHub diff hiding for subtree vendor paths",
+      kind: "repository",
+      name: ".gitattributes",
+      path: ".gitattributes",
+      detector: gitattributesDetector(repos)
+    }
+  ]
+}
+
+const absentReport = (absolutePath: string, spec: SurfaceSpec): ProjectSurfaceReport => ({
   _tag: "ProjectSurfaceReport",
   kind: spec.kind,
-  message: "not found",
+  message: spec.absentMessage ?? "not found",
   name: spec.name,
   path: absolutePath,
   present: false,
@@ -245,21 +276,18 @@ const detectSurface = ({ cwd, fs, path, spec }: DetectSurfaceParams) =>
 const detectSurfacesWith = (
   fs: FileSystem.FileSystem,
   path: Path.Path,
-  { cwd }: ProjectSurfacesDoctorParams
+  { cwd, repos }: ProjectSurfacesDoctorParams
 ) =>
   Effect.gen(function* () {
-    const [agentFiles, editorFiles] = yield* Effect.all(
+    const [agentFiles, editorFiles, repositoryFiles] = yield* Effect.all(
       [
-        Effect.forEach(agentSpecs, (spec) =>
-          detectSurface({ cwd, fs, path, spec })
-        ),
-        Effect.forEach(editorSpecs, (spec) =>
-          detectSurface({ cwd, fs, path, spec })
-        )
+        Effect.forEach(agentSpecs, (spec) => detectSurface({ cwd, fs, path, spec })),
+        Effect.forEach(editorSpecs, (spec) => detectSurface({ cwd, fs, path, spec })),
+        Effect.forEach(repositorySpecs(repos), (spec) => detectSurface({ cwd, fs, path, spec }))
       ],
-      { concurrency: 2 }
+      { concurrency: 3 }
     )
-    return { agentFiles, editorFiles } satisfies ProjectSurfacesReport
+    return { agentFiles, editorFiles, repositoryFiles } satisfies ProjectSurfacesReport
   })
 
 export class ProjectSurfaces extends Effect.Service<ProjectSurfaces>()(
@@ -270,8 +298,7 @@ export class ProjectSurfaces extends Effect.Service<ProjectSurfaces>()(
       const fs = yield* FileSystem.FileSystem
       const path = yield* Path.Path
       return {
-        doctor: (params: ProjectSurfacesDoctorParams) =>
-          detectSurfacesWith(fs, path, params)
+        doctor: (params: ProjectSurfacesDoctorParams) => detectSurfacesWith(fs, path, params)
       }
     })
   }

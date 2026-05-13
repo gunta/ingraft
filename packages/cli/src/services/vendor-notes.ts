@@ -1,6 +1,8 @@
-import * as git from "isomorphic-git"
 import * as nodeFs from "node:fs"
+
 import { Effect } from "effect"
+import * as git from "isomorphic-git"
+
 import type { VendoredRepo } from "../domain/vendor-state.ts"
 
 export const VENDOR_NOTES_REF = "refs/notes/vendor-subtree"
@@ -67,8 +69,8 @@ const write = ({ cwd, note, oid }: WriteVendorNoteParams) =>
                 note,
                 force: true,
                 author: {
-                  name: "vendor-subtree-skill",
-                  email: "vendor-subtree-skill@example.invalid"
+                  name: "vendor-subtree",
+                  email: "vendor-subtree@example.invalid"
                 }
               }),
             catch: (error) => error
@@ -88,13 +90,10 @@ const sync = ({ cwd, repos }: SyncVendorNotesParams) =>
     { discard: true }
   )
 
-export class VendorNotes extends Effect.Service<VendorNotes>()(
-  "vendor-subtree/VendorNotes",
-  {
-    accessors: true,
-    sync: () => ({
-      sync,
-      write
-    })
-  }
-) {}
+export class VendorNotes extends Effect.Service<VendorNotes>()("vendor-subtree/VendorNotes", {
+  accessors: true,
+  sync: () => ({
+    sync,
+    write
+  })
+}) {}

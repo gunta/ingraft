@@ -1,19 +1,15 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync
-} from "node:fs"
+import { describe, expect, test } from "bun:test"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { NodeContext } from "@effect/platform-node"
-import { describe, expect, test } from "bun:test"
 import { Effect } from "effect"
+
 import { RuntimeConfig } from "../src/app/runtime.ts"
 import { mergeVscodeSettingsText } from "../src/editors/vscode.ts"
 import { VscodeSettings } from "../src/editors/vscode.ts"
-import { Git } from "../src/services/git.ts"
+import { GitMetadata } from "../src/services/git-metadata.ts"
 
 const withTempWorkspace = async <A>(run: (cwd: string) => Promise<A>): Promise<A> => {
   const cwd = mkdtempSync(join(tmpdir(), "vendor-vscode-"))
@@ -41,15 +37,9 @@ describe("VS Code settings", () => {
     if (result._tag === "Updated") {
       expect(result.text).toContain("// keep this comment")
       expect(result.text).toContain('"dist/**": true')
-      expect(result.text).toContain(
-        '"typescript.preferences.autoImportFileExcludePatterns"'
-      )
-      expect(result.text).toContain(
-        '"javascript.preferences.autoImportFileExcludePatterns"'
-      )
-      expect(result.text).toContain(
-        '"material-icon-theme.folders.associations"'
-      )
+      expect(result.text).toContain('"typescript.preferences.autoImportFileExcludePatterns"')
+      expect(result.text).toContain('"javascript.preferences.autoImportFileExcludePatterns"')
+      expect(result.text).toContain('"material-icon-theme.folders.associations"')
       expect(result.text).toContain('"vendor": "packages"')
       expect(result.text).not.toContain('"files.exclude"')
       expect(result.text).not.toContain('"files.watcherExclude"')
@@ -93,19 +83,15 @@ describe("VS Code settings", () => {
         VscodeSettings.refresh(cwd).pipe(
           Effect.provide(VscodeSettings.Default),
           Effect.provide(RuntimeConfig.Default),
-          Effect.provide(Git.Default),
+          Effect.provide(GitMetadata.Default),
           Effect.provide(NodeContext.layer)
         )
       )
 
       expect(written._tag).toBe("Some")
       const settings = readFileSync(join(cwd, ".vscode/settings.json"), "utf8")
-      expect(settings).toContain(
-        '"typescript.preferences.autoImportFileExcludePatterns"'
-      )
-      expect(settings).not.toContain(
-        '"javascript.preferences.autoImportFileExcludePatterns"'
-      )
+      expect(settings).toContain('"typescript.preferences.autoImportFileExcludePatterns"')
+      expect(settings).not.toContain('"javascript.preferences.autoImportFileExcludePatterns"')
     })
   })
 
@@ -118,18 +104,14 @@ describe("VS Code settings", () => {
         VscodeSettings.refresh(cwd).pipe(
           Effect.provide(VscodeSettings.Default),
           Effect.provide(RuntimeConfig.Default),
-          Effect.provide(Git.Default),
+          Effect.provide(GitMetadata.Default),
           Effect.provide(NodeContext.layer)
         )
       )
 
       const settings = readFileSync(join(cwd, ".vscode/settings.json"), "utf8")
-      expect(settings).toContain(
-        '"javascript.preferences.autoImportFileExcludePatterns"'
-      )
-      expect(settings).not.toContain(
-        '"typescript.preferences.autoImportFileExcludePatterns"'
-      )
+      expect(settings).toContain('"javascript.preferences.autoImportFileExcludePatterns"')
+      expect(settings).not.toContain('"typescript.preferences.autoImportFileExcludePatterns"')
     })
   })
 })

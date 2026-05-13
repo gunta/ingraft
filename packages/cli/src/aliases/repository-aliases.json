@@ -1,0 +1,151 @@
+{
+  "aliases": [
+    {
+      "alias": "effect",
+      "description": "Effect core monorepo.",
+      "targets": ["Effect-TS/effect"]
+    },
+    {
+      "alias": "effect-smol",
+      "description": "Small Effect runtime package.",
+      "targets": ["Effect-TS/effect-smol"]
+    },
+    {
+      "alias": "convex",
+      "description": "Convex client and helper packages commonly used together.",
+      "targets": ["get-convex/convex-js", "get-convex/convex-helpers"]
+    },
+    {
+      "alias": "react",
+      "targets": ["facebook/react"]
+    },
+    {
+      "alias": "next",
+      "targets": ["vercel/next.js"]
+    },
+    {
+      "alias": "astro",
+      "targets": ["withastro/astro"]
+    },
+    {
+      "alias": "vite",
+      "targets": ["vitejs/vite"]
+    },
+    {
+      "alias": "typescript",
+      "targets": ["microsoft/TypeScript"]
+    },
+    {
+      "alias": "node",
+      "targets": ["nodejs/node"]
+    },
+    {
+      "alias": "bun",
+      "targets": ["oven-sh/bun"]
+    },
+    {
+      "alias": "deno",
+      "targets": ["denoland/deno"]
+    },
+    {
+      "alias": "zod",
+      "targets": ["colinhacks/zod"]
+    },
+    {
+      "alias": "hono",
+      "targets": ["honojs/hono"]
+    },
+    {
+      "alias": "trpc",
+      "targets": ["trpc/trpc"]
+    },
+    {
+      "alias": "tailwind",
+      "targets": ["tailwindlabs/tailwindcss"]
+    },
+    {
+      "alias": "prisma",
+      "targets": ["prisma/prisma"]
+    },
+    {
+      "alias": "drizzle",
+      "targets": ["drizzle-team/drizzle-orm"]
+    },
+    {
+      "alias": "tanstack-query",
+      "targets": ["TanStack/query"]
+    },
+    {
+      "alias": "tanstack-router",
+      "targets": ["TanStack/router"]
+    },
+    {
+      "alias": "playwright",
+      "targets": ["microsoft/playwright"]
+    },
+    {
+      "alias": "eslint",
+      "targets": ["eslint/eslint"]
+    },
+    {
+      "alias": "prettier",
+      "targets": ["prettier/prettier"]
+    },
+    {
+      "alias": "biome",
+      "targets": ["biomejs/biome"]
+    },
+    {
+      "alias": "oxlint",
+      "targets": ["oxc-project/oxc"]
+    },
+    {
+      "alias": "ai-sdk",
+      "targets": ["vercel/ai"]
+    },
+    {
+      "alias": "openai-node",
+      "targets": ["openai/openai-node"]
+    },
+    {
+      "alias": "mcp-typescript",
+      "targets": ["modelcontextprotocol/typescript-sdk"]
+    },
+    {
+      "alias": "langchain-js",
+      "targets": ["langchain-ai/langchainjs"]
+    },
+    {
+      "alias": "ruff",
+      "targets": ["astral-sh/ruff"]
+    },
+    {
+      "alias": "uv",
+      "targets": ["astral-sh/uv"]
+    },
+    {
+      "alias": "rust",
+      "targets": ["rust-lang/rust"]
+    },
+    {
+      "alias": "tokio",
+      "targets": ["tokio-rs/tokio"]
+    },
+    {
+      "alias": "zig",
+      "targets": ["ziglang/zig"]
+    },
+    {
+      "alias": "go",
+      "targets": ["golang/go"]
+    },
+    {
+      "alias": "kubernetes",
+      "targets": ["kubernetes/kubernetes"]
+    },
+    {
+      "alias": "vscode",
+      "targets": ["microsoft/vscode"]
+    }
+  ]
+}

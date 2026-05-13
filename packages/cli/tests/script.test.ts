@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+
 import { commandInvocation, scriptRelTo } from "../src/project/script.ts"
 
 describe("script invocation", () => {
@@ -12,12 +13,12 @@ describe("script invocation", () => {
     expect(commandInvocation(params)).toBe("bun packages/cli/scripts/vendor.ts")
   })
 
-  test("uses the package binary when argv does not point into the repo", () => {
+  test("uses bunx vendor-subtree@latest when argv does not point into the repo", () => {
     expect(
       commandInvocation({
         cwd: "/repo",
         argv: ["vendor-subtree", "/usr/local/bin/vendor-subtree"]
       })
-    ).toBe("vendor-subtree")
+    ).toBe("bunx vendor-subtree@latest")
   })
 })

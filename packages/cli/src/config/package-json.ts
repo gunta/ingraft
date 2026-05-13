@@ -1,5 +1,5 @@
-import { parse, type ParseError } from "jsonc-parser"
 import { Option } from "effect"
+import { parse, type ParseError } from "jsonc-parser"
 
 export interface PackageJsonShape {
   readonly dependencies?: Record<string, unknown>
@@ -43,7 +43,5 @@ export const packageJsonDependencySpec = (
   return Option.none()
 }
 
-export const packageJsonHasDependency = (
-  text: string,
-  names: ReadonlyArray<string>
-): boolean => names.some((name) => Option.isSome(packageJsonDependencySpec(text, name)))
+export const packageJsonHasDependency = (text: string, names: ReadonlyArray<string>): boolean =>
+  names.some((name) => Option.isSome(packageJsonDependencySpec(text, name)))

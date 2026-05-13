@@ -1,6 +1,6 @@
 export const VENDOR_DIR = "vendor"
-export const SECTION_BEGIN = "<!-- vendor-subtree-skill:begin -->"
-export const SECTION_END = "<!-- vendor-subtree-skill:end -->"
+export const SECTION_BEGIN = "<!-- vendor-subtree:begin -->"
+export const SECTION_END = "<!-- vendor-subtree:end -->"
 export const TRAILER_URL = "vendor-source-url"
 export const TRAILER_REF = "vendor-source-ref"
 export const TRAILER_STRATEGY = "vendor-strategy"

@@ -1,14 +1,11 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync
-} from "node:fs"
+import { describe, expect, test } from "bun:test"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { NodeContext } from "@effect/platform-node"
-import { describe, expect, test } from "bun:test"
 import { Effect } from "effect"
+
 import { RuntimeConfig } from "../src/app/runtime.ts"
 import {
   IntellijSettings,
@@ -51,12 +48,8 @@ describe("IntelliJ settings", () => {
 
     expect(result._tag).toBe("Updated")
     if (result._tag === "Updated") {
-      expect(result.text).toMatch(
-        /<fileColor scope="Tests" color="Blue"\s*\/>/
-      )
-      expect(result.text).toMatch(
-        /<fileColor scope="Vendor" color="Green"\s*\/>/
-      )
+      expect(result.text).toMatch(/<fileColor scope="Tests" color="Blue"\s*\/>/)
+      expect(result.text).toMatch(/<fileColor scope="Vendor" color="Green"\s*\/>/)
     }
   })
 

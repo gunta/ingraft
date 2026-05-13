@@ -1,5 +1,6 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
+
 import { firstExisting, report, type ToolFileContext } from "./common.ts"
 
 const TOOL = "Zig"
@@ -27,18 +28,15 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class ZigIgnore extends Effect.Service<ZigIgnore>()(
-  "vendor-subtree/ZigIgnore",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      const context = { fs, path }
-      return {
-        doctor: (cwd: string) => doctorWith(context, cwd),
-        refresh: (_cwd: string) => Effect.succeed(Option.none<string>())
-      }
-    })
-  }
-) {}
+export class ZigIgnore extends Effect.Service<ZigIgnore>()("vendor-subtree/ZigIgnore", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const context = { fs, path }
+    return {
+      doctor: (cwd: string) => doctorWith(context, cwd),
+      refresh: (_cwd: string) => Effect.succeed(Option.none<string>())
+    }
+  })
+}) {}

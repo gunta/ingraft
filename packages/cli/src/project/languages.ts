@@ -1,5 +1,6 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect } from "effect"
+
 import { packageJsonHasDependency } from "../config/package-json.ts"
 import { VENDOR_DIR } from "../domain/constants.ts"
 
@@ -32,9 +33,7 @@ type MutableProjectLanguageUsage = {
 export interface DetectProjectLanguagesParams {
   readonly cwd: string
   readonly fs: FileSystem.FileSystem
-  readonly listProjectFiles: (
-    cwd: string
-  ) => Effect.Effect<ReadonlyArray<string>, unknown>
+  readonly listProjectFiles: (cwd: string) => Effect.Effect<ReadonlyArray<string>, unknown>
   readonly path: Path.Path
 }
 
@@ -87,15 +86,14 @@ const ROOT_MARKERS = {
 } as const satisfies Record<ProjectLanguage, ReadonlyArray<string>>
 
 export const emptyProjectLanguageUsage = (): ProjectLanguageUsage =>
-  Object.fromEntries(PROJECT_LANGUAGES.map((language) => [language, false])) as
-    ProjectLanguageUsage
+  Object.fromEntries(PROJECT_LANGUAGES.map((language) => [language, false])) as ProjectLanguageUsage
 
 const mutableProjectLanguageUsage = (): MutableProjectLanguageUsage =>
-  Object.fromEntries(PROJECT_LANGUAGES.map((language) => [language, false])) as
-    MutableProjectLanguageUsage
+  Object.fromEntries(
+    PROJECT_LANGUAGES.map((language) => [language, false])
+  ) as MutableProjectLanguageUsage
 
-const normalizeProjectPath = (filePath: string): string =>
-  filePath.replaceAll("\\", "/")
+const normalizeProjectPath = (filePath: string): string => filePath.replaceAll("\\", "/")
 
 const isRelevantProjectPath = (filePath: string): boolean => {
   const parts = normalizeProjectPath(filePath).split("/")
@@ -121,9 +119,7 @@ export const projectLanguageUsageFromFiles = (
     const name = basename(filePath)
     for (const language of PROJECT_LANGUAGES) {
       if (
-        (LANGUAGE_EXTENSIONS[language] as ReadonlyArray<string>).includes(
-          extension
-        ) ||
+        (LANGUAGE_EXTENSIONS[language] as ReadonlyArray<string>).includes(extension) ||
         (ROOT_MARKERS[language] as ReadonlyArray<string>).includes(name)
       ) {
         usage[language] = true
@@ -138,8 +134,7 @@ export const projectLanguageUsageFromFiles = (
 
 export const detectedProjectLanguageNames = (
   usage: ProjectLanguageUsage
-): ReadonlyArray<ProjectLanguage> =>
-  PROJECT_LANGUAGES.filter((language) => usage[language])
+): ReadonlyArray<ProjectLanguage> => PROJECT_LANGUAGES.filter((language) => usage[language])
 
 const packageJsonUsesTypeScript = ({
   cwd,
@@ -149,9 +144,7 @@ const packageJsonUsesTypeScript = ({
   Effect.gen(function* () {
     const target = path.resolve(cwd, "package.json")
     if (!(yield* fs.exists(target))) return false
-    return packageJsonHasDependency(yield* fs.readFileString(target), [
-      "typescript"
-    ])
+    return packageJsonHasDependency(yield* fs.readFileString(target), ["typescript"])
   }).pipe(Effect.catchAll(() => Effect.succeed(false)))
 
 const rootMarkerUsage = ({
@@ -178,9 +171,9 @@ const listFilesystemProjectFiles = ({
   cwd,
   fs
 }: Pick<DetectProjectLanguagesParams, "cwd" | "fs">) =>
-  fs.readDirectory(cwd, { recursive: true }).pipe(
-    Effect.catchAll(() => Effect.succeed([] as ReadonlyArray<string>))
-  )
+  fs
+    .readDirectory(cwd, { recursive: true })
+    .pipe(Effect.catchAll(() => Effect.succeed([] as ReadonlyArray<string>)))
 
 export const detectProjectLanguages = ({
   cwd,
@@ -194,14 +187,9 @@ export const detectProjectLanguages = ({
       Effect.catchAll(() => Effect.succeed([] as ReadonlyArray<string>))
     )
     const projectFiles =
-      gitFiles.length > 0
-        ? gitFiles
-        : yield* listFilesystemProjectFiles({ cwd, fs })
+      gitFiles.length > 0 ? gitFiles : yield* listFilesystemProjectFiles({ cwd, fs })
     const files = projectLanguageUsageFromFiles(projectFiles)
     return Object.fromEntries(
-      PROJECT_LANGUAGES.map((language) => [
-        language,
-        markers[language] || files[language]
-      ])
+      PROJECT_LANGUAGES.map((language) => [language, markers[language] || files[language]])
     ) as ProjectLanguageUsage
   })

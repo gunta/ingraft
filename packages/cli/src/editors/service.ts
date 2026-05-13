@@ -1,4 +1,5 @@
 import { Effect, Option } from "effect"
+
 import { IntellijSettings } from "./intellij.ts"
 import { VscodeSettings } from "./vscode.ts"
 import { ZedSettings } from "./zed.ts"

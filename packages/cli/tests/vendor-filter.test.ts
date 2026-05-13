@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
+
 import { Effect } from "effect"
+
 import {
   EMPTY_VENDOR_FILTER,
   formatVendorFilterTrailer,
@@ -13,12 +15,8 @@ import {
 
 describe("vendor filters", () => {
   test("parses human-readable max file sizes", async () => {
-    await expect(Effect.runPromise(parseSizeToBytes("1MB"))).resolves.toBe(
-      1_048_576
-    )
-    await expect(Effect.runPromise(parseSizeToBytes("512kb"))).resolves.toBe(
-      524_288
-    )
+    await expect(Effect.runPromise(parseSizeToBytes("1MB"))).resolves.toBe(1_048_576)
+    await expect(Effect.runPromise(parseSizeToBytes("512kb"))).resolves.toBe(524_288)
     await expect(Effect.runPromise(parseSizeToBytes("42"))).resolves.toBe(42)
 
     const failure = await Effect.runPromise(parseSizeToBytes("big").pipe(Effect.flip))
@@ -54,9 +52,7 @@ describe("vendor filters", () => {
       maxFileSizeBytes: 1_048_576
     }
 
-    expect(parseVendorFilterTrailer(formatVendorFilterTrailer(filter))).toEqual(
-      filter
-    )
+    expect(parseVendorFilterTrailer(formatVendorFilterTrailer(filter))).toEqual(filter)
     expect(parseVendorFilterTrailer("")).toEqual(EMPTY_VENDOR_FILTER)
   })
 

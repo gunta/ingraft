@@ -1,11 +1,12 @@
 import { Effect, Option } from "effect"
-import { GitHubCli, type GitHubCliOptions, type GitHubCliResult } from "./gh.ts"
-import { GitLabCli, type GitLabCliOptions, type GitLabCliResult } from "./glab.ts"
+
 import {
   hostedRepoFromInput,
   type HostedRepository,
   type RepositoryHostKind
 } from "../domain/repo.ts"
+import { GitHubCli, type GitHubCliOptions, type GitHubCliResult } from "./gh.ts"
+import { GitLabCli, type GitLabCliOptions, type GitLabCliResult } from "./glab.ts"
 
 export type HostCommandResult = GitHubCliResult | GitLabCliResult
 
@@ -47,10 +48,7 @@ const parseJson = (text: string): unknown =>
     Option.getOrElse(() => ({}))
   )
 
-const stringField = (
-  value: unknown,
-  fields: ReadonlyArray<string>
-): Option.Option<string> => {
+const stringField = (value: unknown, fields: ReadonlyArray<string>): Option.Option<string> => {
   if (typeof value !== "object" || value === null) return Option.none()
   for (const field of fields) {
     if (!(field in value)) continue
@@ -101,11 +99,7 @@ const gitlabDefaultBranch = (exec: GitLabExec, repo: HostedRepository) =>
 const releaseTagFromJson = (stdout: string): Option.Option<string> =>
   stringField(parseJson(stdout), ["tagName", "tag_name", "tag"])
 
-const githubReleaseTag = (
-  exec: GitHubExec,
-  repo: HostedRepository,
-  release: string
-) =>
+const githubReleaseTag = (exec: GitHubExec, repo: HostedRepository, release: string) =>
   repo.nameWithOwner
     ? exec([
         "release",
@@ -120,18 +114,12 @@ const githubReleaseTag = (
       ]).pipe(
         Effect.map((result) => {
           const tag = result.stdout.trim()
-          return result.exitCode === 0 && tag.length > 0
-            ? Option.some(tag)
-            : Option.none<string>()
+          return result.exitCode === 0 && tag.length > 0 ? Option.some(tag) : Option.none<string>()
         })
       )
     : Effect.succeed(Option.none<string>())
 
-const gitlabReleaseTag = (
-  exec: GitLabExec,
-  repo: HostedRepository,
-  release: string
-) =>
+const gitlabReleaseTag = (exec: GitLabExec, repo: HostedRepository, release: string) =>
   exec([
     "release",
     "view",
@@ -153,11 +141,7 @@ const hostInfo = (repo: HostedRepository): RepositoryHostInfo => ({
   name: repo.name
 })
 
-const hostDefaultBranch = (
-  githubExec: GitHubExec,
-  gitlabExec: GitLabExec,
-  input: string
-) =>
+const hostDefaultBranch = (githubExec: GitHubExec, gitlabExec: GitLabExec, input: string) =>
   Option.fromNullable(hostedRepoFromInput(input)).pipe(
     Option.match({
       onNone: () => Effect.succeed(Option.none<string>()),
@@ -252,13 +236,10 @@ export class RepositoryHosts extends Effect.Service<RepositoryHosts>()(
       const github = yield* GitHubCli
       const gitlab = yield* GitLabCli
       return {
-        clone: (params: HostCloneParams) =>
-          hostClone(github.exec, gitlab.exec, params),
-        defaultBranch: (input: string) =>
-          hostDefaultBranch(github.exec, gitlab.exec, input),
+        clone: (params: HostCloneParams) => hostClone(github.exec, gitlab.exec, params),
+        defaultBranch: (input: string) => hostDefaultBranch(github.exec, gitlab.exec, input),
         identify: (input: string) => Effect.succeed(identifyHost(input)),
-        releaseTag: (params: HostReleaseParams) =>
-          hostReleaseTag(github.exec, gitlab.exec, params)
+        releaseTag: (params: HostReleaseParams) => hostReleaseTag(github.exec, gitlab.exec, params)
       }
     })
   }

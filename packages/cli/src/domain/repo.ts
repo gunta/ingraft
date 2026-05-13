@@ -1,4 +1,5 @@
 import { Effect, Option } from "effect"
+
 import { RepoNameInferenceFailed } from "./errors.ts"
 
 export interface GitHubRepository {
@@ -27,9 +28,7 @@ export interface HostedRepository {
 }
 
 const GITHUB_REPO_PART = "[A-Za-z0-9_.-]+"
-const GITHUB_SHORTHAND = new RegExp(
-  `^(${GITHUB_REPO_PART})\\/(${GITHUB_REPO_PART})$`
-)
+const GITHUB_SHORTHAND = new RegExp(`^(${GITHUB_REPO_PART})\\/(${GITHUB_REPO_PART})$`)
 
 export const normalizeRepoUrl = (input: string): string => {
   const trimmed = input.trim()
@@ -87,9 +86,7 @@ const hostedRepo = ({
     cloneSpec
   }
 
-  return parts[0] && parts[1]
-    ? { ...base, nameWithOwner: `${parts[0]}/${parts[1]}` }
-    : base
+  return parts[0] && parts[1] ? { ...base, nameWithOwner: `${parts[0]}/${parts[1]}` } : base
 }
 
 export const hostedRepoFromInput = (input: string): HostedRepository | null => {
@@ -126,9 +123,7 @@ export const hostedRepoFromInput = (input: string): HostedRepository | null => {
   )
 }
 
-export const githubRepoFromInput = (
-  input: string
-): GitHubRepository | null => {
+export const githubRepoFromInput = (input: string): GitHubRepository | null => {
   const repo = hostedRepoFromInput(input)
   if (repo?.kind !== "github" || !repo.nameWithOwner) return null
   const [owner, name] = repo.nameWithOwner.split("/")

@@ -1,9 +1,10 @@
 import { Command as Cli } from "@effect/cli"
 import { Effect } from "effect"
-import { repoRoot } from "../services/git.ts"
+
 import { withCommandTelemetry } from "../app/log.ts"
-import { ProjectFiles } from "../project/service.ts"
 import { listVendored } from "../domain/vendor-state.ts"
+import { ProjectFiles } from "../project/service.ts"
+import { repoRoot } from "../services/git.ts"
 
 export const refreshImpl = Effect.gen(function* () {
   const cwd = yield* repoRoot
@@ -11,13 +12,13 @@ export const refreshImpl = Effect.gen(function* () {
   yield* ProjectFiles.refresh({
     cwd,
     repos,
-    commitMessage: "vendor: refresh agent docs",
+    commitMessage: "vendor: refresh project vendor files",
     editorSettings: true
   })
 }).pipe(withCommandTelemetry("refresh"))
 
 export const refreshCmd = Cli.make("refresh", {}, () => refreshImpl).pipe(
   Cli.withDescription(
-    "Re-generate AGENTS.md sections, clone-ignore .gitignore entries, and editor exclusions from the current git state."
+    "Re-generate agent docs, .gitignore, .gitattributes, editor settings, and tool ignores from the current git state."
   )
 )

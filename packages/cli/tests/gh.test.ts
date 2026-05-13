@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test"
+
 import { Effect, Option } from "effect"
-import { GitHubCli, ghRepoCloneFromInput } from "../src/services/gh.ts"
+
 import { RuntimeConfig } from "../src/app/runtime.ts"
+import { GitHubCli, ghRepoCloneFromInput } from "../src/services/gh.ts"
 
 const runtime = RuntimeConfig.make({
   argv: ["bun", "vendor.ts"],
@@ -22,12 +24,7 @@ describe("GitHub CLI service", () => {
           GitHubCli,
           GitHubCli.make({
             exec: (args, options) => {
-              expect(args).toEqual([
-                "repo",
-                "clone",
-                "Effect-TS/effect",
-                "vendor/effect"
-              ])
+              expect(args).toEqual(["repo", "clone", "Effect-TS/effect", "vendor/effect"])
               expect(options?.cwd).toBe("/workspace")
               return Effect.succeed({ stdout: "", stderr: "", exitCode: 0 })
             }

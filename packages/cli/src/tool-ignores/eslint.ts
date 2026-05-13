@@ -1,5 +1,6 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
+
 import {
   completeMerge,
   ensureArrayItems,
@@ -19,8 +20,8 @@ import {
 } from "./common.ts"
 
 const TOOL = "ESLint"
-const BEGIN = "# vendor-subtree-skill: eslint-ignore begin"
-const END = "# vendor-subtree-skill: eslint-ignore end"
+const BEGIN = "# vendor-subtree: eslint-ignore begin"
+const END = "# vendor-subtree: eslint-ignore end"
 const IGNORE_FILE = ".eslintignore"
 const JSON_CONFIG_CANDIDATES = [".eslintrc.json", ".eslintrc"] as const
 const SOURCE_CONFIG_CANDIDATES = [
@@ -65,8 +66,7 @@ const jsonConfigPath = (context: ToolFileContext, cwd: string) =>
 const sourceConfigPath = (context: ToolFileContext, cwd: string) =>
   firstExisting(context, cwd, SOURCE_CONFIG_CANDIDATES)
 
-const ignorePath = (context: ToolFileContext, cwd: string) =>
-  context.path.resolve(cwd, IGNORE_FILE)
+const ignorePath = (context: ToolFileContext, cwd: string) => context.path.resolve(cwd, IGNORE_FILE)
 
 const isDetected = (context: ToolFileContext, cwd: string) =>
   Effect.gen(function* () {
@@ -78,11 +78,7 @@ const isDetected = (context: ToolFileContext, cwd: string) =>
     if (Option.isSome(jsonConfig) || Option.isSome(sourceConfig) || hasIgnore) {
       return true
     }
-    return yield* packageHasDependency(context, cwd, [
-      "eslint",
-      "@eslint/js",
-      "typescript-eslint"
-    ])
+    return yield* packageHasDependency(context, cwd, ["eslint", "@eslint/js", "typescript-eslint"])
   })
 
 const refreshWith = (context: ToolFileContext, cwd: string) =>
@@ -161,25 +157,21 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
       ...(Option.isSome(sourceConfig) ? { configPath: sourceConfig.value } : {}),
       detected: true,
       ignored: false,
-      message:
-        "detected; flat/source ESLint configs are reported but not auto-written",
+      message: "detected; flat/source ESLint configs are reported but not auto-written",
       status: "unsupported",
       tool: TOOL
     })
   })
 
-export class EslintIgnore extends Effect.Service<EslintIgnore>()(
-  "vendor-subtree/EslintIgnore",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      const context = { fs, path }
-      return {
-        doctor: (cwd: string) => doctorWith(context, cwd),
-        refresh: (cwd: string) => refreshWith(context, cwd)
-      }
-    })
-  }
-) {}
+export class EslintIgnore extends Effect.Service<EslintIgnore>()("vendor-subtree/EslintIgnore", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const context = { fs, path }
+    return {
+      doctor: (cwd: string) => doctorWith(context, cwd),
+      refresh: (cwd: string) => refreshWith(context, cwd)
+    }
+  })
+}) {}

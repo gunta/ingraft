@@ -1,11 +1,10 @@
 import { Command as Cli, Options } from "@effect/cli"
 import { Console, Effect, Option } from "effect"
+
 import { info, ok, warn, withCommandTelemetry } from "../app/log.ts"
+import { renderKeyValues, renderSection } from "../app/ui.ts"
 import { type VendoredRepo, listVendored } from "../domain/vendor-state.ts"
-import {
-  DEFAULT_VENDOR_STRATEGY,
-  type VendorStrategy
-} from "../domain/vendor-strategy.ts"
+import { DEFAULT_VENDOR_STRATEGY, type VendorStrategy } from "../domain/vendor-strategy.ts"
 import { PackageVersionSync, type DependencyVendorCandidate } from "../package-sync/service.ts"
 import { repoRoot } from "../services/git.ts"
 import { Prompts, type SelectionChoice } from "../services/prompts.ts"
@@ -64,9 +63,8 @@ const asChoice = (task: DependencyVendorTask): SelectionChoice => ({
   label: candidateLabel(task)
 })
 
-const matchedCandidates = (
-  candidates: ReadonlyArray<DependencyVendorCandidate>
-) => candidates.filter((candidate) => candidate.status === "matched" && candidate.repositoryUrl)
+const matchedCandidates = (candidates: ReadonlyArray<DependencyVendorCandidate>) =>
+  candidates.filter((candidate) => candidate.status === "matched" && candidate.repositoryUrl)
 
 const findExistingRepo = (
   candidate: DependencyVendorCandidate,
@@ -74,9 +72,7 @@ const findExistingRepo = (
 ): Option.Option<VendoredRepo> =>
   Option.fromNullable(
     repos.find(
-      (repo) =>
-        repo.syncPackage === candidate.packageName ||
-        repo.url === candidate.repositoryUrl
+      (repo) => repo.syncPackage === candidate.packageName || repo.url === candidate.repositoryUrl
     )
   )
 
@@ -89,9 +85,7 @@ export const dependencyVendorTasks = (
     const repositoryUrl = candidate.repositoryUrl
     if (!repositoryUrl) continue
     const existing = findExistingRepo(candidate, repos)
-    const key = Option.isSome(existing)
-      ? `update:${existing.value.name}`
-      : `add:${repositoryUrl}`
+    const key = Option.isSome(existing) ? `update:${existing.value.name}` : `add:${repositoryUrl}`
     const previous = tasks.get(key)
     if (previous) {
       tasks.set(key, {
@@ -122,11 +116,17 @@ const printSummary = (
   tasks: ReadonlyArray<DependencyVendorTask>
 ) =>
   Console.log(
-    [
-      `Detected ${candidates.length} package dependencies.`,
-      `${matchedCandidates(candidates).length} have repository metadata.`,
-      `${tasks.length} vendoring tasks are available.`
-    ].join("\n")
+    renderSection({
+      title: "Dependency scan",
+      content: renderKeyValues([
+        { label: "Packages found", value: String(candidates.length) },
+        {
+          label: "Repository metadata",
+          value: String(matchedCandidates(candidates).length)
+        },
+        { label: "Vendoring tasks", value: String(tasks.length) }
+      ])
+    })
   )
 
 const taskToJson = (task: DependencyVendorTask) => ({
@@ -164,12 +164,7 @@ const runTask = (strategy: VendorStrategy, task: DependencyVendorTask) => {
   })
 }
 
-export const depsImpl = ({
-  dryRun,
-  json,
-  strategy,
-  yes
-}: DepsCommandParams) =>
+export const depsImpl = ({ dryRun, json, strategy, yes }: DepsCommandParams) =>
   Effect.gen(function* () {
     const cwd = yield* repoRoot
     const candidates = yield* PackageVersionSync.scan(cwd)
@@ -177,9 +172,7 @@ export const depsImpl = ({
     const tasks = dependencyVendorTasks(candidates, repos)
 
     if (json) {
-      yield* Console.log(
-        JSON.stringify({ candidates, tasks: tasks.map(taskToJson) }, null, 2)
-      )
+      yield* Console.log(JSON.stringify({ candidates, tasks: tasks.map(taskToJson) }, null, 2))
       return
     }
 
@@ -195,8 +188,7 @@ export const depsImpl = ({
       ? tasks
       : yield* Prompts.selectMany({
           choices,
-          message:
-            "Select packages to vendor/update (comma/range, all, none):"
+          message: "Select packages to vendor/update (comma/range, all, none):"
         }).pipe(
           Effect.map((selectedChoices) =>
             selectedChoices.flatMap((choice) => {

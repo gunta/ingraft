@@ -9,19 +9,10 @@ export const parseTomlConfig = (text: string): Option.Option<Record<string, unkn
     Option.filter(isRecord)
   )
 
-const valueAtPath = (
-  value: Record<string, unknown>,
-  path: ReadonlyArray<string>
-): unknown =>
-  path.reduce<unknown>(
-    (current, key) => (isRecord(current) ? current[key] : undefined),
-    value
-  )
+const valueAtPath = (value: Record<string, unknown>, path: ReadonlyArray<string>): unknown =>
+  path.reduce<unknown>((current, key) => (isRecord(current) ? current[key] : undefined), value)
 
-export const tomlHasPath = (
-  text: string,
-  path: ReadonlyArray<string>
-): boolean =>
+export const tomlHasPath = (text: string, path: ReadonlyArray<string>): boolean =>
   Option.match(parseTomlConfig(text), {
     onNone: () => false,
     onSome: (value) => valueAtPath(value, path) !== undefined

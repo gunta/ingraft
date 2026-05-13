@@ -1,5 +1,8 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Either, Option, ParseResult, Schema } from "effect"
+
+import { GitMetadata, type GitMetadataCommit } from "../services/git-metadata.ts"
+import { git } from "../services/git.ts"
 import {
   TRAILER_ACTION,
   TRAILER_DIR,
@@ -9,19 +12,17 @@ import {
   TRAILER_SYNC_PACKAGE,
   TRAILER_URL
 } from "./constants.ts"
-import { git } from "../services/git.ts"
-import {
-  DEFAULT_VENDOR_STRATEGY,
-  VendorActionSchema,
-  VendorStrategySchema
-} from "./vendor-strategy.ts"
 import {
   EMPTY_VENDOR_FILTER,
   parseVendorFilterTrailer,
   VendorFilterSchema,
   type VendorFilter
 } from "./vendor-filter.ts"
-import { GitMetadata, type GitMetadataCommit } from "../services/git-metadata.ts"
+import {
+  DEFAULT_VENDOR_STRATEGY,
+  VendorActionSchema,
+  VendorStrategySchema
+} from "./vendor-strategy.ts"
 
 export const VendoredRepoSchema = Schema.Struct({
   name: Schema.String.pipe(Schema.minLength(1)),
@@ -54,9 +55,7 @@ interface RemovedVendoredLogRecord {
   readonly prefix: string
 }
 
-type StoredVendoredLogRecord =
-  | ActiveVendoredLogRecord
-  | RemovedVendoredLogRecord
+type StoredVendoredLogRecord = ActiveVendoredLogRecord | RemovedVendoredLogRecord
 
 type VendoredLogRecord = typeof VendoredLogRecordSchema.Type
 
@@ -141,10 +140,8 @@ const nonEmptyRecords = (stdout: string): ReadonlyArray<string> =>
     .map((record) => record.trim())
     .filter((record) => record.length > 0)
 
-const recordPart = (
-  parts: ReadonlyArray<string>,
-  index: number
-): string => parts[index]?.trim() ?? ""
+const recordPart = (parts: ReadonlyArray<string>, index: number): string =>
+  parts[index]?.trim() ?? ""
 
 const rawRepoFromRecord = (record: string): RawVendoredLogRecordFields => {
   const parts = record.split("\x00")
@@ -184,9 +181,7 @@ const filterFromRecord = (
   } catch (error) {
     return Either.left({
       record,
-      reason: `Invalid vendored repo filter for prefix '${fields.prefix}': ${String(
-        error
-      )}`
+      reason: `Invalid vendored repo filter for prefix '${fields.prefix}': ${String(error)}`
     })
   }
 }
@@ -204,9 +199,7 @@ const repoFromRecord = (
     ref: fields.ref,
     sha: fields.sha,
     strategy: fields.strategy,
-    ...(fields.rawSyncPackage === ""
-      ? {}
-      : { syncPackage: fields.rawSyncPackage }),
+    ...(fields.rawSyncPackage === "" ? {} : { syncPackage: fields.rawSyncPackage }),
     url: fields.url
   }))
 }
@@ -221,8 +214,7 @@ const knownTrailerKeys = new Set([
   TRAILER_URL
 ])
 
-const commitDate = (timestamp: number): string =>
-  new Date(timestamp * 1000).toISOString()
+const commitDate = (timestamp: number): string => new Date(timestamp * 1000).toISOString()
 
 const trailersFromMessage = (message: string): ReadonlyMap<string, string> => {
   const trailers = new Map<string, string>()
@@ -270,9 +262,7 @@ const filterFromFields = (
   } catch (error) {
     return Either.left({
       record,
-      reason: `Invalid vendored repo filter for prefix '${fields.prefix}': ${String(
-        error
-      )}`
+      reason: `Invalid vendored repo filter for prefix '${fields.prefix}': ${String(error)}`
     })
   }
 }
@@ -290,9 +280,7 @@ const repoFieldsFromRaw = (
     ref: fields.ref,
     sha: fields.sha,
     strategy: fields.strategy,
-    ...(fields.rawSyncPackage === ""
-      ? {}
-      : { syncPackage: fields.rawSyncPackage }),
+    ...(fields.rawSyncPackage === "" ? {} : { syncPackage: fields.rawSyncPackage }),
     url: fields.url
   }))
 
@@ -328,19 +316,14 @@ const rememberRepo = (
             filter: record.filter,
             sha: record.sha,
             strategy: record.strategy,
-            ...(record.syncPackage === undefined
-              ? {}
-              : { syncPackage: record.syncPackage }),
+            ...(record.syncPackage === undefined ? {} : { syncPackage: record.syncPackage }),
             url: record.url
           }
         }
   return new Map([...byPrefix, [record.prefix, stored]])
 }
 
-const appendRecord = (
-  state: VendoredLogAccumulator,
-  record: string
-): VendoredLogAccumulator => {
+const appendRecord = (state: VendoredLogAccumulator, record: string): VendoredLogAccumulator => {
   const parsed = repoFromRecord(record)
   if (Either.isLeft(parsed)) {
     return {
@@ -361,9 +344,7 @@ const appendRecord = (
   })
 }
 
-export const parseVendoredLogWithDiagnostics = (
-  stdout: string
-): VendoredLogParseResult => {
+export const parseVendoredLogWithDiagnostics = (stdout: string): VendoredLogParseResult => {
   const { byPrefix, diagnostics } = nonEmptyRecords(stdout).reduce(appendRecord, {
     byPrefix: new Map<string, StoredVendoredLogRecord>(),
     diagnostics: []
@@ -434,15 +415,9 @@ export const parseVendoredCommits = (
 ): ReadonlyArray<VendoredRepo> => parseVendoredCommitsWithDiagnostics(commits).repos
 
 const listVendoredWithGit = (cwd: string) =>
-  git(
-    [
-      "log",
-      `--grep=^${TRAILER_URL}:`,
-      "--extended-regexp",
-      `--format=${gitLogFormat}%x1e`
-    ],
-    { cwd }
-  ).pipe(
+  git(["log", `--grep=^${TRAILER_URL}:`, "--extended-regexp", `--format=${gitLogFormat}%x1e`], {
+    cwd
+  }).pipe(
     Effect.map((result) =>
       result.exitCode === 0
         ? parseVendoredLogWithDiagnostics(result.stdout)
@@ -458,11 +433,9 @@ export const listVendored = (cwd: string) =>
       Effect.map(parseVendoredCommitsWithDiagnostics),
       Effect.catchAll(() => listVendoredWithGit(cwd))
     )
-    yield* Effect.forEach(
-      parsed.diagnostics,
-      (diagnostic) => Effect.logDebug(diagnostic.reason),
-      { discard: true }
-    )
+    yield* Effect.forEach(parsed.diagnostics, (diagnostic) => Effect.logDebug(diagnostic.reason), {
+      discard: true
+    })
     return yield* Effect.filter(parsed.repos, (repo) =>
       repo.strategy === "clone-ignore"
         ? Effect.succeed(true)
@@ -473,8 +446,6 @@ export const listVendored = (cwd: string) =>
 export const findByName = ({ cwd, name }: FindVendoredRepoParams) =>
   listVendored(cwd).pipe(
     Effect.map((repos) =>
-      Option.fromNullable(
-        repos.find((repo) => repo.name === name || repo.prefix === name)
-      )
+      Option.fromNullable(repos.find((repo) => repo.name === name || repo.prefix === name))
     )
   )

@@ -1,10 +1,8 @@
 import { Effect, Option } from "effect"
-import {
-  VersionResolutionFailed,
-  VersionSelectorConflict
-} from "./errors.ts"
+
 import { git } from "../services/git.ts"
 import { RepositoryHosts } from "../services/repository-hosts.ts"
+import { VersionResolutionFailed, VersionSelectorConflict } from "./errors.ts"
 
 export interface VersionOptionParams {
   readonly ref: Option.Option<string>
@@ -37,10 +35,7 @@ const optionalSelector = (
 ): ReadonlyArray<NamedVersionSelector> =>
   Option.match(option, {
     onNone: () => [],
-    onSome: (value) =>
-      value.trim().length === 0
-        ? []
-        : [{ name, selector: create(value.trim()) }]
+    onSome: (value) => (value.trim().length === 0 ? [] : [{ name, selector: create(value.trim()) }])
   })
 
 export const versionSelectorFromOptions = ({
@@ -48,10 +43,7 @@ export const versionSelectorFromOptions = ({
   release,
   syncPackage,
   tag
-}: VersionOptionParams): Effect.Effect<
-  VersionSelector,
-  VersionSelectorConflict
-> => {
+}: VersionOptionParams): Effect.Effect<VersionSelector, VersionSelectorConflict> => {
   const selected = [
     ...optionalSelector("--ref", ref, (value) => ({ _tag: "Ref", value })),
     ...optionalSelector("--tag", tag, (value) => ({ _tag: "Tag", value })),

@@ -1,16 +1,10 @@
-import {
-  Command as PlatformCommand,
-  CommandExecutor,
-  FileSystem
-} from "@effect/platform"
+import { Command as PlatformCommand, CommandExecutor, FileSystem } from "@effect/platform"
 import { Effect, Option, Stream, pipe } from "effect"
-import {
-  DirtyWorkingTree,
-  GitCommandFailed,
-  NotGitRepository
-} from "../domain/errors.ts"
-import { RepositoryHosts } from "./repository-hosts.ts"
+
 import { RuntimeConfig } from "../app/runtime.ts"
+import { DirtyWorkingTree, GitCommandFailed, NotGitRepository } from "../domain/errors.ts"
+import { GitMetadata } from "./git-metadata.ts"
+import { RepositoryHosts } from "./repository-hosts.ts"
 
 export interface GitResult {
   readonly stdout: string
@@ -19,7 +13,10 @@ export interface GitResult {
 }
 
 const collect = <E, R>(stream: Stream.Stream<Uint8Array, E, R>) =>
-  stream.pipe(Stream.decodeText("utf-8"), Stream.runFold("", (a, b) => a + b))
+  stream.pipe(
+    Stream.decodeText("utf-8"),
+    Stream.runFold("", (a, b) => a + b)
+  )
 
 export interface GitOptions {
   readonly cwd?: string
@@ -58,9 +55,7 @@ const nonZeroExit = (
     output: gitOutput(result)
   }
 
-  return new GitCommandFailed(
-    options.cwd === undefined ? params : { ...params, cwd: options.cwd }
-  )
+  return new GitCommandFailed(options.cwd === undefined ? params : { ...params, cwd: options.cwd })
 }
 
 const makeGitExec =
@@ -69,9 +64,7 @@ const makeGitExec =
     Effect.scoped(
       Effect.gen(function* () {
         const base = PlatformCommand.make("git", ...args)
-        const cmd = options.cwd
-          ? pipe(base, PlatformCommand.workingDirectory(options.cwd))
-          : base
+        const cmd = options.cwd ? pipe(base, PlatformCommand.workingDirectory(options.cwd)) : base
         const proc = yield* executor.start(cmd)
         const [exitCode, stdout, stderr] = yield* Effect.all(
           [proc.exitCode, collect(proc.stdout), collect(proc.stderr)],
@@ -111,10 +104,7 @@ export const git = (args: ReadonlyArray<string>, options: GitOptions = {}) =>
     })
   )
 
-export const gitChecked = (
-  args: ReadonlyArray<string>,
-  options: GitOptions = {}
-) =>
+export const gitChecked = (args: ReadonlyArray<string>, options: GitOptions = {}) =>
   git(args, options).pipe(
     Effect.filterOrFail(
       (result) => result.exitCode === 0,
@@ -122,12 +112,21 @@ export const gitChecked = (
     )
   )
 
-export const repoRoot = git(["rev-parse", "--show-toplevel"]).pipe(
-  Effect.filterOrFail(
-    (result) => result.exitCode === 0,
-    () => new NotGitRepository()
-  ),
-  Effect.map((result) => result.stdout.trim())
+export const repoRoot = RuntimeConfig.pipe(
+  Effect.flatMap((runtime) =>
+    GitMetadata.findRoot(runtime.cwd).pipe(
+      Effect.withSpan("git.findRoot", {
+        attributes: {
+          cwd: runtime.cwd
+        }
+      }),
+      Effect.annotateLogs({
+        git: "isomorphic-git findRoot",
+        cwd: runtime.cwd
+      }),
+      Effect.catchAll(() => Effect.fail(new NotGitRepository()))
+    )
+  )
 )
 
 export const assertCleanTree = (cwd: string) =>
@@ -154,18 +153,18 @@ export const detectDefaultBranch = (url: string) =>
     )
   )
 
-export const commitConfigChanges = ({
-  cwd,
-  message
-}: CommitConfigChangesParams) =>
+export const commitConfigChanges = ({ cwd, message }: CommitConfigChangesParams) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const candidates = [
       ".gitignore",
       ".ignore",
+      ".bazelignore",
       ".eslintignore",
       ".eslintrc.json",
       ".markdownlintignore",
+      ".moon/workspace.yml",
+      ".moon/workspace.yaml",
       ".prettierignore",
       ".oxlintrc.json",
       ".stylelintrc.json",
@@ -176,31 +175,33 @@ export const commitConfigChanges = ({
       "cspell.json",
       "cspell.jsonc",
       "cspell.config.json",
+      "nx.json",
+      "pnpm-workspace.yaml",
       "pyrightconfig.json",
       "stylelint.config.json",
+      "turbo.json",
+      "turbo.jsonc",
       "AGENTS.md",
       "CLAUDE.md"
     ]
     const toStage = yield* Effect.filter(candidates, (relativePath) =>
-      fs.exists(`${cwd}/${relativePath}`).pipe(
-        Effect.flatMap((exists) =>
-          exists
-            ? Effect.succeed(true)
-            : git(["ls-files", "--error-unmatch", relativePath], { cwd }).pipe(
-                Effect.map((result) => result.exitCode === 0)
-              )
+      fs
+        .exists(`${cwd}/${relativePath}`)
+        .pipe(
+          Effect.flatMap((exists) =>
+            exists
+              ? Effect.succeed(true)
+              : GitMetadata.pathKnownToGit(cwd, relativePath).pipe(
+                  Effect.catchAll(() => Effect.succeed(false))
+                )
+          )
         )
-      )
     )
     if (toStage.length === 0) return
     yield* commitPathsIfChanged({ cwd, paths: toStage, message })
   })
 
-export const commitPathsIfChanged = ({
-  cwd,
-  message,
-  paths
-}: CommitPathsIfChangedParams) =>
+export const commitPathsIfChanged = ({ cwd, message, paths }: CommitPathsIfChangedParams) =>
   Effect.gen(function* () {
     if (paths.length === 0) return false
     yield* git(["add", "--", ...paths], { cwd })
@@ -211,6 +212,4 @@ export const commitPathsIfChanged = ({
   })
 
 export const emptyCommit = ({ cwd, message }: EmptyCommitParams) =>
-  gitChecked(["commit", "--allow-empty", "-m", message], { cwd }).pipe(
-    Effect.asVoid
-  )
+  gitChecked(["commit", "--allow-empty", "-m", message], { cwd }).pipe(Effect.asVoid)

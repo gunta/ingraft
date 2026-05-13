@@ -9,10 +9,7 @@ const propertyName = (key: unknown): string | undefined => {
   if (!isRecord(key)) return undefined
   const { name, type, value } = key
   if (typeof name === "string") return name
-  if (
-    (type === "Literal" || type === "StringLiteral") &&
-    typeof value === "string"
-  ) {
+  if ((type === "Literal" || type === "StringLiteral") && typeof value === "string") {
     return value
   }
   return undefined
@@ -37,11 +34,7 @@ const arrayExpressionHasValue = (node: unknown, expected: string): boolean => {
   )
 }
 
-export const jsObjectHasArrayValue = (
-  text: string,
-  name: string,
-  expected: string
-): boolean => {
+export const jsObjectHasArrayValue = (text: string, name: string, expected: string): boolean => {
   try {
     let found = false
     j(text)

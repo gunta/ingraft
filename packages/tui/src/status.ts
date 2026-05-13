@@ -19,9 +19,7 @@ export interface VendorTuiSnapshot {
 }
 
 export const summarizeSnapshot = (snapshot: VendorTuiSnapshot): ReadonlyArray<string> => {
-  const matched = snapshot.candidates.filter(
-    (candidate) => candidate.status === "matched"
-  ).length
+  const matched = snapshot.candidates.filter((candidate) => candidate.status === "matched").length
   const adds = snapshot.tasks.filter((task) => task.action === "add").length
   const updates = snapshot.tasks.filter((task) => task.action === "update").length
   return [
@@ -32,9 +30,7 @@ export const summarizeSnapshot = (snapshot: VendorTuiSnapshot): ReadonlyArray<st
   ]
 }
 
-export const taskRows = (
-  snapshot: VendorTuiSnapshot
-): ReadonlyArray<string> =>
+export const taskRows = (snapshot: VendorTuiSnapshot): ReadonlyArray<string> =>
   snapshot.tasks.map((task) => {
     const packages = task.packageNames.join(", ")
     const target =

@@ -1,10 +1,4 @@
-import {
-  Node,
-  Project,
-  ScriptKind,
-  SyntaxKind,
-  type ObjectLiteralExpression
-} from "ts-morph"
+import { Node, Project, ScriptKind, SyntaxKind, type ObjectLiteralExpression } from "ts-morph"
 
 const sourceFileFromText = (text: string) => {
   const project = new Project({ useInMemoryFileSystem: true })

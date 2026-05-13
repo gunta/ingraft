@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { injectSection, renderVendorSection } from "../src/project/agent-docs.ts"
+
 import { EMPTY_VENDOR_FILTER } from "../src/domain/vendor-filter.ts"
+import { injectSection, renderVendorSection } from "../src/project/agent-docs.ts"
 
 describe("agent docs", () => {
   test("injects a managed section without replacing surrounding content", () => {
@@ -8,11 +9,9 @@ describe("agent docs", () => {
       repos: []
     })
 
+    expect(injectSection({ content: "# Project\n", section })).toContain("# Project\n\n")
     expect(injectSection({ content: "# Project\n", section })).toContain(
-      "# Project\n\n"
-    )
-    expect(injectSection({ content: "# Project\n", section })).toContain(
-      "<!-- vendor-subtree-skill:begin -->"
+      "<!-- vendor-subtree:begin -->"
     )
   })
 
@@ -20,9 +19,9 @@ describe("agent docs", () => {
     const first = [
       "# Project",
       "",
-      "<!-- vendor-subtree-skill:begin -->",
+      "<!-- vendor-subtree:begin -->",
       "old",
-      "<!-- vendor-subtree-skill:end -->",
+      "<!-- vendor-subtree:end -->",
       ""
     ].join("\n")
     const next = renderVendorSection({
@@ -45,7 +44,7 @@ describe("agent docs", () => {
 
     expect(result).not.toContain("old")
     expect(result).toContain("bun tools/vendor.ts list")
-    expect(renderVendorSection({ repos: [] })).toContain("vendor-subtree list")
+    expect(renderVendorSection({ repos: [] })).toContain("bunx vendor-subtree@latest list")
     expect(result).toContain("vendor/effect")
   })
 })

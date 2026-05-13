@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
+
 import { Effect } from "effect"
+
 import { ProjectFiles } from "../src/project/service.ts"
 
 describe("project files service", () => {

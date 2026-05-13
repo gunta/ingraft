@@ -1,4 +1,5 @@
 import { Effect, Schema } from "effect"
+
 import { InvalidVendorFilter } from "./errors.ts"
 
 export interface VendorFilter {
@@ -63,23 +64,21 @@ const dedupe = (values: ReadonlyArray<string>): ReadonlyArray<string> =>
   [...new Set(values)].sort((a, b) => a.localeCompare(b))
 
 const normalizePathLike = (value: string): string =>
-  value.trim().replaceAll("\\", "/").replace(/^\/+|\/+$/g, "")
+  value
+    .trim()
+    .replaceAll("\\", "/")
+    .replace(/^\/+|\/+$/g, "")
 
-const normalizeExtension = (value: string): string =>
-  value.trim().toLowerCase().replace(/^\.+/, "")
+const normalizeExtension = (value: string): string => value.trim().toLowerCase().replace(/^\.+/, "")
 
-const invalidFilter = (value: string, reason: string) =>
-  new InvalidVendorFilter({ value, reason })
+const invalidFilter = (value: string, reason: string) => new InvalidVendorFilter({ value, reason })
 
 const validateToken = (value: string) =>
   value.includes("\n") || value.includes("\0")
     ? Effect.fail(invalidFilter(value, "newlines and NUL bytes are not allowed"))
     : Effect.succeed(value)
 
-const normalizedList = (
-  values: ReadonlyArray<string>,
-  normalize: (value: string) => string
-) =>
+const normalizedList = (values: ReadonlyArray<string>, normalize: (value: string) => string) =>
   Effect.forEach(
     values.filter(nonEmpty),
     (value) => validateToken(value).pipe(Effect.map(normalize)),
@@ -97,18 +96,14 @@ export const parseSizeToBytes = (value: string) =>
     const normalized = value.trim().toLowerCase()
     const match = normalized.match(/^(\d+(?:\.\d+)?)\s*([a-z]+)?$/)
     if (!match?.[1]) {
-      return Effect.fail(
-        invalidFilter(value, "expected a number with an optional unit")
-      )
+      return Effect.fail(invalidFilter(value, "expected a number with an optional unit"))
     }
 
     const amount = Number(match[1])
     const unit = match[2] ?? "b"
     const multiplier = SIZE_UNITS[unit]
     if (!Number.isFinite(amount) || amount <= 0 || multiplier === undefined) {
-      return Effect.fail(
-        invalidFilter(value, "expected a positive size such as 500KB or 1MB")
-      )
+      return Effect.fail(invalidFilter(value, "expected a positive size such as 500KB or 1MB"))
     }
 
     return Effect.succeed(Math.floor(amount * multiplier))
@@ -123,10 +118,7 @@ export const vendorFilterFromOptions = ({
   Effect.gen(function* () {
     const normalizedExclude = yield* normalizedList(exclude, normalizePathLike)
     const normalizedDirs = yield* normalizedList(excludeDirs, normalizePathLike)
-    const normalizedExtensions = yield* normalizedList(
-      excludeExtensions,
-      normalizeExtension
-    )
+    const normalizedExtensions = yield* normalizedList(excludeExtensions, normalizeExtension)
     const maxFileSizeBytes =
       maxFileSize === null || maxFileSize.trim().length === 0
         ? null
@@ -146,14 +138,10 @@ const pathExtension = (value: string): string => {
   return index <= 0 ? "" : name.slice(index + 1).toLowerCase()
 }
 
-const inExcludedDir = (
-  relativePath: string,
-  excludeDirs: ReadonlyArray<string>
-): boolean =>
+const inExcludedDir = (relativePath: string, excludeDirs: ReadonlyArray<string>): boolean =>
   excludeDirs.some((dir) => relativePath === dir || relativePath.startsWith(`${dir}/`))
 
-const regexpEscape = (char: string): string =>
-  /[|\\{}()[\]^$+?.]/.test(char) ? `\\${char}` : char
+const regexpEscape = (char: string): string => (/[|\\{}()[\]^$+?.]/.test(char) ? `\\${char}` : char)
 
 const globToRegExp = (pattern: string): RegExp => {
   let source = ""
@@ -174,10 +162,8 @@ const globToRegExp = (pattern: string): RegExp => {
   return new RegExp(pattern.includes("/") ? `^${source}$` : `(^|/)${source}$`)
 }
 
-const matchesAnyGlob = (
-  relativePath: string,
-  patterns: ReadonlyArray<string>
-): boolean => patterns.some((pattern) => globToRegExp(pattern).test(relativePath))
+const matchesAnyGlob = (relativePath: string, patterns: ReadonlyArray<string>): boolean =>
+  patterns.some((pattern) => globToRegExp(pattern).test(relativePath))
 
 const isExcluded = (entry: GitTreeEntry, filter: VendorFilter): boolean => {
   if (inExcludedDir(entry.path, filter.excludeDirs)) return true
@@ -189,32 +175,26 @@ const isExcluded = (entry: GitTreeEntry, filter: VendorFilter): boolean => {
   }
   if (matchesAnyGlob(entry.path, filter.exclude)) return true
   return (
-    filter.maxFileSizeBytes !== null &&
-    entry.size !== null &&
-    entry.size > filter.maxFileSizeBytes
+    filter.maxFileSizeBytes !== null && entry.size !== null && entry.size > filter.maxFileSizeBytes
   )
 }
 
-export const parseGitTreeEntries = (
-  stdout: string
-): ReadonlyArray<GitTreeEntry> =>
-  stdout
-    .split("\n")
-    .flatMap((line) => {
-      const match = line.match(/^(\d+)\s+(\S+)\s+(\S+)\s+(-|\d+)\t(.+)$/)
-      if (!match?.[1] || !match[2] || !match[3] || !match[4] || !match[5]) {
-        return []
+export const parseGitTreeEntries = (stdout: string): ReadonlyArray<GitTreeEntry> =>
+  stdout.split("\n").flatMap((line) => {
+    const match = line.match(/^(\d+)\s+(\S+)\s+(\S+)\s+(-|\d+)\t(.+)$/)
+    if (!match?.[1] || !match[2] || !match[3] || !match[4] || !match[5]) {
+      return []
+    }
+    return [
+      {
+        mode: match[1],
+        objectType: match[2],
+        objectName: match[3],
+        size: match[4] === "-" ? null : Number(match[4]),
+        path: normalizePathLike(match[5])
       }
-      return [
-        {
-          mode: match[1],
-          objectType: match[2],
-          objectName: match[3],
-          size: match[4] === "-" ? null : Number(match[4]),
-          path: normalizePathLike(match[5])
-        }
-      ]
-    })
+    ]
+  })
 
 export const includedTreePaths = ({
   entries,

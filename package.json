@@ -1,24 +1,33 @@
 {
-  "name": "vendor-subtree-workspace",
+  "name": "vendor-subtree",
   "version": "0.3.0",
   "private": true,
-  "type": "module",
-  "packageManager": "bun@1.3.11",
   "workspaces": [
     "packages/*"
   ],
+  "type": "module",
   "scripts": {
-    "build": "bun run --cwd packages/cli build",
-    "clean": "rm -rf packages/cli/dist",
+    "build": "bun run --cwd packages/cli build && bun run --cwd packages/website build",
+    "check": "bun run lint && bun run format:check && bun run typecheck && bun run test",
+    "clean": "rm -rf packages/cli/dist packages/website/dist packages/website/.astro",
+    "format": "oxfmt . --write",
+    "format:check": "oxfmt . --check",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
     "test": "bun test packages/cli/tests packages/tui/tests",
     "tui": "bun run --cwd packages/tui dev",
-    "typecheck": "tsc -b",
-    "vendor": "bun packages/cli/scripts/vendor.ts"
+    "typecheck": "tsc -b && bun run --cwd packages/website typecheck",
+    "vendor": "bun packages/cli/scripts/vendor.ts",
+    "website": "bun run --cwd packages/website dev",
+    "website:build": "bun run --cwd packages/website build"
   },
   "devDependencies": {
     "@types/jscodeshift": "17.3.0",
-    "@types/node": "^24.10.2",
+    "@types/node": "^25.7.0",
     "bun-types": "^1.3.13",
+    "oxfmt": "^0.49.0",
+    "oxlint": "^1.64.0",
     "typescript": "^6.0.3"
-  }
+  },
+  "packageManager": "bun@1.3.13"
 }

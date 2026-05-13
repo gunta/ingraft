@@ -1,0 +1,181 @@
+---
+import "../styles/site.css"
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="vendor-subtree gives coding agents local upstream source without letting vendor code overwhelm your repository."
+    />
+    <title>vendor-subtree</title>
+  </head>
+  <body>
+    <main class="landing-shell">
+      <header class="landing-header" aria-label="Primary">
+        <a class="brand" href="/">
+          <span class="brand-mark" aria-hidden="true">v</span>
+          <span>vendor-subtree</span>
+        </a>
+        <nav class="landing-nav">
+          <a href="/docs/getting-started/">Install</a>
+          <a href="/docs/strategies/">Strategies</a>
+          <a href="/docs/doctor/">Doctor</a>
+          <a class="cta cta-secondary" href="/docs/">Docs</a>
+        </nav>
+      </header>
+
+      <section class="hero">
+        <div class="hero-inner">
+          <p class="eyebrow">Source vendoring for coding-agent repositories</p>
+          <h1>vendor-subtree</h1>
+          <p class="hero-copy">
+            Put the exact upstream source your agents need inside the repo,
+            keep it aligned with your dependency versions, and stop vendor code
+            from drowning your editor, linters, diffs, and history.
+          </p>
+          <div class="hero-actions">
+            <a class="cta cta-primary" href="/docs/getting-started/">Start vendoring</a>
+            <a class="cta cta-secondary" href="/docs/strategies/">Compare strategies</a>
+          </div>
+        </div>
+      </section>
+
+      <div class="signal-strip" aria-label="Product capabilities">
+        <div class="signal">
+          <strong>Subtree</strong>
+          <span>Commit source when permanence matters.</span>
+        </div>
+        <div class="signal">
+          <strong>Submodule</strong>
+          <span>Pin big repos without copying their history.</span>
+        </div>
+        <div class="signal">
+          <strong>Clone-ignore</strong>
+          <span>Make source local for agents while Git stays lean.</span>
+        </div>
+        <div class="signal">
+          <strong>Doctor</strong>
+          <span>See detected stack, tools, editors, and vendor status.</span>
+        </div>
+      </div>
+
+      <section class="section">
+        <p class="section-kicker">Why this exists</p>
+        <h2>Agents work better when the real source is close.</h2>
+        <p class="section-intro">
+          Package docs are useful. The actual repository is better. `vendor-subtree`
+          makes source available to coding agents and language tooling without
+          turning every repo into an unreviewable mirror of the internet.
+        </p>
+        <div class="problem-grid">
+          <article class="tile">
+            <h3>Version drift is expensive</h3>
+            <p>
+              The tool can resolve versions from package manifests and lockfiles,
+              then map those versions to source tags, branches, releases, or commits.
+            </p>
+          </article>
+          <article class="tile">
+            <h3>Vendor code should be visible</h3>
+            <p>
+              Agents and LSPs need to read upstream code, but review diffs,
+              formatter runs, and lint passes should stay focused on your project.
+            </p>
+          </article>
+          <article class="tile">
+            <h3>One strategy is not enough</h3>
+            <p>
+              Small libraries can be subtrees, large repositories can be
+              submodules, and temporary source mirrors can be clone-ignore entries.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <p class="section-kicker">The model</p>
+        <h2>Choose the relationship you want with upstream source.</h2>
+        <div class="strategy-grid">
+          <article class="tile strategy">
+            <h3>Subtree by default</h3>
+            <p>
+              Commit a copy under `vendor/` when the source is small enough and
+              you want code review, history, and branch portability.
+            </p>
+          </article>
+          <article class="tile strategy">
+            <h3>Submodule when needed</h3>
+            <p>
+              Pin a repository without importing every file into your own history.
+              Useful for large projects and upstreams you do not want to modify.
+            </p>
+          </article>
+          <article class="tile strategy">
+            <h3>Clone and ignore</h3>
+            <p>
+              Keep source on disk for agents and LSPs while `.gitignore` keeps it
+              out of commits. This is also the fallback for colocated `jj` repos.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <p class="section-kicker">Workflow</p>
+        <h2>Discovery, vendoring, editor hygiene, and status in one loop.</h2>
+        <div class="workflow-grid">
+          <div class="terminal" aria-label="vendor-subtree command example">
+            <div class="terminal-bar" aria-hidden="true">
+              <span class="terminal-dot"></span>
+              <span class="terminal-dot"></span>
+              <span class="terminal-dot"></span>
+            </div>
+            <pre><code>$ vendor-subtree
+<span class="ok">found</span> package.json, bun.lock, oxlint, Biome, VS Code
+<span class="ok">resolved</span> effect@3.21.2 -> Effect-TS/effect#v3.21.2
+<span class="warn">selected</span> strategy: subtree
+<span class="ok">wrote</span> vendor/effect
+<span class="ok">updated</span> .gitattributes, editor settings, agent notes
+
+$ vendor-subtree doctor
+<span class="ok">clean</span> 2 vendors synced, 4 tool surfaces configured</code></pre>
+          </div>
+          <article class="tile">
+            <h3>Made for real repositories</h3>
+            <ul class="check-list">
+              <li>Detect package managers, monorepo tools, editors, and agent files.</li>
+              <li>Apply ignores only for tools the project already uses.</li>
+              <li>Support GitHub and other git hosts through provider layers.</li>
+              <li>Keep dangerous history removal explicit and hard to run by accident.</li>
+              <li>Expose a TUI for scanning, matching, and updating vendored dependencies.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="final-band">
+        <div class="section">
+          <p class="section-kicker">For agents and humans</p>
+          <h2>Give the repo more context without giving it more chaos.</h2>
+          <p class="section-intro">
+            `vendor-subtree` turns upstream source into an intentional project
+            surface: versioned, observable, editor-aware, and removable when it
+            no longer belongs.
+          </p>
+          <div class="hero-actions">
+            <a class="cta cta-primary" href="/docs/getting-started/">Read the docs</a>
+            <a class="cta cta-secondary" href="/docs/cli-reference/">CLI reference</a>
+          </div>
+        </div>
+      </section>
+
+      <footer class="landing-footer">
+        <span>vendor-subtree workspace</span>
+        <span>Astro + Starlight docs for source vendoring workflows</span>
+      </footer>
+    </main>
+  </body>
+</html>

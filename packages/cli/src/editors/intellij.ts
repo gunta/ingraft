@@ -7,10 +7,11 @@ import {
   type Node as XmlNode
 } from "@xmldom/xmldom"
 import { Effect } from "effect"
+
 import { formatStatus } from "../app/log.ts"
 import { RuntimeConfig, type RuntimeConfigShape } from "../app/runtime.ts"
-import { VENDOR_DIR } from "../domain/constants.ts"
 import type { SettingsMergeResult } from "../config/jsonc-settings.ts"
+import { VENDOR_DIR } from "../domain/constants.ts"
 
 const VENDOR_SCOPE_NAME = "Vendor"
 const VENDOR_SCOPE_COLOR = "Green"
@@ -25,8 +26,7 @@ const VENDOR_SCOPE_XML = [
   "</component>",
   ""
 ].join("\n")
-const VENDOR_FILE_COLOR =
-  `<fileColor scope="${VENDOR_SCOPE_NAME}" color="${VENDOR_SCOPE_COLOR}" />`
+const VENDOR_FILE_COLOR = `<fileColor scope="${VENDOR_SCOPE_NAME}" color="${VENDOR_SCOPE_COLOR}" />`
 const DEFAULT_FILE_COLORS_XML = [
   '<?xml version="1.0" encoding="UTF-8"?>',
   '<project version="4">',
@@ -103,18 +103,11 @@ const serializeXml = (document: XmlDocument, malformedMessage: string) => {
   }
 }
 
-const childElements = (
-  parent: XmlElement,
-  tagName: string
-): ReadonlyArray<XmlElement> => {
+const childElements = (parent: XmlElement, tagName: string): ReadonlyArray<XmlElement> => {
   const elements: Array<XmlElement> = []
   for (let index = 0; index < parent.childNodes.length; index += 1) {
     const node = parent.childNodes.item(index)
-    if (
-      node &&
-      node.nodeType === ELEMENT_NODE &&
-      (node as XmlElement).tagName === tagName
-    ) {
+    if (node && node.nodeType === ELEMENT_NODE && (node as XmlElement).tagName === tagName) {
       elements.push(node as XmlElement)
     }
   }
@@ -122,9 +115,7 @@ const childElements = (
 }
 
 const findComponent = (root: XmlElement, name: string): XmlElement | undefined =>
-  childElements(root, "component").find(
-    (component) => component.getAttribute("name") === name
-  )
+  childElements(root, "component").find((component) => component.getAttribute("name") === name)
 
 const hasChildElementWithAttribute = (
   parent: XmlElement,
@@ -132,15 +123,11 @@ const hasChildElementWithAttribute = (
   attribute: string,
   value: string
 ): boolean =>
-  childElements(parent, tagName).some(
-    (element) => element.getAttribute(attribute) === value
-  )
+  childElements(parent, tagName).some((element) => element.getAttribute(attribute) === value)
 
 const trailingWhitespaceChild = (parent: XmlElement): XmlNode | undefined => {
   const last = parent.lastChild
-  return last?.nodeType === TEXT_NODE && /^\s*$/.test(last.nodeValue ?? "")
-    ? last
-    : undefined
+  return last?.nodeType === TEXT_NODE && /^\s*$/.test(last.nodeValue ?? "") ? last : undefined
 }
 
 const insertElementBeforeClosingWhitespace = ({
@@ -190,13 +177,10 @@ const createSharedFileColorsComponent = (document: XmlDocument) => {
   return component
 }
 
-export const mergeIntellijVendorScopeText = (
-  text = ""
-): SettingsMergeResult => {
+export const mergeIntellijVendorScopeText = (text = ""): SettingsMergeResult => {
   if (text.trim() === "") return { _tag: "Updated", text: VENDOR_SCOPE_XML }
   const parsed = parseXml({
-    invalidRootMessage:
-      ".idea/scopes/Vendor.xml must contain a <component> root.",
+    invalidRootMessage: ".idea/scopes/Vendor.xml must contain a <component> root.",
     malformedMessage: ".idea/scopes/Vendor.xml is not well-formed XML.",
     rootName: "component",
     text
@@ -205,8 +189,7 @@ export const mergeIntellijVendorScopeText = (
   if (parsed.root.getAttribute("name") !== DEPENDENCY_VALIDATION_COMPONENT) {
     return {
       _tag: "Invalid",
-      message:
-        '.idea/scopes/Vendor.xml must contain a DependencyValidationManager component.'
+      message: ".idea/scopes/Vendor.xml must contain a DependencyValidationManager component."
     }
   }
   if (
@@ -224,15 +207,10 @@ export const mergeIntellijVendorScopeText = (
     parent: parsed.root,
     prefixIndent: "\n  "
   })
-  return serializeXml(
-    parsed.document,
-    ".idea/scopes/Vendor.xml is not well-formed XML."
-  )
+  return serializeXml(parsed.document, ".idea/scopes/Vendor.xml is not well-formed XML.")
 }
 
-export const mergeIntellijFileColorsText = (
-  text = ""
-): SettingsMergeResult => {
+export const mergeIntellijFileColorsText = (text = ""): SettingsMergeResult => {
   if (text.trim() === "") {
     return { _tag: "Updated", text: DEFAULT_FILE_COLORS_XML }
   }
@@ -247,12 +225,7 @@ export const mergeIntellijFileColorsText = (
   const component = findComponent(parsed.root, SHARED_FILE_COLORS_COMPONENT)
   if (
     component &&
-    hasChildElementWithAttribute(
-      component,
-      "fileColor",
-      "scope",
-      VENDOR_SCOPE_NAME
-    )
+    hasChildElementWithAttribute(component, "fileColor", "scope", VENDOR_SCOPE_NAME)
   ) {
     return { _tag: "Unchanged" }
   }
@@ -272,43 +245,29 @@ export const mergeIntellijFileColorsText = (
       prefixIndent: "\n  "
     })
   }
-  return serializeXml(
-    parsed.document,
-    ".idea/fileColors.xml is not well-formed XML."
-  )
+  return serializeXml(parsed.document, ".idea/fileColors.xml is not well-formed XML.")
 }
 
-const readExisting = (
-  fs: FileSystem.FileSystem,
-  target: string
-): Effect.Effect<string, unknown> =>
-  fs.exists(target).pipe(
-    Effect.flatMap((exists) =>
-      exists ? fs.readFileString(target) : Effect.succeed("")
-    )
-  )
+const readExisting = (fs: FileSystem.FileSystem, target: string): Effect.Effect<string, unknown> =>
+  fs
+    .exists(target)
+    .pipe(Effect.flatMap((exists) => (exists ? fs.readFileString(target) : Effect.succeed(""))))
 
-const writeMergedFile = ({
-  fs,
-  merge,
-  path,
-  target
-}: WriteMergedFileParams) => {
+const writeMergedFile = ({ fs, merge, path, target }: WriteMergedFileParams) => {
   switch (merge._tag) {
     case "Invalid":
     case "Unchanged":
       return Effect.succeed([])
     case "Updated":
-      return fs.makeDirectory(path.dirname(target), { recursive: true }).pipe(
-        Effect.ignore,
-        Effect.zipRight(
-          fs.writeFileString(
-            target,
-            merge.text.endsWith("\n") ? merge.text : `${merge.text}\n`
-          )
-        ),
-        Effect.as([target])
-      )
+      return fs
+        .makeDirectory(path.dirname(target), { recursive: true })
+        .pipe(
+          Effect.ignore,
+          Effect.zipRight(
+            fs.writeFileString(target, merge.text.endsWith("\n") ? merge.text : `${merge.text}\n`)
+          ),
+          Effect.as([target])
+        )
   }
 }
 
@@ -360,8 +319,7 @@ export class IntellijSettings extends Effect.Service<IntellijSettings>()(
       const path = yield* Path.Path
       const runtime = yield* RuntimeConfig
       return {
-        refresh: (cwd: string) =>
-          refreshIntellijSettingsWith({ cwd, fs, path, runtime })
+        refresh: (cwd: string) => refreshIntellijSettingsWith({ cwd, fs, path, runtime })
       }
     })
   }

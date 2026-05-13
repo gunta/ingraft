@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test"
+
 import { Effect, Option } from "effect"
+
+import { RuntimeConfig } from "../src/app/runtime.ts"
 import { GitHubCli } from "../src/services/gh.ts"
 import { GitLabCli } from "../src/services/glab.ts"
 import { RepositoryHosts } from "../src/services/repository-hosts.ts"
-import { RuntimeConfig } from "../src/app/runtime.ts"
 
 const runtime = RuntimeConfig.make({
   argv: ["bun", "vendor.ts"],

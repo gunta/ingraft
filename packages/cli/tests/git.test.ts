@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test"
+
 import { Effect, Option } from "effect"
+
+import { RuntimeConfig } from "../src/app/runtime.ts"
 import { Git, detectDefaultBranch } from "../src/services/git.ts"
 import { RepositoryHosts } from "../src/services/repository-hosts.ts"
-import { RuntimeConfig } from "../src/app/runtime.ts"
 
 describe("git service", () => {
   test("detects a default branch through an injectable Git service", async () => {

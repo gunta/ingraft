@@ -5,11 +5,7 @@ export interface JujutsuService {
   readonly isColocated: (cwd: string) => Effect.Effect<boolean, unknown>
 }
 
-const isColocatedWith = (
-  fs: FileSystem.FileSystem,
-  path: Path.Path,
-  cwd: string
-) =>
+const isColocatedWith = (fs: FileSystem.FileSystem, path: Path.Path, cwd: string) =>
   Effect.gen(function* () {
     const dotGit = path.resolve(cwd, ".git")
     const dotJj = path.resolve(cwd, ".jj")
@@ -21,22 +17,17 @@ const isColocatedWith = (
     const hasGitTarget = yield* fs.exists(gitTarget)
     if (!hasGitTarget) return true
 
-    const target = yield* fs.readFileString(gitTarget).pipe(
-      Effect.orElseSucceed(() => "")
-    )
+    const target = yield* fs.readFileString(gitTarget).pipe(Effect.orElseSucceed(() => ""))
     return target.trim().includes(".git")
   })
 
-export class Jujutsu extends Effect.Service<Jujutsu>()(
-  "vendor-subtree/Jujutsu",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      return {
-        isColocated: (cwd: string) => isColocatedWith(fs, path, cwd)
-      } satisfies JujutsuService
-    })
-  }
-) {}
+export class Jujutsu extends Effect.Service<Jujutsu>()("vendor-subtree/Jujutsu", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    return {
+      isColocated: (cwd: string) => isColocatedWith(fs, path, cwd)
+    } satisfies JujutsuService
+  })
+}) {}

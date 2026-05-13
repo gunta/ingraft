@@ -1,15 +1,8 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
-import {
-  tomlHasPath,
-  tomlPathHasAnyArrayValue
-} from "../config/toml.ts"
-import {
-  VENDOR_DIR,
-  firstExisting,
-  report,
-  type ToolFileContext
-} from "./common.ts"
+
+import { tomlHasPath, tomlPathHasAnyArrayValue } from "../config/toml.ts"
+import { VENDOR_DIR, firstExisting, report, type ToolFileContext } from "./common.ts"
 
 const TOOL = "Ruff"
 const CONFIG_CANDIDATES = ["ruff.toml", ".ruff.toml", "pyproject.toml"] as const
@@ -66,18 +59,15 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class RuffIgnore extends Effect.Service<RuffIgnore>()(
-  "vendor-subtree/RuffIgnore",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      const context = { fs, path }
-      return {
-        doctor: (cwd: string) => doctorWith(context, cwd),
-        refresh: (_cwd: string) => Effect.succeed(Option.none<string>())
-      }
-    })
-  }
-) {}
+export class RuffIgnore extends Effect.Service<RuffIgnore>()("vendor-subtree/RuffIgnore", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const context = { fs, path }
+    return {
+      doctor: (cwd: string) => doctorWith(context, cwd),
+      refresh: (_cwd: string) => Effect.succeed(Option.none<string>())
+    }
+  })
+}) {}

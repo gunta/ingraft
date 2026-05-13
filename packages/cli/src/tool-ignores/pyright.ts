@@ -1,5 +1,6 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
+
 import {
   completeMerge,
   ensureArrayItem,
@@ -34,8 +35,7 @@ export const mergePyrightConfigText = (text = "{}\n"): SettingsMergeResult => {
   )
 }
 
-const configPath = (context: ToolFileContext, cwd: string) =>
-  firstExisting(context, cwd, [CONFIG])
+const configPath = (context: ToolFileContext, cwd: string) => firstExisting(context, cwd, [CONFIG])
 
 const refreshWith = (context: ToolFileContext, cwd: string) =>
   Effect.gen(function* () {
@@ -73,9 +73,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
       })
     }
 
-    const ignored = hasVendorPattern(yield* context.fs.readFileString(target.value), [
-      VENDOR_DIR
-    ])
+    const ignored = hasVendorPattern(yield* context.fs.readFileString(target.value), [VENDOR_DIR])
     return report({
       configPath: target.value,
       detected: true,
@@ -86,18 +84,15 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class PyrightIgnore extends Effect.Service<PyrightIgnore>()(
-  "vendor-subtree/PyrightIgnore",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      const context = { fs, path }
-      return {
-        doctor: (cwd: string) => doctorWith(context, cwd),
-        refresh: (cwd: string) => refreshWith(context, cwd)
-      }
-    })
-  }
-) {}
+export class PyrightIgnore extends Effect.Service<PyrightIgnore>()("vendor-subtree/PyrightIgnore", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const context = { fs, path }
+    return {
+      doctor: (cwd: string) => doctorWith(context, cwd),
+      refresh: (cwd: string) => refreshWith(context, cwd)
+    }
+  })
+}) {}

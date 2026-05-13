@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
+
 import { Option } from "effect"
+
 import {
   artifactRemoteWithCredentials,
   cloudflareArtifactsConfigFromEnv,
@@ -17,8 +19,7 @@ describe("Cloudflare Artifacts", () => {
 
     expect(config).toEqual({
       apiToken: "cf_token",
-      baseUrl:
-        "https://api.cloudflare.com/client/v4/accounts/acc_123/artifacts/namespaces/agents"
+      baseUrl: "https://api.cloudflare.com/client/v4/accounts/acc_123/artifacts/namespaces/agents"
     })
   })
 
@@ -62,11 +63,7 @@ describe("Cloudflare Artifacts", () => {
   })
 
   test("accepts only HTTPS remotes for REST imports", () => {
-    expect(
-      isCloudflareImportableRemote("https://github.com/Effect-TS/effect.git")
-    ).toBe(true)
-    expect(
-      isCloudflareImportableRemote("git@github.com:Effect-TS/effect.git")
-    ).toBe(false)
+    expect(isCloudflareImportableRemote("https://github.com/Effect-TS/effect.git")).toBe(true)
+    expect(isCloudflareImportableRemote("git@github.com:Effect-TS/effect.git")).toBe(false)
   })
 })

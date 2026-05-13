@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+
 import { summarizeSnapshot, taskRows } from "../src/status.ts"
 
 describe("vendor-subtree tui status", () => {

@@ -1,4 +1,5 @@
 import { Effect, Option } from "effect"
+
 import {
   CloudflareArtifactsConfigMissing,
   CloudflareArtifactsRequestFailed
@@ -104,9 +105,7 @@ const envelopeMessages = (envelope: CloudflareEnvelope<unknown>): string =>
     .filter((message): message is string => message !== undefined)
     .join("\n")
 
-const parseImportEnvelope = (
-  value: unknown
-): Option.Option<CloudflareArtifactImportResult> => {
+const parseImportEnvelope = (value: unknown): Option.Option<CloudflareArtifactImportResult> => {
   if (typeof value !== "object" || value === null) return Option.none()
   const envelope = value as CloudflareEnvelope<CloudflareImportResult>
   const result = envelope.result
@@ -142,8 +141,7 @@ const importRepo = (params: CloudflareArtifactsImportParams) =>
     if (config === null) {
       return yield* Effect.fail(
         new CloudflareArtifactsConfigMissing({
-          reason:
-            "Missing Cloudflare Artifacts REST configuration for --cloudflare-artifact."
+          reason: "Missing Cloudflare Artifacts REST configuration for --cloudflare-artifact."
         })
       )
     }

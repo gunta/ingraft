@@ -1,12 +1,32 @@
 import { describe, expect, test } from "bun:test"
-import { Option } from "effect"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
+import { NodeContext } from "@effect/platform-node"
+import { Effect, Option } from "effect"
+
 import {
+  detectProjectPackageVersion,
   dependencyCandidateFromMetadata,
   packageJsonDependencies,
   packageSpecFromPackageJson,
+  parseBunLockVersion,
   parseNpmPackageMetadata,
+  parsePackageLockVersion,
+  parsePnpmLockVersion,
+  parseYarnLockVersion,
   tagCandidatesForPackageVersion
 } from "../src/package-sync/service.ts"
+
+const withTempWorkspace = async <A>(run: (cwd: string) => Promise<A>): Promise<A> => {
+  const cwd = mkdtempSync(join(tmpdir(), "vendor-package-sync-"))
+  try {
+    return await run(cwd)
+  } finally {
+    rmSync(cwd, { force: true, recursive: true })
+  }
+}
 
 describe("package version sync", () => {
   test("reads package.json dependencies across npm dependency sections", () => {
@@ -120,9 +140,7 @@ describe("package version sync", () => {
       Option.some({
         version: "24.10.11",
         gitHead: Option.none(),
-        repositoryUrl: Option.some(
-          "https://github.com/DefinitelyTyped/DefinitelyTyped.git"
-        )
+        repositoryUrl: Option.some("https://github.com/DefinitelyTyped/DefinitelyTyped.git")
       })
     )
   })
@@ -171,5 +189,106 @@ describe("package version sync", () => {
       "v3.21.2",
       "3.21.2"
     ])
+  })
+
+  test("reads exact versions from package-lock.json", () => {
+    const version = parsePackageLockVersion(
+      JSON.stringify({
+        packages: {
+          "": { dependencies: { effect: "^3.0.0" } },
+          "node_modules/effect": { version: "3.21.2" },
+          "node_modules/@types/node": { version: "24.10.2" }
+        }
+      }),
+      "effect"
+    )
+
+    expect(Option.getOrUndefined(version)).toBe("3.21.2")
+  })
+
+  test("reads exact versions from pnpm-lock.yaml importer entries", () => {
+    const version = parsePnpmLockVersion(
+      [
+        "lockfileVersion: '9.0'",
+        "importers:",
+        "  .:",
+        "    dependencies:",
+        "      effect:",
+        "        specifier: ^3.0.0",
+        "        version: 3.21.2",
+        "      '@types/node':",
+        "        specifier: ^24.0.0",
+        "        version: 24.10.2"
+      ].join("\n"),
+      "effect"
+    )
+
+    expect(Option.getOrUndefined(version)).toBe("3.21.2")
+  })
+
+  test("reads exact versions from yarn.lock entries", () => {
+    const version = parseYarnLockVersion(
+      [
+        '"effect@^3.0.0":',
+        '  version "3.21.2"',
+        '  resolved "https://registry.yarnpkg.com/effect/-/effect-3.21.2.tgz"'
+      ].join("\n"),
+      "effect"
+    )
+
+    expect(Option.getOrUndefined(version)).toBe("3.21.2")
+  })
+
+  test("reads exact versions from bun.lock package tuples", () => {
+    const version = parseBunLockVersion(
+      JSON.stringify({
+        lockfileVersion: 1,
+        packages: {
+          effect: ["effect@3.21.2", "", {}],
+          "@types/node": ["@types/node@24.10.2", "", {}]
+        }
+      }),
+      "@types/node"
+    )
+
+    expect(Option.getOrUndefined(version)).toBe("24.10.2")
+  })
+
+  test("detects the project package version from node_modules before lockfiles", async () => {
+    await withTempWorkspace(async (cwd) => {
+      mkdirSync(join(cwd, "node_modules/effect"), { recursive: true })
+      writeFileSync(
+        join(cwd, "package.json"),
+        JSON.stringify({ dependencies: { effect: "^3.0.0" } })
+      )
+      writeFileSync(
+        join(cwd, "package-lock.json"),
+        JSON.stringify({
+          packages: {
+            "node_modules/effect": { version: "3.20.0" }
+          }
+        })
+      )
+      writeFileSync(
+        join(cwd, "node_modules/effect/package.json"),
+        JSON.stringify({ name: "effect", version: "3.21.2" })
+      )
+
+      const detected = await Effect.runPromise(
+        detectProjectPackageVersion({
+          cwd,
+          dependency: {
+            manifestPath: "package.json",
+            name: "effect",
+            section: "dependencies",
+            spec: "^3.0.0"
+          }
+        }).pipe(Effect.provide(NodeContext.layer))
+      )
+
+      expect(detected.source).toBe("node_modules")
+      expect(Option.getOrUndefined(detected.version)).toBe("3.21.2")
+      expect(detected.packageSpec).toBe("^3.0.0")
+    })
   })
 })

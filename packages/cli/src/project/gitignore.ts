@@ -1,9 +1,8 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Array as Arr, Effect, Option } from "effect"
 
-export const GITIGNORE_CLONE_BEGIN =
-  "# vendor-subtree-skill: clone-ignore begin"
-export const GITIGNORE_CLONE_END = "# vendor-subtree-skill: clone-ignore end"
+export const GITIGNORE_CLONE_BEGIN = "# vendor-subtree: clone-ignore begin"
+export const GITIGNORE_CLONE_END = "# vendor-subtree: clone-ignore end"
 
 export interface MergeGitignoreTextParams {
   readonly content: string
@@ -15,39 +14,25 @@ export interface UpdateGitignoreParams {
   readonly prefixes: ReadonlyArray<string>
 }
 
-const escapeRegex = (value: string) =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
-const normalizePrefix = (prefix: string): string =>
-  prefix.replace(/^\/+/, "").replace(/\/+$/, "")
+const normalizePrefix = (prefix: string): string => prefix.replace(/^\/+/, "").replace(/\/+$/, "")
 
 const ignoredPrefix = (prefix: string): string => `/${normalizePrefix(prefix)}/`
 
-const uniqueIgnoredPrefixes = (
-  prefixes: ReadonlyArray<string>
-): ReadonlyArray<string> =>
+const uniqueIgnoredPrefixes = (prefixes: ReadonlyArray<string>): ReadonlyArray<string> =>
   Arr.dedupe(prefixes.map(ignoredPrefix)).sort((a, b) => a.localeCompare(b))
 
 const sectionRegex = new RegExp(
-  `(?:^|\\n)${escapeRegex(GITIGNORE_CLONE_BEGIN)}[\\s\\S]*?${escapeRegex(
-    GITIGNORE_CLONE_END
-  )}\\n?`
+  `(?:^|\\n)${escapeRegex(GITIGNORE_CLONE_BEGIN)}[\\s\\S]*?${escapeRegex(GITIGNORE_CLONE_END)}\\n?`
 )
 
 const renderSection = (prefixes: ReadonlyArray<string>): string =>
-  [
-    GITIGNORE_CLONE_BEGIN,
-    ...uniqueIgnoredPrefixes(prefixes),
-    GITIGNORE_CLONE_END
-  ].join("\n")
+  [GITIGNORE_CLONE_BEGIN, ...uniqueIgnoredPrefixes(prefixes), GITIGNORE_CLONE_END].join("\n")
 
-const trimTrailingBlankLines = (content: string): string =>
-  content.replace(/\n+$/g, "")
+const trimTrailingBlankLines = (content: string): string => content.replace(/\n+$/g, "")
 
-export const mergeGitignoreText = ({
-  content,
-  prefixes
-}: MergeGitignoreTextParams): string => {
+export const mergeGitignoreText = ({ content, prefixes }: MergeGitignoreTextParams): string => {
   const normalized = trimTrailingBlankLines(content)
   if (prefixes.length === 0) {
     const next = normalized.replace(sectionRegex, "").replace(/\n{3,}/g, "\n\n")
@@ -67,9 +52,7 @@ export const updateGitignore = ({ cwd, prefixes }: UpdateGitignoreParams) =>
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
     const target = path.resolve(cwd, ".gitignore")
-    const content = (yield* fs.exists(target))
-      ? yield* fs.readFileString(target)
-      : ""
+    const content = (yield* fs.exists(target)) ? yield* fs.readFileString(target) : ""
     const next = mergeGitignoreText({ content, prefixes })
 
     if (next === content) return Option.none<string>()

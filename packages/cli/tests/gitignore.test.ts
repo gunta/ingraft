@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+
 import { mergeGitignoreText } from "../src/project/gitignore.ts"
 
 describe("clone-ignore gitignore section", () => {
@@ -8,7 +9,7 @@ describe("clone-ignore gitignore section", () => {
       prefixes: ["vendor/effect"]
     })
 
-    expect(result).toContain("# vendor-subtree-skill: clone-ignore begin")
+    expect(result).toContain("# vendor-subtree: clone-ignore begin")
     expect(result).toContain("/vendor/effect/")
     expect(result).toContain("node_modules/")
   })
@@ -18,9 +19,9 @@ describe("clone-ignore gitignore section", () => {
       content: [
         "node_modules/",
         "",
-        "# vendor-subtree-skill: clone-ignore begin",
+        "# vendor-subtree: clone-ignore begin",
         "/vendor/effect/",
-        "# vendor-subtree-skill: clone-ignore end",
+        "# vendor-subtree: clone-ignore end",
         ""
       ].join("\n"),
       prefixes: []

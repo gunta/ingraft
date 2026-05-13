@@ -1,12 +1,22 @@
 {
-  "name": "vendor-subtree-skill",
+  "name": "@vendor-subtree/skill",
   "version": "0.3.0",
   "description": "Agent skill wrapper for the vendor-subtree CLI.",
-  "type": "module",
+  "license": "MIT",
   "files": [
     "SKILL.md",
     "README.md",
     "LICENSE"
   ],
-  "license": "MIT"
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "check": "bun run lint && bun run format:check",
+    "format": "oxfmt . --write",
+    "format:check": "oxfmt . --check",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix"
+  }
 }

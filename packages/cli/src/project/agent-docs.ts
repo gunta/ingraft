@@ -1,13 +1,9 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Array as Arr, Effect, Option } from "effect"
-import {
-  AGENT_DOCS,
-  SECTION_BEGIN,
-  SECTION_END,
-  VENDOR_DIR
-} from "../domain/constants.ts"
-import type { VendoredRepo } from "../domain/vendor-state.ts"
+
+import { AGENT_DOCS, SECTION_BEGIN, SECTION_END, VENDOR_DIR } from "../domain/constants.ts"
 import { hasVendorFilter } from "../domain/vendor-filter.ts"
+import type { VendoredRepo } from "../domain/vendor-state.ts"
 
 export interface RenderVendorSectionParams {
   readonly command?: string
@@ -48,8 +44,7 @@ interface WriteSectionIfChangedParams {
   readonly target: string
 }
 
-const escapeRegex = (value: string) =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
 const vendorRepoLines = (
   invocation: string,
@@ -71,7 +66,7 @@ export const renderVendorSection = ({
   repos,
   scriptRel
 }: RenderVendorSectionParams): string => {
-  const invocation = command ?? (scriptRel ? `bun ${scriptRel}` : "vendor-subtree")
+  const invocation = command ?? (scriptRel ? `bun ${scriptRel}` : "bunx vendor-subtree@latest")
   return [
     SECTION_BEGIN,
     "## Vendored Repositories",
@@ -84,6 +79,7 @@ export const renderVendorSection = ({
     `- Do NOT import from \`${VENDOR_DIR}/\` — application code imports from normal package dependencies.`,
     `- Prefer examples and patterns from \`${VENDOR_DIR}/\` over web search or generated guesses.`,
     `- \`${VENDOR_DIR}/\` stays visible to agents and language tooling; generated ignores target formatters, linters, and analyzers only.`,
+    "- Committed subtree sources are marked in `.gitattributes` as vendored/generated so GitHub PR diffs stay focused on project code.",
     "- Strategies: `subtree` is committed source, `submodule` is a gitlink, and `clone-ignore` is a local ignored clone.",
     "- Some repos may be filtered to omit media, generated directories, archives, fixtures, or oversized files.",
     `- Use \`${invocation} list\` to see what is vendored.`,
@@ -95,10 +91,7 @@ export const renderVendorSection = ({
   ].join("\n")
 }
 
-export const injectSection = ({
-  content,
-  section
-}: InjectSectionParams): string => {
+export const injectSection = ({ content, section }: InjectSectionParams): string => {
   const managedSection = new RegExp(
     `${escapeRegex(SECTION_BEGIN)}[\\s\\S]*?${escapeRegex(SECTION_END)}`
   )
@@ -121,29 +114,17 @@ const agentDocTargets = ({ cwd, fs, path }: AgentDocTargetsParams) =>
 const targetWithRealPath = ({ fs, target }: TargetWithRealPathParams) =>
   fs.exists(target).pipe(
     Effect.flatMap((exists) =>
-      exists
-        ? fs.realPath(target).pipe(Effect.orElseSucceed(() => target))
-        : Effect.succeed(target)
+      exists ? fs.realPath(target).pipe(Effect.orElseSucceed(() => target)) : Effect.succeed(target)
     ),
     Effect.map((real) => ({ real, target }))
   )
 
-const uniqueTargets = (
-  targets: ReadonlyArray<AgentDocTarget>
-): ReadonlyArray<AgentDocTarget> =>
-  targets.filter(
-    (target, index) => targets.findIndex((it) => it.real === target.real) === index
-  )
+const uniqueTargets = (targets: ReadonlyArray<AgentDocTarget>): ReadonlyArray<AgentDocTarget> =>
+  targets.filter((target, index) => targets.findIndex((it) => it.real === target.real) === index)
 
-const writeSectionIfChanged = ({
-  fs,
-  section,
-  target
-}: WriteSectionIfChangedParams) =>
+const writeSectionIfChanged = ({ fs, section, target }: WriteSectionIfChangedParams) =>
   fs.exists(target).pipe(
-    Effect.flatMap((exists) =>
-      exists ? fs.readFileString(target) : Effect.succeed("")
-    ),
+    Effect.flatMap((exists) => (exists ? fs.readFileString(target) : Effect.succeed(""))),
     Effect.flatMap((content) => {
       const next = injectSection({ content, section })
       return next === content
@@ -152,11 +133,7 @@ const writeSectionIfChanged = ({
     })
   )
 
-export const updateAgentDocs = ({
-  command,
-  cwd,
-  repos
-}: UpdateAgentDocsParams) =>
+export const updateAgentDocs = ({ command, cwd, repos }: UpdateAgentDocsParams) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
@@ -168,9 +145,7 @@ export const updateAgentDocs = ({
       ),
       Effect.map(uniqueTargets),
       Effect.flatMap((targets) =>
-        Effect.forEach(targets, ({ target }) =>
-          writeSectionIfChanged({ fs, section, target })
-        )
+        Effect.forEach(targets, ({ target }) => writeSectionIfChanged({ fs, section, target }))
       ),
       Effect.map(Arr.getSomes)
     )

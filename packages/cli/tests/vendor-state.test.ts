@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+
 import {
   parseVendoredCommits,
   parseVendoredLog,
@@ -177,17 +178,13 @@ describe("vendor state parsing", () => {
   })
 
   test("ignores malformed records instead of creating partial state", () => {
-    const log = [
-      "sha\x002026-05-13T00:00:00Z\x00\x00https://example.com/x.git\x00"
-    ].join("\x1e")
+    const log = ["sha\x002026-05-13T00:00:00Z\x00\x00https://example.com/x.git\x00"].join("\x1e")
 
     expect(parseVendoredLog(log)).toEqual([])
   })
 
   test("reports schema diagnostics for malformed records", () => {
-    const log = [
-      "sha\x002026-05-13T00:00:00Z\x00\x00https://example.com/x.git\x00"
-    ].join("\x1e")
+    const log = ["sha\x002026-05-13T00:00:00Z\x00\x00https://example.com/x.git\x00"].join("\x1e")
 
     const result = parseVendoredLogWithDiagnostics(log)
 

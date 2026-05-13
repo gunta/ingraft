@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
+
 import { Effect } from "effect"
+
 import { RuntimeConfig } from "../src/app/runtime.ts"
 
 describe("runtime config service", () => {

@@ -1,5 +1,6 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
+
 import { packageJsonHasDependency } from "../config/package-json.ts"
 import { VENDOR_DIR } from "../domain/constants.ts"
 
@@ -8,12 +9,7 @@ export const VENDOR_IGNORE_DIR = `${VENDOR_DIR}/`
 export const VENDOR_GLOB = `${VENDOR_DIR}/**`
 export const VENDOR_NEGATED_GLOB = `!${VENDOR_GLOB}`
 
-export type ToolIgnoreStatus =
-  | "absent"
-  | "configured"
-  | "missing"
-  | "visible"
-  | "unsupported"
+export type ToolIgnoreStatus = "absent" | "configured" | "missing" | "visible" | "unsupported"
 
 export interface ToolIgnoreReport {
   readonly _tag: "ToolIgnoreReport"
@@ -26,8 +22,8 @@ export interface ToolIgnoreReport {
 }
 
 export interface ToolIgnoreIntegration {
-  readonly doctor: (cwd: string) => Effect.Effect<ToolIgnoreReport>
-  readonly refresh: (cwd: string) => Effect.Effect<Option.Option<string>>
+  readonly doctor: (cwd: string) => Effect.Effect<ToolIgnoreReport, unknown>
+  readonly refresh: (cwd: string) => Effect.Effect<Option.Option<string>, unknown>
 }
 
 export interface ToolFileContext {
@@ -35,9 +31,10 @@ export interface ToolFileContext {
   readonly path: Path.Path
 }
 
-export const report = (
-  params: Omit<ToolIgnoreReport, "_tag">
-): ToolIgnoreReport => ({ _tag: "ToolIgnoreReport", ...params })
+export const report = (params: Omit<ToolIgnoreReport, "_tag">): ToolIgnoreReport => ({
+  _tag: "ToolIgnoreReport",
+  ...params
+})
 
 export const firstExisting = (
   { fs, path }: ToolFileContext,
@@ -68,11 +65,9 @@ export const hasVendorPattern = (
   patterns: ReadonlyArray<string> = [VENDOR_GLOB, VENDOR_IGNORE_DIR, VENDOR_DIR]
 ): boolean => patterns.some((pattern) => content.includes(pattern))
 
-const escapeRegex = (value: string) =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
-const trimTrailingBlankLines = (content: string): string =>
-  content.replace(/\n+$/g, "")
+const trimTrailingBlankLines = (content: string): string => content.replace(/\n+$/g, "")
 
 export const mergeManagedIgnoreSection = ({
   begin,
@@ -87,9 +82,7 @@ export const mergeManagedIgnoreSection = ({
 }): string => {
   const normalized = trimTrailingBlankLines(content)
   const section = [begin, ...lines, end].join("\n")
-  const sectionRegex = new RegExp(
-    `(?:^|\\n)${escapeRegex(begin)}[\\s\\S]*?${escapeRegex(end)}\\n?`
-  )
+  const sectionRegex = new RegExp(`(?:^|\\n)${escapeRegex(begin)}[\\s\\S]*?${escapeRegex(end)}\\n?`)
   const next = sectionRegex.test(normalized)
     ? normalized.replace(sectionRegex, `\n${section}`)
     : [normalized, section].filter((part) => part.length > 0).join("\n\n")

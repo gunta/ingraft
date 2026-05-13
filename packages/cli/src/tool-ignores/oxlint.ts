@@ -1,5 +1,7 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
+
+import { jsObjectHasArrayValue } from "../config/javascript-source.ts"
 import {
   completeMerge,
   ensureArrayItem,
@@ -7,7 +9,6 @@ import {
   parseSettings,
   type SettingsMergeResult
 } from "../config/jsonc-settings.ts"
-import { jsObjectHasArrayValue } from "../config/javascript-source.ts"
 import { tsObjectHasArrayValue } from "../config/typescript-source.ts"
 import {
   firstExisting,
@@ -135,18 +136,15 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class OxlintIgnore extends Effect.Service<OxlintIgnore>()(
-  "vendor-subtree/OxlintIgnore",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      const context = { fs, path }
-      return {
-        doctor: (cwd: string) => doctorWith(context, cwd),
-        refresh: (cwd: string) => refreshWith(context, cwd)
-      }
-    })
-  }
-) {}
+export class OxlintIgnore extends Effect.Service<OxlintIgnore>()("vendor-subtree/OxlintIgnore", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const context = { fs, path }
+    return {
+      doctor: (cwd: string) => doctorWith(context, cwd),
+      refresh: (cwd: string) => refreshWith(context, cwd)
+    }
+  })
+}) {}

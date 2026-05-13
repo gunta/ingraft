@@ -1,9 +1,11 @@
 import { Command as Cli, Options } from "@effect/cli"
 import { Console, Effect } from "effect"
-import { VENDOR_DIR } from "../domain/constants.ts"
-import { repoRoot } from "../services/git.ts"
+
 import { withCommandTelemetry } from "../app/log.ts"
+import { renderKeyValues, renderSection, renderTable } from "../app/ui.ts"
+import { VENDOR_DIR } from "../domain/constants.ts"
 import { listVendored, type VendoredRepo } from "../domain/vendor-state.ts"
+import { repoRoot } from "../services/git.ts"
 
 export interface ListCommandParams {
   readonly json: boolean
@@ -18,23 +20,28 @@ const listJsonOption = Options.boolean("json").pipe(
   Options.withDescription("Output machine-readable JSON to stdout.")
 )
 
-export const renderVendoredList = ({
-  json,
-  repos
-}: RenderVendoredListParams): string => {
+export const renderVendoredList = ({ json, repos }: RenderVendoredListParams): string => {
   if (json) return JSON.stringify({ vendor_dir: VENDOR_DIR, repos }, null, 2)
-  if (repos.length === 0) return `vendor_dir: ${VENDOR_DIR}/\n(no repositories vendored)`
 
-  const nameWidth = Math.max(...repos.map((repo) => repo.name.length))
-  const prefixWidth = Math.max(...repos.map((repo) => repo.prefix.length))
-  const strategyWidth = Math.max(...repos.map((repo) => repo.strategy.length))
   return [
-    `vendor_dir: ${VENDOR_DIR}/`,
-    ...repos.map(
-      (repo) =>
-        `  ${repo.name.padEnd(nameWidth)}  ${repo.strategy.padEnd(strategyWidth)}  ${repo.prefix.padEnd(prefixWidth)}  ${repo.url} @ ${repo.ref}`
-    )
-  ].join("\n")
+    renderSection({
+      title: "Vendor workspace",
+      content: renderKeyValues([{ label: "Vendor directory", value: `${VENDOR_DIR}/` }])
+    }),
+    renderSection({
+      title: "Vendored repositories",
+      content: renderTable({
+        columns: [
+          { header: "Name", value: (repo: VendoredRepo) => repo.name },
+          { header: "Strategy", value: (repo) => repo.strategy },
+          { header: "Path", value: (repo) => repo.prefix },
+          { header: "Source", value: (repo) => `${repo.url} @ ${repo.ref}` }
+        ],
+        empty: "No repositories vendored.",
+        rows: repos
+      })
+    })
+  ].join("\n\n")
 }
 
 export const listImpl = ({ json }: ListCommandParams) =>
@@ -45,7 +52,5 @@ export const listImpl = ({ json }: ListCommandParams) =>
   }).pipe(withCommandTelemetry("list"))
 
 export const listCmd = Cli.make("list", { json: listJsonOption }, listImpl).pipe(
-  Cli.withDescription(
-    "List vendored repositories (derived from git commit trailers)."
-  )
+  Cli.withDescription("List vendored repositories (derived from git commit trailers).")
 )

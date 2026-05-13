@@ -1,4 +1,4 @@
-# vendor-subtree-skill
+# vendor-subtree
 
 Agent skill wrapper for the `vendor-subtree` CLI.
 

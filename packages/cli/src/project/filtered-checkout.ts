@@ -1,12 +1,13 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect } from "effect"
-import { gitChecked } from "../services/git.ts"
+
 import {
   hasVendorFilter,
   includedTreePaths,
   parseGitTreeEntries,
   type VendorFilter
 } from "../domain/vendor-filter.ts"
+import { gitChecked } from "../services/git.ts"
 
 export interface FilteredCheckoutParams {
   readonly cwd: string
@@ -28,7 +29,7 @@ export interface MaterializeFilteredRepoParams {
 
 const sparseCheckoutText = (paths: ReadonlyArray<string>): string =>
   paths.length === 0
-    ? "# vendor-subtree-skill: filter selected no files\n"
+    ? "# vendor-subtree: filter selected no files\n"
     : `${paths.map((path) => `/${path}`).join("\n")}\n`
 
 const targetPath = (cwd: string, target: string, path: Path.Path): string =>
@@ -48,9 +49,7 @@ export const checkoutFilteredRepo = ({
     const path = yield* Path.Path
     const absoluteTarget = targetPath(cwd, target, path)
 
-    yield* fs.makeDirectory(path.dirname(absoluteTarget), { recursive: true }).pipe(
-      Effect.ignore
-    )
+    yield* fs.makeDirectory(path.dirname(absoluteTarget), { recursive: true }).pipe(Effect.ignore)
     const cloneOptions =
       redactedUrl === undefined
         ? { cwd }
@@ -75,10 +74,9 @@ export const checkoutFilteredRepo = ({
     if (!hasVendorFilter(filter)) {
       yield* gitChecked(["-C", absoluteTarget, "checkout", "FETCH_HEAD"], { cwd })
       if (storedRemoteUrl !== undefined) {
-        yield* gitChecked(
-          ["-C", absoluteTarget, "remote", "set-url", "origin", storedRemoteUrl],
-          { cwd }
-        )
+        yield* gitChecked(["-C", absoluteTarget, "remote", "set-url", "origin", storedRemoteUrl], {
+          cwd
+        })
       }
       return
     }
@@ -92,20 +90,16 @@ export const checkoutFilteredRepo = ({
       filter
     })
 
-    yield* gitChecked(
-      ["-C", absoluteTarget, "sparse-checkout", "init", "--no-cone"],
-      { cwd }
-    )
+    yield* gitChecked(["-C", absoluteTarget, "sparse-checkout", "init", "--no-cone"], { cwd })
     yield* fs.writeFileString(
       path.resolve(absoluteTarget, ".git", "info", "sparse-checkout"),
       sparseCheckoutText(paths)
     )
     yield* gitChecked(["-C", absoluteTarget, "checkout", "FETCH_HEAD"], { cwd })
     if (storedRemoteUrl !== undefined) {
-      yield* gitChecked(
-        ["-C", absoluteTarget, "remote", "set-url", "origin", storedRemoteUrl],
-        { cwd }
-      )
+      yield* gitChecked(["-C", absoluteTarget, "remote", "set-url", "origin", storedRemoteUrl], {
+        cwd
+      })
     }
   })
 
@@ -137,13 +131,11 @@ export const materializeFilteredRepo = ({
       if (materializedFiles.length === 0) {
         yield* fs.writeFileString(
           path.resolve(checkout, ".vendor-filter-empty"),
-          "vendor-subtree-skill: filter selected no upstream files\n"
+          "vendor-subtree: filter selected no upstream files\n"
         )
       }
       yield* fs.remove(target, { force: true, recursive: true })
-      yield* fs.makeDirectory(path.dirname(target), { recursive: true }).pipe(
-        Effect.ignore
-      )
+      yield* fs.makeDirectory(path.dirname(target), { recursive: true }).pipe(Effect.ignore)
       yield* fs.copy(checkout, target, { overwrite: true })
     })
   )

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+
 import { renderDoctorReport } from "../src/commands/doctor.ts"
 import { EMPTY_VENDOR_FILTER } from "../src/domain/vendor-filter.ts"
 
@@ -40,6 +41,17 @@ describe("vendor doctor", () => {
           status: "configured"
         }
       ],
+      repositoryFiles: [
+        {
+          _tag: "ProjectSurfaceReport",
+          kind: "repository",
+          message: "GitHub diff hiding configured for subtree vendor paths",
+          name: ".gitattributes",
+          path: "/workspace/.gitattributes",
+          present: true,
+          status: "configured"
+        }
+      ],
       toolReports: [
         {
           _tag: "ToolIgnoreReport",
@@ -62,12 +74,16 @@ describe("vendor doctor", () => {
       json: false
     })
 
-    expect(output).toContain("vendor_dir: vendor/")
+    expect(output).toContain("Workspace")
+    expect(output).toContain("Vendor directory")
     expect(output).toContain("effect")
-    expect(output).toContain("agent files:")
+    expect(output).toContain("Agent files")
     expect(output).toContain("AGENTS.md")
-    expect(output).toContain("editor files:")
+    expect(output).toContain("Editor files")
     expect(output).toContain("VS Code settings")
+    expect(output).toContain("Repository files")
+    expect(output).toContain(".gitattributes")
+    expect(output).toContain("Tool ignores")
     expect(output).toContain("Biome")
     expect(output).toContain("configured")
     expect(output).toContain("Pyright")
@@ -90,6 +106,7 @@ describe("vendor doctor", () => {
         }
       ],
       editorFiles: [],
+      repositoryFiles: [],
       toolReports: [],
       json: true
     })

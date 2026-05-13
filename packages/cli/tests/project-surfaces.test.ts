@@ -1,9 +1,11 @@
+import { describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { NodeContext } from "@effect/platform-node"
-import { describe, expect, test } from "bun:test"
 import { Effect } from "effect"
+
 import { SECTION_BEGIN, SECTION_END } from "../src/domain/constants.ts"
 import { ProjectSurfaces } from "../src/project/surfaces.ts"
 
@@ -22,10 +24,7 @@ describe("project surface detection", () => {
       mkdirSync(join(cwd, ".vscode"), { recursive: true })
       mkdirSync(join(cwd, ".zed"), { recursive: true })
       mkdirSync(join(cwd, ".idea/scopes"), { recursive: true })
-      writeFileSync(
-        join(cwd, "AGENTS.md"),
-        `${SECTION_BEGIN}\nmanaged\n${SECTION_END}\n`
-      )
+      writeFileSync(join(cwd, "AGENTS.md"), `${SECTION_BEGIN}\nmanaged\n${SECTION_END}\n`)
       writeFileSync(
         join(cwd, ".vscode/settings.json"),
         JSON.stringify({
@@ -54,6 +53,16 @@ describe("project surface detection", () => {
           "</project>"
         ].join("\n")
       )
+      writeFileSync(
+        join(cwd, ".gitattributes"),
+        [
+          "# vendor-subtree: github-diff begin",
+          "# Hide committed vendored subtree source in GitHub PR diffs by default.",
+          "/vendor/effect/** linguist-vendored linguist-generated",
+          "# vendor-subtree: github-diff end",
+          ""
+        ].join("\n")
+      )
 
       const report = await Effect.runPromise(
         ProjectSurfaces.doctor({ cwd }).pipe(
@@ -66,9 +75,7 @@ describe("project surface detection", () => {
         present: true,
         status: "managed"
       })
-      expect(
-        report.editorFiles.find((entry) => entry.name === "VS Code settings")
-      ).toMatchObject({
+      expect(report.editorFiles.find((entry) => entry.name === "VS Code settings")).toMatchObject({
         present: true,
         status: "configured"
       })
@@ -88,6 +95,12 @@ describe("project surface detection", () => {
         present: true,
         status: "configured"
       })
+      expect(report.repositoryFiles.find((entry) => entry.name === ".gitattributes")).toMatchObject(
+        {
+          present: true,
+          status: "configured"
+        }
+      )
     })
   })
 })

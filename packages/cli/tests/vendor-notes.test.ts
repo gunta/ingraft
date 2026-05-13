@@ -1,16 +1,14 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { describe, expect, test } from "bun:test"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import * as nodeFs from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import * as git from "isomorphic-git"
-import * as nodeFs from "node:fs"
-import { describe, expect, test } from "bun:test"
+
 import { Effect } from "effect"
+import * as git from "isomorphic-git"
+
 import { EMPTY_VENDOR_FILTER } from "../src/domain/vendor-filter.ts"
-import {
-  VENDOR_NOTES_REF,
-  VendorNotes,
-  vendorNotePayload
-} from "../src/services/vendor-notes.ts"
+import { VENDOR_NOTES_REF, VendorNotes, vendorNotePayload } from "../src/services/vendor-notes.ts"
 
 const withTempWorkspace = async <A>(run: (cwd: string) => Promise<A>): Promise<A> => {
   const cwd = mkdtempSync(join(tmpdir(), "vendor-notes-"))
@@ -64,9 +62,7 @@ describe("vendor git notes", () => {
 
       const note = "hello note"
       await Effect.runPromise(
-        VendorNotes.write({ cwd, note, oid }).pipe(
-          Effect.provide(VendorNotes.Default)
-        )
+        VendorNotes.write({ cwd, note, oid }).pipe(Effect.provide(VendorNotes.Default))
       )
 
       const read = await git.readNote({

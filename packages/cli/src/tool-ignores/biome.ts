@@ -1,5 +1,6 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
+
 import {
   completeMerge,
   ensureArrayItemsAtPath,
@@ -63,10 +64,7 @@ const refreshWith = (context: ToolFileContext, cwd: string) =>
 const doctorWith = (context: ToolFileContext, cwd: string) =>
   Effect.gen(function* () {
     const target = yield* configPath(context, cwd)
-    const dependency = yield* packageHasDependency(context, cwd, [
-      "@biomejs/biome",
-      "biome"
-    ])
+    const dependency = yield* packageHasDependency(context, cwd, ["@biomejs/biome", "biome"])
     if (Option.isNone(target) && !dependency) {
       return report({
         detected: false,
@@ -98,18 +96,15 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class BiomeIgnore extends Effect.Service<BiomeIgnore>()(
-  "vendor-subtree/BiomeIgnore",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      const context = { fs, path }
-      return {
-        doctor: (cwd: string) => doctorWith(context, cwd),
-        refresh: (cwd: string) => refreshWith(context, cwd)
-      }
-    })
-  }
-) {}
+export class BiomeIgnore extends Effect.Service<BiomeIgnore>()("vendor-subtree/BiomeIgnore", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const context = { fs, path }
+    return {
+      doctor: (cwd: string) => doctorWith(context, cwd),
+      refresh: (cwd: string) => refreshWith(context, cwd)
+    }
+  })
+}) {}

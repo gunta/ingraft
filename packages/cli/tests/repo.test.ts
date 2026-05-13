@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
+
 import { Effect } from "effect"
+
 import {
   githubRepoFromInput,
   hostedRepoFromInput,
@@ -9,9 +11,7 @@ import {
 
 describe("repo parsing", () => {
   test("normalizes GitHub shorthand to an HTTPS git URL", () => {
-    expect(normalizeRepoUrl("Effect-TS/effect")).toBe(
-      "https://github.com/Effect-TS/effect.git"
-    )
+    expect(normalizeRepoUrl("Effect-TS/effect")).toBe("https://github.com/Effect-TS/effect.git")
   })
 
   test("leaves full URLs untouched", () => {
@@ -26,9 +26,7 @@ describe("repo parsing", () => {
       name: "effect",
       nameWithOwner: "Effect-TS/effect"
     })
-    expect(
-      githubRepoFromInput("https://github.com/Effect-TS/effect.git")
-    ).toEqual({
+    expect(githubRepoFromInput("https://github.com/Effect-TS/effect.git")).toEqual({
       owner: "Effect-TS",
       name: "effect",
       nameWithOwner: "Effect-TS/effect"
@@ -71,9 +69,7 @@ describe("repo parsing", () => {
   })
 
   test("fails with a tagged error when a repo name cannot be inferred", async () => {
-    const failure = await Effect.runPromise(
-      inferRepoName("https://github.com/").pipe(Effect.flip)
-    )
+    const failure = await Effect.runPromise(inferRepoName("https://github.com/").pipe(Effect.flip))
 
     expect(failure._tag).toBe("RepoNameInferenceFailed")
   })

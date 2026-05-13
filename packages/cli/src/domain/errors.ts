@@ -1,5 +1,7 @@
 import { Data } from "effect"
-import { style, type StyleOptions } from "../app/styles.ts"
+
+import type { StyleOptions } from "../app/styles.ts"
+import { renderNotice, renderSection } from "../app/ui.ts"
 import type { VendorStrategy } from "./vendor-strategy.ts"
 
 export interface ErrorPresentation {
@@ -85,6 +87,24 @@ export interface UnsupportedVendorFilterParams {
   readonly reason: string
 }
 
+export interface InvalidAddTargetsParams {
+  readonly reason: string
+  readonly targets: ReadonlyArray<string>
+}
+
+export interface RepositoryAliasDatabaseInvalidParams {
+  readonly reason: string
+}
+
+export interface HistoryRewriteToolMissingParams {
+  readonly output: string
+}
+
+export interface HistoryRewriteFailedParams {
+  readonly prefix: string
+  readonly output: string
+}
+
 export interface CloudflareArtifactsConfigMissingParams {
   readonly reason: string
 }
@@ -125,17 +145,11 @@ export class VendoredRepoNotFound extends Data.TaggedError(
   "VendoredRepoNotFound"
 )<VendoredRepoNotFoundParams> {}
 
-export class GitRemoveFailed extends Data.TaggedError(
-  "GitRemoveFailed"
-)<GitRemoveFailedParams> {}
+export class GitRemoveFailed extends Data.TaggedError("GitRemoveFailed")<GitRemoveFailedParams> {}
 
-export class UpdateTargetMissing extends Data.TaggedError(
-  "UpdateTargetMissing"
-)<{}> {}
+export class UpdateTargetMissing extends Data.TaggedError("UpdateTargetMissing")<{}> {}
 
-export class UpdateFailed extends Data.TaggedError(
-  "UpdateFailed"
-)<UpdateFailedParams> {}
+export class UpdateFailed extends Data.TaggedError("UpdateFailed")<UpdateFailedParams> {}
 
 export class VendorStrategyCommandFailed extends Data.TaggedError(
   "VendorStrategyCommandFailed"
@@ -160,6 +174,22 @@ export class InvalidVendorFilter extends Data.TaggedError(
 export class UnsupportedVendorFilter extends Data.TaggedError(
   "UnsupportedVendorFilter"
 )<UnsupportedVendorFilterParams> {}
+
+export class InvalidAddTargets extends Data.TaggedError(
+  "InvalidAddTargets"
+)<InvalidAddTargetsParams> {}
+
+export class RepositoryAliasDatabaseInvalid extends Data.TaggedError(
+  "RepositoryAliasDatabaseInvalid"
+)<RepositoryAliasDatabaseInvalidParams> {}
+
+export class HistoryRewriteToolMissing extends Data.TaggedError(
+  "HistoryRewriteToolMissing"
+)<HistoryRewriteToolMissingParams> {}
+
+export class HistoryRewriteFailed extends Data.TaggedError(
+  "HistoryRewriteFailed"
+)<HistoryRewriteFailedParams> {}
 
 export class CloudflareArtifactsConfigMissing extends Data.TaggedError(
   "CloudflareArtifactsConfigMissing"
@@ -187,6 +217,10 @@ export type VendorError =
   | PackageVersionSyncFailed
   | InvalidVendorFilter
   | UnsupportedVendorFilter
+  | InvalidAddTargets
+  | RepositoryAliasDatabaseInvalid
+  | HistoryRewriteToolMissing
+  | HistoryRewriteFailed
   | CloudflareArtifactsConfigMissing
   | CloudflareArtifactsRequestFailed
 
@@ -292,16 +326,14 @@ export const errorPresentation = (error: VendorError): ErrorPresentation => {
       return {
         title: "Could not resolve requested version",
         detail: `${error.selector} was not found for ${error.url}.`,
-        hint:
-          "Use --tag for an exact git tag, --release for a host release, --sync-package for a root package.json dependency, or --ref for a branch/commit/ref.",
+        hint: "Use --tag for an exact git tag, --release for a host release, --sync-package for a root package.json dependency, or --ref for a branch/commit/ref.",
         code: 2
       }
     case "PackageVersionSyncFailed":
       return {
         title: `Could not sync package '${error.packageName}'`,
         detail: `${error.reason}\nRepository: ${error.url}`,
-        hint:
-          "Check root package.json, npm registry metadata, and that the vendored repo has a matching published commit or tag.",
+        hint: "Check root package.json, npm registry metadata, and that the vendored repo has a matching published commit or tag.",
         code: 2
       }
     case "InvalidVendorFilter":
@@ -318,42 +350,62 @@ export const errorPresentation = (error: VendorError): ErrorPresentation => {
         hint: "Use --strategy subtree for filtered committed source, or --strategy clone-ignore for a filtered local reference clone.",
         code: 2
       }
+    case "InvalidAddTargets":
+      return {
+        title: "Invalid add targets",
+        detail: `${error.reason}\nTargets: ${error.targets.join(", ")}`,
+        hint: "Use --name or --prefix with a single target, or run separate add commands for per-repo paths.",
+        code: 2
+      }
+    case "RepositoryAliasDatabaseInvalid":
+      return {
+        title: "Repository alias database is invalid",
+        detail: error.reason,
+        hint: "Fix packages/cli/src/aliases/repository-aliases.json and retry.",
+        code: 2
+      }
+    case "HistoryRewriteToolMissing":
+      return {
+        title: "git-filter-repo is required for history rewrites",
+        detail: error.output,
+        hint: "Install git-filter-repo first, for example `brew install git-filter-repo`, then retry the dangerous remove command.",
+        code: 2
+      }
+    case "HistoryRewriteFailed":
+      return {
+        title: "History rewrite failed",
+        detail: `Path: ${error.prefix}\n${error.output}`,
+        hint: "Review the git-filter-repo output. If this was not a fresh clone, rerun only after confirming that --force history rewriting is intentional.",
+        code: 3
+      }
     case "CloudflareArtifactsConfigMissing":
       return {
         title: "Cloudflare Artifacts is not configured",
         detail: error.reason,
-        hint:
-          "Set CLOUDFLARE_API_TOKEN plus ARTIFACTS_BASE_URL, or set ACCOUNT_ID/CLOUDFLARE_ACCOUNT_ID and ARTIFACTS_NAMESPACE.",
+        hint: "Set CLOUDFLARE_API_TOKEN plus ARTIFACTS_BASE_URL, or set ACCOUNT_ID/CLOUDFLARE_ACCOUNT_ID and ARTIFACTS_NAMESPACE.",
         code: 2
       }
     case "CloudflareArtifactsRequestFailed":
       return {
         title: `Cloudflare Artifacts ${error.action} failed`,
-        detail:
-          error.status === undefined
-            ? error.output
-            : `HTTP ${error.status}\n${error.output}`,
-        hint:
-          "Check the Artifacts namespace, API token permissions, repo name, and source repository URL.",
+        detail: error.status === undefined ? error.output : `HTTP ${error.status}\n${error.output}`,
+        hint: "Check the Artifacts namespace, API token permissions, repo name, and source repository URL.",
         code: 3
       }
   }
 }
 
-export const exitCodeOf = (error: VendorError): number =>
-  errorPresentation(error).code
+export const exitCodeOf = (error: VendorError): number => errorPresentation(error).code
 
-export const formatVendorError = (
-  error: VendorError,
-  options: StyleOptions = {}
-): string => {
+export const formatVendorError = (error: VendorError, options: StyleOptions = {}): string => {
   const presentation = errorPresentation(error)
-  const lines = [
-    `${style.red("Error:", options)} ${style.bold(presentation.title, options)}`
+  return [
+    renderNotice({ kind: "error", title: presentation.title, options }),
+    presentation.detail
+      ? renderSection({ title: "Details", content: presentation.detail, options })
+      : "",
+    presentation.hint ? renderSection({ title: "Hint", content: presentation.hint, options }) : ""
   ]
-  if (presentation.detail) lines.push(presentation.detail)
-  if (presentation.hint) {
-    lines.push(`${style.yellow("Hint:", options)} ${presentation.hint}`)
-  }
-  return lines.join("\n")
+    .filter((block) => block.length > 0)
+    .join("\n\n")
 }

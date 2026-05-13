@@ -1,15 +1,18 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
-import { updateAgentDocs } from "./agent-docs.ts"
+
+import { RuntimeConfig, type RuntimeConfigShape } from "../app/runtime.ts"
+import type { VendoredRepo } from "../domain/vendor-state.ts"
 import { EditorSettings, type RefreshEditorSettingsParams } from "../editors/service.ts"
+import { GitMetadata } from "../services/git-metadata.ts"
 import { Git, commitConfigChanges } from "../services/git.ts"
+import { VendorNotes } from "../services/vendor-notes.ts"
+import { ToolIgnores, type RefreshToolIgnoresParams } from "../tool-ignores/service.ts"
+import { updateAgentDocs } from "./agent-docs.ts"
+import { updateGitattributes } from "./gitattributes.ts"
 import { updateGitignore } from "./gitignore.ts"
 import { reportWritten } from "./reports.ts"
-import { RuntimeConfig, type RuntimeConfigShape } from "../app/runtime.ts"
 import { commandInvocation } from "./script.ts"
-import { ToolIgnores, type RefreshToolIgnoresParams } from "../tool-ignores/service.ts"
-import type { VendoredRepo } from "../domain/vendor-state.ts"
-import { VendorNotes } from "../services/vendor-notes.ts"
 
 export interface RefreshGeneratedFilesParams {
   readonly cwd: string
@@ -39,34 +42,33 @@ interface ProjectFilesDependencies {
 }
 
 const refreshGeneratedFilesWith = (
-  {
-    editorSettings: editorService,
-    runtime,
-    toolIgnores,
-    vendorNotes
-  }: ProjectFilesDependencies,
-  {
-  commitMessage,
-  cwd,
-  editorSettings = false,
-  repos
-}: RefreshGeneratedFilesParams
+  { editorSettings: editorService, runtime, toolIgnores, vendorNotes }: ProjectFilesDependencies,
+  { commitMessage, cwd, editorSettings = false, repos }: RefreshGeneratedFilesParams
 ) =>
   Effect.gen(function* () {
     const command = commandInvocation({ cwd, argv: runtime.argv })
     const written = yield* updateAgentDocs({ cwd, repos, command })
     const gitignore = yield* updateGitignore({
       cwd,
-      prefixes: repos
-        .filter((repo) => repo.strategy === "clone-ignore")
-        .map((repo) => repo.prefix)
+      prefixes: repos.filter((repo) => repo.strategy === "clone-ignore").map((repo) => repo.prefix)
+    })
+    const gitattributes = yield* updateGitattributes({
+      cwd,
+      prefixes: repos.filter((repo) => repo.strategy === "subtree").map((repo) => repo.prefix)
     })
     yield* reportWritten({
       cwd,
-      paths: [...written, ...Option.match(gitignore, {
-        onNone: () => [],
-        onSome: (path) => [path]
-      })]
+      paths: [
+        ...written,
+        ...Option.match(gitignore, {
+          onNone: () => [],
+          onSome: (path) => [path]
+        }),
+        ...Option.match(gitattributes, {
+          onNone: () => [],
+          onSome: (path) => [path]
+        })
+      ]
     })
     if (editorSettings) {
       const editorPaths = yield* editorService.refresh({ cwd })
@@ -78,30 +80,29 @@ const refreshGeneratedFilesWith = (
     yield* commitConfigChanges({ cwd, message: commitMessage })
   })
 
-export class ProjectFiles extends Effect.Service<ProjectFiles>()(
-  "vendor-subtree/ProjectFiles",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const git = yield* Git
-      const path = yield* Path.Path
-      const runtime = yield* RuntimeConfig
-      const editorSettings = yield* EditorSettings
-      const toolIgnores = yield* ToolIgnores
-      const vendorNotes = yield* VendorNotes
-      return {
-        refresh: (params: RefreshGeneratedFilesParams) =>
-          refreshGeneratedFilesWith(
-            { editorSettings, runtime, toolIgnores, vendorNotes },
-            params
-          ).pipe(
-            Effect.provideService(FileSystem.FileSystem, fs),
-            Effect.provideService(Git, git),
-            Effect.provideService(Path.Path, path),
-            Effect.provideService(RuntimeConfig, runtime)
-          )
-      }
-    })
-  }
-) {}
+export class ProjectFiles extends Effect.Service<ProjectFiles>()("vendor-subtree/ProjectFiles", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const git = yield* Git
+    const gitMetadata = yield* GitMetadata
+    const path = yield* Path.Path
+    const runtime = yield* RuntimeConfig
+    const editorSettings = yield* EditorSettings
+    const toolIgnores = yield* ToolIgnores
+    const vendorNotes = yield* VendorNotes
+    return {
+      refresh: (params: RefreshGeneratedFilesParams) =>
+        refreshGeneratedFilesWith(
+          { editorSettings, runtime, toolIgnores, vendorNotes },
+          params
+        ).pipe(
+          Effect.provideService(FileSystem.FileSystem, fs),
+          Effect.provideService(Git, git),
+          Effect.provideService(GitMetadata, gitMetadata),
+          Effect.provideService(Path.Path, path),
+          Effect.provideService(RuntimeConfig, runtime)
+        )
+    }
+  })
+}) {}

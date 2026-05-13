@@ -1,12 +1,11 @@
 import { describe, expect, test } from "bun:test"
+
 import { Effect, Option } from "effect"
+
+import { RuntimeConfig } from "../src/app/runtime.ts"
+import { resolveVersion, versionSelectorFromOptions } from "../src/domain/version.ts"
 import { Git } from "../src/services/git.ts"
 import { RepositoryHosts } from "../src/services/repository-hosts.ts"
-import { RuntimeConfig } from "../src/app/runtime.ts"
-import {
-  resolveVersion,
-  versionSelectorFromOptions
-} from "../src/domain/version.ts"
 
 describe("version selectors", () => {
   const runtime = RuntimeConfig.make({

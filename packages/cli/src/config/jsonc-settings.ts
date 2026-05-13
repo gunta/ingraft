@@ -1,10 +1,4 @@
-import {
-  applyEdits,
-  modify,
-  parse,
-  printParseErrorCode,
-  type ParseError
-} from "jsonc-parser"
+import { applyEdits, modify, parse, printParseErrorCode, type ParseError } from "jsonc-parser"
 
 export interface UnchangedSettingsMerge {
   readonly _tag: "Unchanged"
@@ -83,17 +77,12 @@ const formatOptions = { insertSpaces: true, tabSize: 2 }
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
-export const parseSettings = ({
-  objectName,
-  text
-}: ParseSettingsParams): ParsedSettings => {
+export const parseSettings = ({ objectName, text }: ParseSettingsParams): ParsedSettings => {
   const errors: ParseError[] = []
   const source = text.trim() === "" ? "{}\n" : text
   const value = parse(source, errors, { allowTrailingComma: true })
   if (errors.length > 0) {
-    const message = errors
-      .map((error) => printParseErrorCode(error.error))
-      .join(", ")
+    const message = errors.map((error) => printParseErrorCode(error.error)).join(", ")
     return { _tag: "Invalid" as const, message, source }
   }
   if (!isRecord(value)) {
@@ -115,11 +104,7 @@ export const initialSettingsState = (
   text: source
 })
 
-const applyJsoncChange = (
-  source: string,
-  path: ReadonlyArray<string>,
-  value: unknown
-) =>
+const applyJsoncChange = (source: string, path: ReadonlyArray<string>, value: unknown) =>
   applyEdits(
     source,
     modify(source, [...path], value, {
@@ -138,14 +123,8 @@ const updateState = (
   text: applyJsoncChange(state.text, path, value)
 })
 
-const valueAtPath = (
-  value: Record<string, unknown>,
-  path: ReadonlyArray<string>
-): unknown =>
-  path.reduce<unknown>(
-    (current, key) => (isRecord(current) ? current[key] : undefined),
-    value
-  )
+const valueAtPath = (value: Record<string, unknown>, path: ReadonlyArray<string>): unknown =>
+  path.reduce<unknown>((current, key) => (isRecord(current) ? current[key] : undefined), value)
 
 const setValueAtPath = (
   value: Record<string, unknown>,
@@ -163,11 +142,7 @@ const setValueAtPath = (
   }
 }
 
-export const ensureArrayItem = ({
-  item,
-  key,
-  state
-}: EnsureArrayItemParams): SettingsMergeState =>
+export const ensureArrayItem = ({ item, key, state }: EnsureArrayItemParams): SettingsMergeState =>
   ensureArrayItems({ items: [item], key, state })
 
 export const ensureArrayItems = ({
@@ -176,9 +151,7 @@ export const ensureArrayItems = ({
   key,
   state
 }: EnsureArrayItemsParams): SettingsMergeState => {
-  const current = Array.isArray(state.settings[key])
-    ? state.settings[key]
-    : [...fallback]
+  const current = Array.isArray(state.settings[key]) ? state.settings[key] : [...fallback]
   const missing = items.filter((item) => !current.includes(item))
   if (missing.length === 0) return state
 
@@ -227,7 +200,5 @@ export const ensureObjectProperty = ({
       })
 }
 
-export const completeMerge = (
-  state: SettingsMergeState
-): SettingsMergeResult =>
+export const completeMerge = (state: SettingsMergeState): SettingsMergeResult =>
   state.changed ? { _tag: "Updated", text: state.text } : { _tag: "Unchanged" }

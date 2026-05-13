@@ -1,6 +1,8 @@
 import { Args, Command as Cli, Options } from "@effect/cli"
 import { FileSystem, Path } from "@effect/platform"
 import { Array as Arr, Effect, Option } from "effect"
+
+import { error, info, ok, warn, withCommandTelemetry } from "../app/log.ts"
 import {
   TRAILER_ACTION,
   TRAILER_DIR,
@@ -16,23 +18,14 @@ import {
   VendorStrategyCommandFailed,
   VendoredRepoNotFound
 } from "../domain/errors.ts"
-import {
-  checkoutFilteredRepo,
-  materializeFilteredRepo
-} from "../project/filtered-checkout.ts"
-import {
-  assertCleanTree,
-  commitPathsIfChanged,
-  git,
-  repoRoot
-} from "../services/git.ts"
-import { error, info, ok, warn, withCommandTelemetry } from "../app/log.ts"
-import { ProjectFiles } from "../project/service.ts"
-import { PackageVersionSync } from "../package-sync/service.ts"
-import { RepositoryHosts } from "../services/repository-hosts.ts"
+import { formatVendorFilterTrailer, hasVendorFilter } from "../domain/vendor-filter.ts"
 import { listVendored, type VendoredRepo } from "../domain/vendor-state.ts"
 import type { VendorStrategy } from "../domain/vendor-strategy.ts"
-import { formatVendorFilterTrailer, hasVendorFilter } from "../domain/vendor-filter.ts"
+import { PackageVersionSync } from "../package-sync/service.ts"
+import { checkoutFilteredRepo, materializeFilteredRepo } from "../project/filtered-checkout.ts"
+import { ProjectFiles } from "../project/service.ts"
+import { assertCleanTree, commitPathsIfChanged, git, repoRoot } from "../services/git.ts"
+import { RepositoryHosts } from "../services/repository-hosts.ts"
 
 export interface SelectUpdateTargetsParams {
   readonly all: boolean
@@ -82,9 +75,7 @@ export const selectUpdateTargets = ({
   UpdateTargetSelectionError
 > => {
   if (all) {
-    return Effect.succeed(
-      repos.length === 0 ? Option.none() : Option.some(repos)
-    )
+    return Effect.succeed(repos.length === 0 ? Option.none() : Option.some(repos))
   }
 
   return Effect.gen(function* () {
@@ -93,9 +84,7 @@ export const selectUpdateTargets = ({
       onSome: Effect.succeed
     })
     const repo = yield* Option.match(
-      Option.fromNullable(
-        repos.find((repo) => repo.name === value || repo.prefix === value)
-      ),
+      Option.fromNullable(repos.find((repo) => repo.name === value || repo.prefix === value)),
       {
         onNone: () => Effect.fail(new VendoredRepoNotFound({ name: value })),
         onSome: Effect.succeed
@@ -111,9 +100,7 @@ const filterTrailer = (repo: VendoredRepo): string => {
 }
 
 const syncPackageTrailer = (repo: VendoredRepo): string =>
-  repo.syncPackage === undefined
-    ? ""
-    : `\n${TRAILER_SYNC_PACKAGE}: ${repo.syncPackage}`
+  repo.syncPackage === undefined ? "" : `\n${TRAILER_SYNC_PACKAGE}: ${repo.syncPackage}`
 
 const updateMessage = (repo: VendoredRepo) =>
   `vendor: update ${repo.name} (${repo.url}@${repo.ref}) [${repo.strategy}]\n\n${TRAILER_DIR}: ${repo.prefix}\n${TRAILER_URL}: ${repo.url}\n${TRAILER_REF}: ${repo.ref}\n${TRAILER_STRATEGY}: ${repo.strategy}\n${TRAILER_ACTION}: upsert${filterTrailer(repo)}${syncPackageTrailer(repo)}`
@@ -146,11 +133,7 @@ const pullSubtree = ({ cwd, repo }: VendoredRepoCommandParams) =>
     { cwd }
   )
 
-const strategyGitFailed = ({
-  prefix,
-  result,
-  strategy
-}: StrategyGitFailureParams) =>
+const strategyGitFailed = ({ prefix, result, strategy }: StrategyGitFailureParams) =>
   new VendorStrategyCommandFailed({
     action: "update",
     prefix,
@@ -205,9 +188,7 @@ const updateCloneIgnore = (params: VendoredRepoCommandParams) =>
     const target = path.resolve(params.cwd, params.repo.prefix)
     const exists = yield* fs.exists(target)
     if (!exists) {
-      yield* fs.makeDirectory(path.dirname(target), { recursive: true }).pipe(
-        Effect.ignore
-      )
+      yield* fs.makeDirectory(path.dirname(target), { recursive: true }).pipe(Effect.ignore)
       const hostResult = yield* RepositoryHosts.clone({
         cwd: params.cwd,
         input: params.repo.url,
@@ -266,8 +247,7 @@ const updateByStrategy = (params: VendoredRepoCommandParams) => {
             action: "update",
             prefix: params.repo.prefix,
             strategy: params.repo.strategy,
-            output:
-              "submodule filter metadata cannot be applied portably from a parent repository"
+            output: "submodule filter metadata cannot be applied portably from a parent repository"
           })
         )
     }
@@ -297,9 +277,7 @@ const updateByStrategy = (params: VendoredRepoCommandParams) => {
 const resolveRepoForUpdate = ({ cwd, repo }: VendoredRepoCommandParams) => {
   if (repo.syncPackage === undefined) return Effect.succeed(repo)
 
-  return info(
-    `Resolving package-synced ref for ${repo.name} from ${repo.syncPackage}...`
-  ).pipe(
+  return info(`Resolving package-synced ref for ${repo.name} from ${repo.syncPackage}...`).pipe(
     Effect.zipRight(
       PackageVersionSync.resolve({
         cwd,
@@ -319,9 +297,7 @@ const resolveRepoForUpdate = ({ cwd, repo }: VendoredRepoCommandParams) => {
 const updateOne = ({ cwd, repo }: VendoredRepoCommandParams) =>
   resolveRepoForUpdate({ cwd, repo }).pipe(
     Effect.tap((resolvedRepo) =>
-      info(
-        `Updating ${resolvedRepo.name}: ${resolvedRepo.url} @ ${resolvedRepo.ref}`
-      )
+      info(`Updating ${resolvedRepo.name}: ${resolvedRepo.url} @ ${resolvedRepo.ref}`)
     ),
     Effect.flatMap((resolvedRepo) =>
       updateByStrategy({ cwd, repo: resolvedRepo }).pipe(Effect.as(resolvedRepo))
@@ -329,9 +305,7 @@ const updateOne = ({ cwd, repo }: VendoredRepoCommandParams) =>
     Effect.either,
     Effect.flatMap((result) =>
       result._tag === "Right"
-        ? ok(`updated ${result.right.name}`).pipe(
-            Effect.as(Option.none<string>())
-          )
+        ? ok(`updated ${result.right.name}`).pipe(Effect.as(Option.none<string>()))
         : error(
             `failed: ${lastGitLine({
               stdout: "",
@@ -347,15 +321,12 @@ const refreshAfterUpdate = (cwd: string) =>
     yield* ProjectFiles.refresh({
       cwd,
       repos: reposAfter,
-      commitMessage: "vendor: refresh agent doc after update",
+      commitMessage: "vendor: refresh project vendor files after update",
       editorSettings: true
     })
   })
 
-export const updateImpl = ({
-  all,
-  name
-}: UpdateCommandParams) =>
+export const updateImpl = ({ all, name }: UpdateCommandParams) =>
   Effect.gen(function* () {
     const cwd = yield* repoRoot
     yield* assertCleanTree(cwd)
@@ -373,9 +344,7 @@ export const updateImpl = ({
           Effect.map(Arr.getSomes),
           Effect.tap(() => refreshAfterUpdate(cwd)),
           Effect.flatMap((failed) =>
-            failed.length > 0
-              ? Effect.fail(new UpdateFailed({ names: failed }))
-              : Effect.void
+            failed.length > 0 ? Effect.fail(new UpdateFailed({ names: failed })) : Effect.void
           )
         )
     })
@@ -385,8 +354,4 @@ export const updateCmd = Cli.make(
   "update",
   { name: updateNameArg, all: updateAllOption },
   updateImpl
-).pipe(
-  Cli.withDescription(
-    "Pull upstream changes for one or all vendored repositories."
-  )
-)
+).pipe(Cli.withDescription("Pull upstream changes for one or all vendored repositories."))

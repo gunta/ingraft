@@ -1,5 +1,6 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
+
 import {
   completeMerge,
   ensureArrayItem,
@@ -41,9 +42,7 @@ const refreshWith = (context: ToolFileContext, cwd: string) =>
   Effect.gen(function* () {
     const target = yield* configPath(context, cwd)
     if (Option.isNone(target)) return Option.none<string>()
-    const merged = mergeStylelintConfigText(
-      yield* context.fs.readFileString(target.value)
-    )
+    const merged = mergeStylelintConfigText(yield* context.fs.readFileString(target.value))
     if (merged._tag !== "Updated") return Option.none<string>()
     yield* context.fs.writeFileString(
       target.value,

@@ -1,5 +1,6 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
+
 import {
   completeMerge,
   ensureArrayItems,
@@ -46,20 +47,14 @@ const isDetected = (context: ToolFileContext, cwd: string) =>
   Effect.gen(function* () {
     const config = yield* configPath(context, cwd)
     if (Option.isSome(config)) return true
-    return yield* packageHasDependency(context, cwd, [
-      "cspell",
-      "cspell-cli",
-      "@cspell/cspell"
-    ])
+    return yield* packageHasDependency(context, cwd, ["cspell", "cspell-cli", "@cspell/cspell"])
   })
 
 const refreshWith = (context: ToolFileContext, cwd: string) =>
   Effect.gen(function* () {
     if (!(yield* isDetected(context, cwd))) return Option.none<string>()
     const existing = yield* configPath(context, cwd)
-    const target = Option.getOrElse(existing, () =>
-      context.path.resolve(cwd, "cspell.json")
-    )
+    const target = Option.getOrElse(existing, () => context.path.resolve(cwd, "cspell.json"))
     const current = (yield* context.fs.exists(target))
       ? yield* context.fs.readFileString(target)
       : "{}\n"
@@ -110,18 +105,15 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class CspellIgnore extends Effect.Service<CspellIgnore>()(
-  "vendor-subtree/CspellIgnore",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      const context = { fs, path }
-      return {
-        doctor: (cwd: string) => doctorWith(context, cwd),
-        refresh: (cwd: string) => refreshWith(context, cwd)
-      }
-    })
-  }
-) {}
+export class CspellIgnore extends Effect.Service<CspellIgnore>()("vendor-subtree/CspellIgnore", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const context = { fs, path }
+    return {
+      doctor: (cwd: string) => doctorWith(context, cwd),
+      refresh: (cwd: string) => refreshWith(context, cwd)
+    }
+  })
+}) {}

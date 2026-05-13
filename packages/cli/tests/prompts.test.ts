@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+
 import { parseSelectionInput } from "../src/services/prompts.ts"
 
 describe("selection prompts", () => {

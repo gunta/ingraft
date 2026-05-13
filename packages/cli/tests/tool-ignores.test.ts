@@ -1,16 +1,33 @@
 import { describe, expect, test } from "bun:test"
+
 import { mergeBiomeConfigText } from "../src/tool-ignores/biome.ts"
 import { mergeCspellConfigText } from "../src/tool-ignores/cspell.ts"
-import {
-  mergeEslintConfigText,
-  mergeEslintIgnoreText
-} from "../src/tool-ignores/eslint.ts"
+import { mergeEslintConfigText, mergeEslintIgnoreText } from "../src/tool-ignores/eslint.ts"
 import { mergeMarkdownlintIgnoreText } from "../src/tool-ignores/markdownlint.ts"
+import {
+  buildSystemTools,
+  mergeBazelIgnoreText,
+  mergeMoonWorkspaceText,
+  mergeNxConfigText,
+  mergePnpmWorkspaceText,
+  mergeTurboConfigText,
+  packageManagerTools,
+  taskRunnerTools
+} from "../src/tool-ignores/monorepo.ts"
 import { mergeOxlintConfigText } from "../src/tool-ignores/oxlint.ts"
 import { mergePyrightConfigText } from "../src/tool-ignores/pyright.ts"
 import { mergeStylelintConfigText } from "../src/tool-ignores/stylelint.ts"
 
 describe("tool ignore config mergers", () => {
+  test("groups monorepo integrations into tool categories", () => {
+    expect(packageManagerTools.name).toBe("package-managers")
+    expect(taskRunnerTools.name).toBe("monorepo-task-runners")
+    expect(buildSystemTools.name).toBe("build-systems")
+    expect(packageManagerTools.tools.map((tool) => tool.name)).toContain("pnpm workspaces")
+    expect(taskRunnerTools.tools.map((tool) => tool.name)).toContain("Turborepo")
+    expect(buildSystemTools.tools.map((tool) => tool.name)).toContain("Bazel")
+  })
+
   test("adds a Biome vendor exclusion without hiding files from agents", () => {
     const result = mergeBiomeConfigText("{}\n")
 
@@ -76,5 +93,60 @@ describe("tool ignore config mergers", () => {
       expect(result.text).toContain('"ignoreFiles"')
       expect(result.text).toContain('"vendor/**"')
     }
+  })
+
+  test("adds Turborepo task input exclusions without dropping defaults", () => {
+    const result = mergeTurboConfigText(
+      JSON.stringify({ tasks: { build: { outputs: ["dist/**"] } } }, null, 2)
+    )
+
+    expect(result._tag).toBe("Updated")
+    if (result._tag === "Updated") {
+      expect(result.text).toContain('"$TURBO_DEFAULT$"')
+      expect(result.text).toContain('"!$TURBO_ROOT$/vendor/**"')
+    }
+  })
+
+  test("adds Nx named input exclusions", () => {
+    const result = mergeNxConfigText("{}\n")
+
+    expect(result._tag).toBe("Updated")
+    if (result._tag === "Updated") {
+      expect(result.text).toContain('"namedInputs"')
+      expect(result.text).toContain('"!{workspaceRoot}/vendor/**"')
+    }
+  })
+
+  test("adds pnpm workspace package exclusions when a packages list exists", () => {
+    const result = mergePnpmWorkspaceText("packages:\n  - 'packages/*'\n")
+
+    expect(result._tag).toBe("Updated")
+    if (result._tag === "Updated") {
+      expect(result.text).toContain("!vendor/**")
+    }
+  })
+
+  test("does not invent a pnpm packages list", () => {
+    expect(mergePnpmWorkspaceText("catalog:\n  react: ^19.0.0\n")).toEqual({
+      _tag: "Unchanged"
+    })
+  })
+
+  test("adds moon hasher ignore patterns", () => {
+    const result = mergeMoonWorkspaceText("projects:\n  - 'packages/*'\n")
+
+    expect(result._tag).toBe("Updated")
+    if (result._tag === "Updated") {
+      expect(result.text).toContain("hasher")
+      expect(result.text).toContain("vendor/**")
+    }
+  })
+
+  test("adds a managed Bazel ignore section", () => {
+    const result = mergeBazelIgnoreText("bazel-out\n")
+
+    expect(result).toContain("bazel-out")
+    expect(result).toContain("vendor")
+    expect(result).toContain("vendor-subtree begin")
   })
 })

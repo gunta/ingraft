@@ -1,6 +1,8 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
-import { VENDOR_DIR } from "../domain/constants.ts"
+
+import { formatStatus } from "../app/log.ts"
+import { RuntimeConfig, type RuntimeConfigShape } from "../app/runtime.ts"
 import {
   completeMerge,
   ensureArrayItem,
@@ -10,17 +12,12 @@ import {
   type SettingsMergeResult,
   type SettingsMergeState
 } from "../config/jsonc-settings.ts"
-import { formatStatus } from "../app/log.ts"
-import { RuntimeConfig, type RuntimeConfigShape } from "../app/runtime.ts"
-import {
-  detectProjectLanguages,
-  type ProjectLanguageUsage
-} from "../project/languages.ts"
-import { Git } from "../services/git.ts"
+import { VENDOR_DIR } from "../domain/constants.ts"
+import { detectProjectLanguages, type ProjectLanguageUsage } from "../project/languages.ts"
+import { GitMetadata } from "../services/git-metadata.ts"
 
 const VENDOR_GLOB = `${VENDOR_DIR}/**`
-const MATERIAL_ICON_FOLDER_ASSOCIATIONS =
-  "material-icon-theme.folders.associations"
+const MATERIAL_ICON_FOLDER_ASSOCIATIONS = "material-icon-theme.folders.associations"
 const MATERIAL_ICON_VENDOR_FOLDER = "packages"
 const ARRAY_KEYS_BY_LANGUAGE = {
   typescript: "typescript.preferences.autoImportFileExcludePatterns",
@@ -43,9 +40,7 @@ export interface MergeVscodeSettingsOptions {
 interface UpdateVscodeSettingsWithParams {
   readonly cwd: string
   readonly fs: FileSystem.FileSystem
-  readonly listProjectFiles: (
-    cwd: string
-  ) => Effect.Effect<ReadonlyArray<string>, unknown>
+  readonly listProjectFiles: (cwd: string) => Effect.Effect<ReadonlyArray<string>, unknown>
   readonly path: Path.Path
   readonly runtime: RuntimeConfigShape
 }
@@ -53,9 +48,7 @@ interface UpdateVscodeSettingsWithParams {
 interface DetectVscodeLanguageUsageParams {
   readonly cwd: string
   readonly fs: FileSystem.FileSystem
-  readonly listProjectFiles: (
-    cwd: string
-  ) => Effect.Effect<ReadonlyArray<string>, unknown>
+  readonly listProjectFiles: (cwd: string) => Effect.Effect<ReadonlyArray<string>, unknown>
   readonly path: Path.Path
 }
 
@@ -67,14 +60,7 @@ const DEFAULT_LANGUAGE_USAGE = {
 const warnWithRuntime = (runtime: RuntimeConfigShape, message: string) =>
   Effect.logWarning(formatStatus("warn", message, { colors: runtime.colors }))
 
-const emptyLanguageUsage = (): VscodeLanguageUsage => ({
-  javascript: false,
-  typescript: false
-})
-
-const selectedArrayKeys = (
-  languages: VscodeLanguageUsage
-): ReadonlyArray<ArrayExclusionKey> =>
+const selectedArrayKeys = (languages: VscodeLanguageUsage): ReadonlyArray<ArrayExclusionKey> =>
   (Object.keys(ARRAY_KEYS_BY_LANGUAGE) as ReadonlyArray<VscodeProjectLanguage>)
     .filter((language) => languages[language])
     .map((language) => ARRAY_KEYS_BY_LANGUAGE[language])
@@ -84,9 +70,7 @@ const ensureArrayExclusion = (
   key: ArrayExclusionKey
 ): SettingsMergeState => ensureArrayItem({ item: VENDOR_GLOB, key, state })
 
-const ensureVendorFolderIcon = (
-  state: SettingsMergeState
-): SettingsMergeState =>
+const ensureVendorFolderIcon = (state: SettingsMergeState): SettingsMergeState =>
   ensureObjectProperty({
     key: MATERIAL_ICON_FOLDER_ASSOCIATIONS,
     overwrite: false,
@@ -101,10 +85,7 @@ const mergeValidSettings = (
   languages: VscodeLanguageUsage
 ): SettingsMergeState =>
   ensureVendorFolderIcon(
-    selectedArrayKeys(languages).reduce(
-      ensureArrayExclusion,
-      initialSettingsState(source, value)
-    )
+    selectedArrayKeys(languages).reduce(ensureArrayExclusion, initialSettingsState(source, value))
   )
 
 export const mergeVscodeSettingsText = (
@@ -120,11 +101,7 @@ export const mergeVscodeSettingsText = (
   }
 
   return completeMerge(
-    mergeValidSettings(
-      parsed.source,
-      parsed.value,
-      options.languages ?? DEFAULT_LANGUAGE_USAGE
-    )
+    mergeValidSettings(parsed.source, parsed.value, options.languages ?? DEFAULT_LANGUAGE_USAGE)
   )
 }
 
@@ -145,18 +122,9 @@ const detectVscodeLanguageUsage = ({
   )
 
 const gitProjectFiles =
-  (gitService: Git) =>
+  (gitMetadata: GitMetadata) =>
   (cwd: string): Effect.Effect<ReadonlyArray<string>, unknown> =>
-    gitService.exec(
-      ["ls-files", "--cached", "--others", "--exclude-standard"],
-      { cwd }
-    ).pipe(
-      Effect.map((result) =>
-        result.exitCode === 0
-          ? result.stdout.split(/\r?\n/).filter((line) => line.trim().length > 0)
-          : []
-      )
-    )
+    gitMetadata.listProjectFiles(cwd)
 
 const updateVscodeSettingsWith = ({
   cwd,
@@ -167,9 +135,7 @@ const updateVscodeSettingsWith = ({
 }: UpdateVscodeSettingsWithParams) =>
   Effect.gen(function* () {
     const target = path.resolve(cwd, ".vscode/settings.json")
-    const current = (yield* fs.exists(target))
-      ? yield* fs.readFileString(target)
-      : "{}\n"
+    const current = (yield* fs.exists(target)) ? yield* fs.readFileString(target) : "{}\n"
 
     const languages = yield* detectVscodeLanguageUsage({
       cwd,
@@ -188,9 +154,7 @@ const updateVscodeSettingsWith = ({
       case "Unchanged":
         return Option.none<string>()
       case "Updated":
-        yield* fs.makeDirectory(path.dirname(target), { recursive: true }).pipe(
-          Effect.ignore
-        )
+        yield* fs.makeDirectory(path.dirname(target), { recursive: true }).pipe(Effect.ignore)
         yield* fs.writeFileString(
           target,
           merged.text.endsWith("\n") ? merged.text : `${merged.text}\n`
@@ -205,7 +169,7 @@ export class VscodeSettings extends Effect.Service<VscodeSettings>()(
     accessors: true,
     effect: Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
-      const gitService = yield* Git
+      const gitMetadata = yield* GitMetadata
       const path = yield* Path.Path
       const runtime = yield* RuntimeConfig
       return {
@@ -213,7 +177,7 @@ export class VscodeSettings extends Effect.Service<VscodeSettings>()(
           updateVscodeSettingsWith({
             cwd,
             fs,
-            listProjectFiles: gitProjectFiles(gitService),
+            listProjectFiles: gitProjectFiles(gitMetadata),
             path,
             runtime
           })

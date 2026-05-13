@@ -1,0 +1,32 @@
+---
+title: Overview
+description: A source vendoring workflow for coding agents, LSPs, and humans.
+---
+
+`vendor-subtree` brings upstream source into your repository in a controlled way.
+The goal is not to vendor everything forever. The goal is to make the source that
+matters available to coding agents and language tooling while keeping project
+history, diffs, editors, and linters quiet.
+
+## What it manages
+
+- Dependency discovery from manifests and lockfiles.
+- Source matching for package names and git repositories.
+- Three storage strategies: subtree, submodule, and clone-ignore.
+- Version selection from branches, tags, releases, commits, and synced package versions.
+- Tooling integration for editors, linters, formatters, monorepos, and agent files.
+- Doctor output for the detected project stack and vendor status.
+
+## Core loop
+
+```sh
+vendor-subtree
+vendor-subtree deps
+vendor-subtree add effect --version synced
+vendor-subtree doctor
+vendor-subtree update effect
+```
+
+The CLI is written in Effect and uses service layers so git providers, prompts,
+filesystem access, project detection, and logging stay replaceable implementation
+details.

@@ -1,15 +1,8 @@
-import { Args, Command as Cli } from "@effect/cli"
+import { Args, Command as Cli, Options } from "@effect/cli"
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
-import { GitRemoveFailed, VendoredRepoNotFound } from "../domain/errors.ts"
-import {
-  assertCleanTree,
-  commitPathsIfChanged,
-  emptyCommit,
-  git,
-  gitChecked,
-  repoRoot
-} from "../services/git.ts"
+
+import { info, ok, withCommandTelemetry } from "../app/log.ts"
 import {
   TRAILER_ACTION,
   TRAILER_DIR,
@@ -19,13 +12,27 @@ import {
   TRAILER_SYNC_PACKAGE,
   TRAILER_URL
 } from "../domain/constants.ts"
-import { updateGitignore } from "../project/gitignore.ts"
-import { info, ok, withCommandTelemetry } from "../app/log.ts"
-import { ProjectFiles } from "../project/service.ts"
-import { findByName, listVendored, type VendoredRepo } from "../domain/vendor-state.ts"
+import {
+  GitRemoveFailed,
+  HistoryRewriteFailed,
+  HistoryRewriteToolMissing,
+  VendoredRepoNotFound
+} from "../domain/errors.ts"
 import { formatVendorFilterTrailer } from "../domain/vendor-filter.ts"
+import { findByName, listVendored, type VendoredRepo } from "../domain/vendor-state.ts"
+import { updateGitignore } from "../project/gitignore.ts"
+import { ProjectFiles } from "../project/service.ts"
+import {
+  assertCleanTree,
+  commitPathsIfChanged,
+  emptyCommit,
+  git,
+  gitChecked,
+  repoRoot
+} from "../services/git.ts"
 
 export interface RemoveCommandParams {
+  readonly dangerouslyRewriteHistory: boolean
   readonly name: string
 }
 
@@ -49,6 +56,26 @@ const removeNameArg = Args.text({ name: "name" }).pipe(
   Args.withDescription("Name (or prefix path) of the vendored repository to remove.")
 )
 
+const dangerouslyRewriteHistoryOption = Options.boolean("dangerously-rewrite-history").pipe(
+  Options.withDescription(
+    "DANGER: after removing the vendor, rewrite every local ref with git-filter-repo so the vendor path disappears from all repository history. This changes commit SHAs and requires coordinated force-pushes/re-clones."
+  )
+)
+
+export const normalizeHistoryRewritePath = (prefix: string): string =>
+  `${prefix.replace(/^\/+/, "").replace(/\/+$/, "")}/`
+
+export const gitFilterRepoRemovePathArgs = (prefix: string): ReadonlyArray<string> => [
+  "filter-repo",
+  "--force",
+  "--path",
+  normalizeHistoryRewritePath(prefix),
+  "--invert-paths"
+]
+
+const gitOutput = (result: { readonly stderr: string; readonly stdout: string }) =>
+  result.stderr.trim() || result.stdout.trim() || "unknown error"
+
 const removeTarget = ({ cwd, name }: RemoveTargetParams) =>
   findByName({ cwd, name }).pipe(
     Effect.flatMap((repo) =>
@@ -61,9 +88,7 @@ const removeTarget = ({ cwd, name }: RemoveTargetParams) =>
 
 const removeFromGit = ({ cwd, target }: RemoveFromGitParams) =>
   git(
-    target.strategy === "submodule"
-      ? ["rm", "-f", target.prefix]
-      : ["rm", "-rf", target.prefix],
+    target.strategy === "submodule" ? ["rm", "-f", target.prefix] : ["rm", "-rf", target.prefix],
     { cwd }
   ).pipe(
     Effect.filterOrFail(
@@ -83,18 +108,12 @@ const filterTrailer = (target: VendoredRepo): string => {
 }
 
 const syncPackageTrailer = (target: VendoredRepo): string =>
-  target.syncPackage === undefined
-    ? ""
-    : `\n${TRAILER_SYNC_PACKAGE}: ${target.syncPackage}`
+  target.syncPackage === undefined ? "" : `\n${TRAILER_SYNC_PACKAGE}: ${target.syncPackage}`
 
 const removeMessage = (target: VendoredRepo) =>
   `vendor: remove ${target.name} (${target.url}@${target.ref}) [${target.strategy}]\n\n${TRAILER_DIR}: ${target.prefix}\n${TRAILER_URL}: ${target.url}\n${TRAILER_REF}: ${target.ref}\n${TRAILER_STRATEGY}: ${target.strategy}\n${TRAILER_ACTION}: remove${filterTrailer(target)}${syncPackageTrailer(target)}`
 
-const removeCloneIgnore = ({
-  cwd,
-  reposBefore,
-  target
-}: RemoveCloneIgnoreParams) =>
+const removeCloneIgnore = ({ cwd, reposBefore, target }: RemoveCloneIgnoreParams) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
@@ -105,10 +124,7 @@ const removeCloneIgnore = ({
     yield* updateGitignore({
       cwd,
       prefixes: reposBefore
-        .filter(
-          (repo) =>
-            repo.strategy === "clone-ignore" && repo.prefix !== target.prefix
-        )
+        .filter((repo) => repo.strategy === "clone-ignore" && repo.prefix !== target.prefix)
         .map((repo) => repo.prefix)
     })
     const committed = yield* commitPathsIfChanged({
@@ -119,13 +135,49 @@ const removeCloneIgnore = ({
     if (!committed) yield* emptyCommit({ cwd, message: removeMessage(target) })
   })
 
-export const removeImpl = ({ name }: RemoveCommandParams) =>
+const assertGitFilterRepoInstalled = (cwd: string) =>
+  git(["filter-repo", "--version"], { cwd }).pipe(
+    Effect.flatMap((result) =>
+      result.exitCode === 0
+        ? Effect.void
+        : Effect.fail(new HistoryRewriteToolMissing({ output: gitOutput(result) }))
+    )
+  )
+
+const rewriteVendorPathHistory = ({
+  cwd,
+  target
+}: {
+  readonly cwd: string
+  readonly target: VendoredRepo
+}) =>
+  git(gitFilterRepoRemovePathArgs(target.prefix), { cwd }).pipe(
+    Effect.flatMap((result) =>
+      result.exitCode === 0
+        ? Effect.void
+        : Effect.fail(
+            new HistoryRewriteFailed({
+              prefix: normalizeHistoryRewritePath(target.prefix),
+              output: gitOutput(result)
+            })
+          )
+    )
+  )
+
+export const removeImpl = ({ dangerouslyRewriteHistory, name }: RemoveCommandParams) =>
   Effect.gen(function* () {
     const cwd = yield* repoRoot
     yield* assertCleanTree(cwd)
 
     const target = yield* removeTarget({ cwd, name })
     const reposBefore = yield* listVendored(cwd)
+
+    if (dangerouslyRewriteHistory) {
+      yield* assertGitFilterRepoInstalled(cwd)
+      yield* info(
+        `DANGER: removing ${target.prefix}/ from every local git ref with git-filter-repo. Commit SHAs will change and collaborators must re-clone or carefully rebase.`
+      )
+    }
 
     yield* info(`Removing ${target.prefix}/`)
     if (target.strategy === "clone-ignore") {
@@ -139,15 +191,26 @@ export const removeImpl = ({ name }: RemoveCommandParams) =>
     yield* ProjectFiles.refresh({
       cwd,
       repos: reposAfter,
-      commitMessage: `vendor: refresh agent doc after removing ${target.name}`,
+      commitMessage: `vendor: refresh project vendor files after removing ${target.name}`,
       editorSettings: true
     })
+
+    if (dangerouslyRewriteHistory) {
+      yield* rewriteVendorPathHistory({ cwd, target })
+      yield* ok(
+        `Removed '${target.name}' and rewrote local history to drop ${target.prefix}/. Force-push rewritten refs only after coordinating with collaborators.`
+      )
+      return
+    }
 
     yield* ok(`Removed '${target.name}'.`)
   }).pipe(withCommandTelemetry("remove"))
 
 export const removeCmd = Cli.make(
   "remove",
-  { name: removeNameArg },
+  {
+    dangerouslyRewriteHistory: dangerouslyRewriteHistoryOption,
+    name: removeNameArg
+  },
   removeImpl
 ).pipe(Cli.withDescription("Remove a vendored repository."))

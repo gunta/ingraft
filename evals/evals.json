@@ -1,0 +1,65 @@
+{
+  "skill_name": "vendor-subtree",
+  "evals": [
+    {
+      "id": 1,
+      "name": "vendor-by-github-shorthand",
+      "prompt": "I'm building a TypeScript validation library and I want to study Zod's tests as a reference. The repo is colinhacks/zod. Can you vendor it into this project so I can grep through the source offline without hitting GitHub? I don't need the docs or example folders, just the source.",
+      "expected_behavior": [
+        "Invokes the vendor-subtree CLI via bunx vendor-subtree@latest (not a local scripts/vendor.ts)",
+        "Uses the `add` subcommand with the colinhacks/zod GitHub shorthand",
+        "Applies --exclude-dir for docs and examples, or filters in the same spirit",
+        "Does not modify files under vendor/zod manually",
+        "Does not invent flags that don't exist in the CLI"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "scan-package-manifest-for-candidates",
+      "prompt": "This project has a bunch of npm dependencies. I'd like to know which of them have public source repos that I could vendor for offline reference, and then pick a couple to add. Can you figure that out and walk me through it?",
+      "expected_behavior": [
+        "Runs `bunx vendor-subtree@latest` with no subcommand, or `bunx vendor-subtree@latest deps`, to scan package manifests",
+        "Does not write a custom script to scan package.json — defers to the CLI",
+        "Surfaces the matched repos and asks which to vendor before mutating the project",
+        "Uses the subtree strategy by default unless the user requests otherwise"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "list-and-doctor-status",
+      "prompt": "What's already vendored in this project, and is the vendoring setup healthy? I want to know if the editor ignore files and tool ignore files are in sync with reality.",
+      "expected_behavior": [
+        "Runs `bunx vendor-subtree@latest list` to show vendored repos and strategies",
+        "Runs `bunx vendor-subtree@latest doctor` to check ignore/tooling sync",
+        "Does not read vendor/ contents directly to enumerate repos — uses the CLI",
+        "Reports the strategy (subtree, submodule, clone-ignore) for each entry"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "destructive-history-rewrite",
+      "prompt": "I committed the effect vendor folder yesterday with some fixture files that contain real API keys. I need them completely gone from git history, not just deleted in HEAD. How do I do this with vendor-subtree?",
+      "expected_behavior": [
+        "Identifies `remove --dangerously-rewrite-history` as the correct command",
+        "Walks the user through the pre-flight checklist (git-filter-repo installed, clean working tree, SHA rewrite implications, force-push coordination)",
+        "Does NOT run the command without explicit user confirmation",
+        "Warns that collaborators must re-clone or rebase after the rewrite"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "negative-not-a-vendoring-task",
+      "prompt": "Can you write me a quick bash script that downloads the latest zod release tarball from npm and unpacks it into ./tmp/ for inspection? Just a one-off, not part of the build.",
+      "expected_behavior": [
+        "Does NOT invoke vendor-subtree — this is a one-off tarball download, not vendoring into the project",
+        "Writes a short shell script (curl/tar or npm pack) without consulting the skill",
+        "If the agent does load the skill, it recognizes this is out of scope and falls back to writing the script"
+      ],
+      "files": []
+    }
+  ]
+}
