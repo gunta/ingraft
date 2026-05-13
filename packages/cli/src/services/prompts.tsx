@@ -86,7 +86,9 @@ const selectMany = ({ choices, message }: SelectManyParams) =>
   })
 
 export interface PromptsShape {
-  readonly selectMany: (params: SelectManyParams) => Effect.Effect<ReadonlyArray<SelectionChoice>>
+  readonly selectMany: (
+    params: SelectManyParams
+  ) => Effect.Effect<ReadonlyArray<SelectionChoice>, InkRenderFailed | PromptInputFailed>
 }
 
 export class Prompts extends Context.Service<Prompts, PromptsShape>()("ingraft/Prompts") {}

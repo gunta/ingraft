@@ -406,7 +406,7 @@ const resolveRef = ({ cwd, selector, url }: ResolveRefParams) => {
         Effect.andThen(resolveVersion({ url, selector })),
         Effect.flatMap((resolved) =>
           Option.match(resolved, {
-            onNone: () =>
+            onNone: (): Effect.Effect<string, VersionResolutionFailed | InkRenderFailed> =>
               Effect.fail(
                 new VersionResolutionFailed({
                   selector: `--release ${selector.value}`,
