@@ -1,7 +1,9 @@
-import { Context, Effect, FileSystem, Layer, Option, Path } from "effect"
+import { Context, Effect, FileSystem, Layer, Option, Path, type PlatformError } from "effect"
 
 import { RuntimeConfig, type RuntimeConfigShape } from "../app/runtime.ts"
+import type { GitCommandFailed, GitMetadataFailed, InkRenderFailed } from "../domain/errors.ts"
 import type { VendoredRepo } from "../domain/vendor-state.ts"
+import { isLocalIgnoredVendorStrategy } from "../domain/vendor-strategy.ts"
 import { EditorSettings, type RefreshEditorSettingsParams } from "../editors/service.ts"
 import { GitMetadata } from "../services/git-metadata.ts"
 import { Git, commitConfigChanges } from "../services/git.ts"
@@ -20,17 +22,26 @@ export interface RefreshGeneratedFilesParams {
   readonly editorSettings?: boolean
 }
 
+type RefreshError =
+  | PlatformError.PlatformError
+  | GitMetadataFailed
+  | GitCommandFailed
+  | InkRenderFailed
+
 interface ProjectFilesDependencies {
   readonly editorSettings: {
     readonly refresh: (
       params: RefreshEditorSettingsParams
-    ) => Effect.Effect<ReadonlyArray<string>, unknown>
+    ) => Effect.Effect<
+      ReadonlyArray<string>,
+      PlatformError.PlatformError | GitMetadataFailed | InkRenderFailed
+    >
   }
   readonly runtime: RuntimeConfigShape
   readonly toolIgnores: {
     readonly refresh: (
       params: RefreshToolIgnoresParams
-    ) => Effect.Effect<ReadonlyArray<string>, unknown>
+    ) => Effect.Effect<ReadonlyArray<string>, PlatformError.PlatformError>
   }
   readonly vendorNotes: {
     readonly sync: (params: {
@@ -49,7 +60,9 @@ const refreshGeneratedFilesWith = (
     const written = yield* updateAgentDocs({ cwd, repos, command })
     const gitignore = yield* updateGitignore({
       cwd,
-      prefixes: repos.filter((repo) => repo.strategy === "clone-ignore").map((repo) => repo.prefix)
+      prefixes: repos
+        .filter((repo) => isLocalIgnoredVendorStrategy(repo.strategy))
+        .map((repo) => repo.prefix)
     })
     const gitattributes = yield* updateGitattributes({
       cwd,
@@ -80,7 +93,7 @@ const refreshGeneratedFilesWith = (
   })
 
 export interface ProjectFilesShape {
-  readonly refresh: (params: RefreshGeneratedFilesParams) => Effect.Effect<void, unknown>
+  readonly refresh: (params: RefreshGeneratedFilesParams) => Effect.Effect<void, RefreshError>
 }
 
 export class ProjectFiles extends Context.Service<ProjectFiles, ProjectFilesShape>()(

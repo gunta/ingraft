@@ -1,4 +1,4 @@
-import { Context, Effect, FileSystem, Layer, Option, Path } from "effect"
+import { Context, Effect, FileSystem, Layer, Option, Path, type PlatformError } from "effect"
 
 import { buildSystemTools } from "./build-systems/index.ts"
 import {
@@ -50,8 +50,12 @@ const refreshWith = (context: ToolFileContext, cwd: string) => {
 }
 
 export interface MonorepoToolsShape {
-  readonly doctor: (cwd: string) => Effect.Effect<ReadonlyArray<ToolIgnoreReport>, unknown>
-  readonly refresh: (cwd: string) => Effect.Effect<ReadonlyArray<string>, unknown>
+  readonly doctor: (
+    cwd: string
+  ) => Effect.Effect<ReadonlyArray<ToolIgnoreReport>, PlatformError.PlatformError>
+  readonly refresh: (
+    cwd: string
+  ) => Effect.Effect<ReadonlyArray<string>, PlatformError.PlatformError>
 }
 
 export class MonorepoTools extends Context.Service<MonorepoTools, MonorepoToolsShape>()(

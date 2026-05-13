@@ -8,7 +8,8 @@ interface Rule {
   readonly allow?: (filePath: string) => boolean
 }
 
-const ALLOW_RUNTIME = (p: string) => p.endsWith(`src${sep}app${sep}runtime.ts`)
+const ALLOW_RUNTIME = (p: string) =>
+  p.endsWith(`src${sep}app${sep}runtime.ts`) || p.endsWith(`src${sep}cli.tsx`)
 const ALLOW_INK_OR_TEST = (p: string) =>
   p.includes(`src${sep}app${sep}ink${sep}`) || p.includes(`tests${sep}`)
 

@@ -1,4 +1,4 @@
-import { Console, Effect } from "effect"
+import { Console, Effect, type PlatformError } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
 import { Box } from "ink"
 
@@ -6,7 +6,7 @@ import { Header, KeyValues, Section, Table, type TableColumn } from "../app/ink/
 import { renderInkOnce } from "../app/ink/render.tsx"
 import { withCommandTelemetry } from "../app/log.tsx"
 import { VENDOR_DIR } from "../domain/constants.ts"
-import { InkRenderFailed } from "../domain/errors.ts"
+import { InkRenderFailed, type GitMetadataFailed, type NotGitRepository } from "../domain/errors.ts"
 import { type VendoredRepo, listVendored } from "../domain/vendor-state.ts"
 import { PackageVersionSync, type DependencyVendorCandidate } from "../package-sync/service.ts"
 import { detectVendoredPackageVersions } from "../package-sync/version-detect.ts"
@@ -61,16 +61,24 @@ const unversionedRepos = (
   repos: ReadonlyArray<VendoredRepo>
 ): ReadonlyArray<VersionedVendoredRepo> => repos.map((repo) => ({ ...repo, packageNames: [] }))
 
+type ListReposError =
+  | PlatformError.PlatformError
+  | InkRenderFailed
+  | GitMetadataFailed
+  | NotGitRepository
+
 interface ListReposDependencies<R = never> {
   readonly detectVendoredVersions: (
     cwd: string,
     candidates: ReadonlyArray<DependencyVendorCandidate>,
     repos: ReadonlyArray<VendoredRepo>
-  ) => Effect.Effect<VendoredPackageVersionMap, unknown, R>
-  readonly listVendored: (cwd: string) => Effect.Effect<ReadonlyArray<VendoredRepo>, unknown, R>
+  ) => Effect.Effect<VendoredPackageVersionMap, ListReposError, R>
+  readonly listVendored: (
+    cwd: string
+  ) => Effect.Effect<ReadonlyArray<VendoredRepo>, ListReposError, R>
   readonly scanPackages: (
     cwd: string
-  ) => Effect.Effect<ReadonlyArray<DependencyVendorCandidate>, unknown, R>
+  ) => Effect.Effect<ReadonlyArray<DependencyVendorCandidate>, ListReposError, R>
 }
 
 export const resolveListReposWith = <R,>(

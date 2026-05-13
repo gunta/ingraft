@@ -1,4 +1,4 @@
-import { Context, Effect, FileSystem, Layer, Option, Path } from "effect"
+import { Context, Effect, FileSystem, Layer, Option, Path, type PlatformError } from "effect"
 
 import { warn } from "../app/log.tsx"
 import { RuntimeConfig, type RuntimeConfigShape } from "../app/runtime.ts"
@@ -12,7 +12,7 @@ import {
   type SettingsMergeState
 } from "../config/jsonc-settings.ts"
 import { VENDOR_DIR } from "../domain/constants.ts"
-import type { GitMetadataFailed } from "../domain/errors.ts"
+import type { GitMetadataFailed, InkRenderFailed } from "../domain/errors.ts"
 import { detectProjectLanguages, type ProjectLanguageUsage } from "../project/languages.ts"
 import { GitMetadata, type GitMetadataShape } from "../services/git-metadata.ts"
 
@@ -183,7 +183,12 @@ const updateVscodeSettingsWith = ({
   })
 
 export interface VscodeSettingsShape {
-  readonly refresh: (cwd: string) => Effect.Effect<Option.Option<string>, unknown>
+  readonly refresh: (
+    cwd: string
+  ) => Effect.Effect<
+    Option.Option<string>,
+    PlatformError.PlatformError | GitMetadataFailed | InkRenderFailed
+  >
 }
 
 export class VscodeSettings extends Context.Service<VscodeSettings, VscodeSettingsShape>()(

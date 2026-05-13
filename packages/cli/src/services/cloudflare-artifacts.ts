@@ -1,9 +1,30 @@
-import { Context, Effect, Layer, Option } from "effect"
+import { Config, Context, Effect, Layer, Option } from "effect"
 
 import {
   CloudflareArtifactsConfigMissing,
   CloudflareArtifactsRequestFailed
 } from "../domain/errors.ts"
+
+const cloudflareEnvConfig = Config.all({
+  CLOUDFLARE_API_TOKEN: Config.option(Config.string("CLOUDFLARE_API_TOKEN")),
+  ARTIFACTS_BASE_URL: Config.option(Config.string("ARTIFACTS_BASE_URL")),
+  ACCOUNT_ID: Config.option(Config.string("ACCOUNT_ID")),
+  CLOUDFLARE_ACCOUNT_ID: Config.option(Config.string("CLOUDFLARE_ACCOUNT_ID")),
+  ARTIFACTS_NAMESPACE: Config.option(Config.string("ARTIFACTS_NAMESPACE"))
+})
+
+const readCloudflareEnv = cloudflareEnvConfig.pipe(
+  Effect.orDie,
+  Effect.map(
+    (raw): Record<string, string | undefined> => ({
+      CLOUDFLARE_API_TOKEN: Option.getOrUndefined(raw.CLOUDFLARE_API_TOKEN),
+      ARTIFACTS_BASE_URL: Option.getOrUndefined(raw.ARTIFACTS_BASE_URL),
+      ACCOUNT_ID: Option.getOrUndefined(raw.ACCOUNT_ID),
+      CLOUDFLARE_ACCOUNT_ID: Option.getOrUndefined(raw.CLOUDFLARE_ACCOUNT_ID),
+      ARTIFACTS_NAMESPACE: Option.getOrUndefined(raw.ARTIFACTS_NAMESPACE)
+    })
+  )
+)
 
 export interface CloudflareArtifactsConfig {
   readonly apiToken: string
@@ -37,7 +58,7 @@ interface CloudflareImportResult {
 }
 
 export const cloudflareArtifactsConfigFromEnv = (
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined>
 ): CloudflareArtifactsConfig | null => {
   const apiToken = env.CLOUDFLARE_API_TOKEN
   if (!apiToken) return null
@@ -137,7 +158,8 @@ const importRepo = (params: CloudflareArtifactsImportParams) =>
       )
     }
 
-    const config = cloudflareArtifactsConfigFromEnv()
+    const env = yield* readCloudflareEnv
+    const config = cloudflareArtifactsConfigFromEnv(env)
     if (config === null) {
       return yield* Effect.fail(
         new CloudflareArtifactsConfigMissing({

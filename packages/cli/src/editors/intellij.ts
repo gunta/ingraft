@@ -5,12 +5,13 @@ import {
   type Element as XmlElement,
   type Node as XmlNode
 } from "@xmldom/xmldom"
-import { Context, Effect, FileSystem, Layer, Path } from "effect"
+import { Context, Effect, FileSystem, Layer, Path, type PlatformError } from "effect"
 
 import { warn } from "../app/log.tsx"
 import { RuntimeConfig, type RuntimeConfigShape } from "../app/runtime.ts"
 import { SettingsMergeResult } from "../config/jsonc-settings.ts"
 import { VENDOR_DIR } from "../domain/constants.ts"
+import type { InkRenderFailed } from "../domain/errors.ts"
 
 const VENDOR_SCOPE_NAME = "Vendor"
 const VENDOR_SCOPE_COLOR = "Green"
@@ -244,7 +245,10 @@ export const mergeIntellijFileColorsText = (text = ""): SettingsMergeResult => {
   return serializeXml(parsed.document, ".idea/fileColors.xml is not well-formed XML.")
 }
 
-const readExisting = (fs: FileSystem.FileSystem, target: string): Effect.Effect<string, unknown> =>
+const readExisting = (
+  fs: FileSystem.FileSystem,
+  target: string
+): Effect.Effect<string, PlatformError.PlatformError> =>
   fs
     .exists(target)
     .pipe(Effect.flatMap((exists) => (exists ? fs.readFileString(target) : Effect.succeed(""))))
@@ -307,7 +311,9 @@ const refreshIntellijSettingsWith = ({
   })
 
 export interface IntellijSettingsShape {
-  readonly refresh: (cwd: string) => Effect.Effect<ReadonlyArray<string>, unknown>
+  readonly refresh: (
+    cwd: string
+  ) => Effect.Effect<ReadonlyArray<string>, PlatformError.PlatformError | InkRenderFailed>
 }
 
 export class IntellijSettings extends Context.Service<IntellijSettings, IntellijSettingsShape>()(

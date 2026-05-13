@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from "effect"
+import { Context, Effect, Layer, type PlatformError } from "effect"
 
 import {
   doctorToolCategories,
@@ -33,10 +33,13 @@ export interface RefreshToolIgnoresParams {
 export interface ToolIgnoresShape {
   readonly doctor: (
     params: RefreshToolIgnoresParams
-  ) => Effect.Effect<ReadonlyArray<import("./common.ts").ToolIgnoreReport>, unknown>
+  ) => Effect.Effect<
+    ReadonlyArray<import("./common.ts").ToolIgnoreReport>,
+    PlatformError.PlatformError
+  >
   readonly refresh: (
     params: RefreshToolIgnoresParams
-  ) => Effect.Effect<ReadonlyArray<string>, unknown>
+  ) => Effect.Effect<ReadonlyArray<string>, PlatformError.PlatformError>
 }
 
 export class ToolIgnores extends Context.Service<ToolIgnores, ToolIgnoresShape>()(

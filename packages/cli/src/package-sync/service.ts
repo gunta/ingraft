@@ -1,5 +1,16 @@
 import { DOMParser, type Element as XmlElement } from "@xmldom/xmldom"
-import { Context, Effect, FileSystem, Layer, Option, Path, Result, Schema, Stream } from "effect"
+import {
+  Context,
+  Effect,
+  FileSystem,
+  Layer,
+  Option,
+  Path,
+  type PlatformError,
+  Result,
+  Schema,
+  Stream
+} from "effect"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { parse as parseJsonc, type ParseError } from "jsonc-parser"
 
@@ -11,7 +22,7 @@ import {
 import { parseTomlText } from "../config/toml.ts"
 import { parseYamlText } from "../config/yaml.ts"
 import { VENDOR_DIR } from "../domain/constants.ts"
-import { PackageVersionSyncFailed } from "../domain/errors.ts"
+import { MetadataFetchFailed, PackageVersionSyncFailed } from "../domain/errors.ts"
 import { Git, type GitResult, type GitShape } from "../services/git.ts"
 
 export type PackageEcosystem =
@@ -1356,16 +1367,21 @@ const npmLatestMetadata = (
 const hexPackageMetadata = (
   _cwd: string,
   packageName: string
-): Effect.Effect<Option.Option<HexPackageMetadata>> =>
-  Effect.promise(async () => {
-    const response = await fetch(`https://hex.pm/api/packages/${encodeURIComponent(packageName)}`, {
-      headers: {
-        accept: "application/json"
-      }
-    })
-    if (!response.ok) return Option.none<HexPackageMetadata>()
-    return parseHexPackageMetadata(await response.text())
+): Effect.Effect<Option.Option<HexPackageMetadata>> => {
+  const url = `https://hex.pm/api/packages/${encodeURIComponent(packageName)}`
+  return Effect.tryPromise({
+    try: async () => {
+      const response = await fetch(url, {
+        headers: {
+          accept: "application/json"
+        }
+      })
+      if (!response.ok) return Option.none<HexPackageMetadata>()
+      return parseHexPackageMetadata(await response.text())
+    },
+    catch: (cause) => new MetadataFetchFailed({ source: "hex", url, cause })
   }).pipe(Effect.catch(() => Effect.succeed(Option.none<HexPackageMetadata>())))
+}
 
 const MAVEN_CENTRAL_BASE_URL = "https://repo1.maven.org/maven2"
 const MAVEN_CENTRAL_SEARCH_URL = "https://search.maven.org/solrsearch/select"
@@ -1404,19 +1420,24 @@ const parseMavenLatestVersion = (text: string): Option.Option<string> =>
 const mavenLatestVersion = (packageName: string): Effect.Effect<Option.Option<string>> =>
   Option.match(mavenPackageParts(packageName), {
     onNone: () => Effect.succeed(Option.none<string>()),
-    onSome: ({ artifact, group }) =>
-      Effect.promise(async () => {
-        const params = new URLSearchParams({
-          q: `g:"${group}" AND a:"${artifact}"`,
-          rows: "1",
-          wt: "json"
-        })
-        const response = await fetch(`${MAVEN_CENTRAL_SEARCH_URL}?${params.toString()}`, {
-          headers: { accept: "application/json" }
-        })
-        if (!response.ok) return Option.none<string>()
-        return parseMavenLatestVersion(await response.text())
+    onSome: ({ artifact, group }) => {
+      const params = new URLSearchParams({
+        q: `g:"${group}" AND a:"${artifact}"`,
+        rows: "1",
+        wt: "json"
+      })
+      const url = `${MAVEN_CENTRAL_SEARCH_URL}?${params.toString()}`
+      return Effect.tryPromise({
+        try: async () => {
+          const response = await fetch(url, {
+            headers: { accept: "application/json" }
+          })
+          if (!response.ok) return Option.none<string>()
+          return parseMavenLatestVersion(await response.text())
+        },
+        catch: (cause) => new MetadataFetchFailed({ source: "maven-search", url, cause })
       }).pipe(Effect.catch(() => Effect.succeed(Option.none<string>())))
+    }
   })
 
 const mavenMetadataVersion = (
@@ -1440,21 +1461,26 @@ const mavenPackageMetadata = (
         Effect.flatMap((exactVersion) =>
           Option.match(exactVersion, {
             onNone: () => Effect.succeed(Option.none<MavenPackageMetadata>()),
-            onSome: (resolvedVersion) =>
-              Effect.promise(async () => {
-                const response = await fetch(mavenPomUrl({ ...parts, version: resolvedVersion }), {
-                  headers: { accept: "application/xml,text/xml" }
-                })
-                if (!response.ok) return Option.none<MavenPackageMetadata>()
-                return parseMavenPomMetadata(await response.text()).pipe(
-                  Option.orElse(() =>
-                    Option.some({
-                      repositoryUrl: Option.none<string>(),
-                      version: resolvedVersion
-                    })
+            onSome: (resolvedVersion) => {
+              const url = mavenPomUrl({ ...parts, version: resolvedVersion })
+              return Effect.tryPromise({
+                try: async () => {
+                  const response = await fetch(url, {
+                    headers: { accept: "application/xml,text/xml" }
+                  })
+                  if (!response.ok) return Option.none<MavenPackageMetadata>()
+                  return parseMavenPomMetadata(await response.text()).pipe(
+                    Option.orElse(() =>
+                      Option.some({
+                        repositoryUrl: Option.none<string>(),
+                        version: resolvedVersion
+                      })
+                    )
                   )
-                )
+                },
+                catch: (cause) => new MetadataFetchFailed({ source: "maven-pom", url, cause })
               }).pipe(Effect.catch(() => Effect.succeed(Option.none<MavenPackageMetadata>())))
+            }
           })
         )
       )
@@ -2301,12 +2327,14 @@ export interface PackageVersionSyncShape {
   ) => Effect.Effect<PackageVersionResolution, PackageVersionSyncFailed>
   readonly listDependencies: (
     cwd: string
-  ) => Effect.Effect<ReadonlyArray<PackageDependency>, unknown>
+  ) => Effect.Effect<ReadonlyArray<PackageDependency>, PlatformError.PlatformError>
   readonly scanDependency: (
     cwd: string,
     dependency: PackageDependency
-  ) => Effect.Effect<DependencyVendorCandidate, unknown>
-  readonly scan: (cwd: string) => Effect.Effect<ReadonlyArray<DependencyVendorCandidate>, unknown>
+  ) => Effect.Effect<DependencyVendorCandidate, PlatformError.PlatformError>
+  readonly scan: (
+    cwd: string
+  ) => Effect.Effect<ReadonlyArray<DependencyVendorCandidate>, PlatformError.PlatformError>
 }
 
 export class PackageVersionSync extends Context.Service<

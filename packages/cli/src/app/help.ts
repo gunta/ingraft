@@ -71,7 +71,7 @@ export function printRootHelp(): void {
   lines.push(`  Run ${cyan("ingraft <command> --help")} for details on a specific command.`)
   lines.push("")
 
-  console.log(lines.join("\n"))
+  process.stdout.write(`${lines.join("\n")}\n`)
 }
 
 const noisePatterns = [

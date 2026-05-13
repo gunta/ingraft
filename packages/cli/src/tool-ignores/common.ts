@@ -1,4 +1,4 @@
-import { Effect, FileSystem, Option, Path } from "effect"
+import { Effect, FileSystem, Option, Path, type PlatformError } from "effect"
 
 import { packageJsonHasDependency } from "../config/package-json.ts"
 import { VENDOR_DIR } from "../domain/constants.ts"
@@ -21,8 +21,10 @@ export interface ToolIgnoreReport {
 }
 
 export interface ToolIgnoreIntegration {
-  readonly doctor: (cwd: string) => Effect.Effect<ToolIgnoreReport, unknown>
-  readonly refresh: (cwd: string) => Effect.Effect<Option.Option<string>, unknown>
+  readonly doctor: (cwd: string) => Effect.Effect<ToolIgnoreReport, PlatformError.PlatformError>
+  readonly refresh: (
+    cwd: string
+  ) => Effect.Effect<Option.Option<string>, PlatformError.PlatformError>
 }
 
 export interface ToolFileContext {

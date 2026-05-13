@@ -1,4 +1,6 @@
-import { Context, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer, Option, type PlatformError } from "effect"
+
+import type { GitMetadataFailed, InkRenderFailed } from "../domain/errors.ts"
 
 import { IntellijSettings } from "./intellij.ts"
 import { VscodeSettings } from "./vscode.ts"
@@ -17,7 +19,10 @@ const optionToArray = <A>(option: Option.Option<A>): ReadonlyArray<A> =>
 export interface EditorSettingsShape {
   readonly refresh: (
     params: RefreshEditorSettingsParams
-  ) => Effect.Effect<ReadonlyArray<string>, unknown>
+  ) => Effect.Effect<
+    ReadonlyArray<string>,
+    PlatformError.PlatformError | GitMetadataFailed | InkRenderFailed
+  >
 }
 
 export class EditorSettings extends Context.Service<EditorSettings, EditorSettingsShape>()(

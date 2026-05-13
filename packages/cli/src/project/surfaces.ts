@@ -290,7 +290,7 @@ const detectSurfacesWith = (
 export interface ProjectSurfacesShape {
   readonly doctor: (
     params: ProjectSurfacesDoctorParams
-  ) => Effect.Effect<ProjectSurfacesReport, unknown>
+  ) => Effect.Effect<ProjectSurfacesReport, never>
 }
 
 export class ProjectSurfaces extends Context.Service<ProjectSurfaces, ProjectSurfacesShape>()(

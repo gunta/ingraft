@@ -1,4 +1,4 @@
-import { Effect, Option } from "effect"
+import { Effect, Option, type PlatformError } from "effect"
 import { isScalar, isSeq, parseDocument } from "yaml"
 
 import {
@@ -47,12 +47,12 @@ export interface MonorepoToolDefinition {
   readonly doctor: (
     context: ToolFileContext,
     cwd: string
-  ) => Effect.Effect<ToolIgnoreReport, unknown>
+  ) => Effect.Effect<ToolIgnoreReport, PlatformError.PlatformError>
   readonly name: string
   readonly refresh?: (
     context: ToolFileContext,
     cwd: string
-  ) => Effect.Effect<Option.Option<string>, unknown>
+  ) => Effect.Effect<Option.Option<string>, PlatformError.PlatformError>
 }
 
 export interface MonorepoToolCategory {
