@@ -1,5 +1,6 @@
 import { Data } from "effect"
 import { style, type StyleOptions } from "./styles.ts"
+import type { VendorStrategy } from "./vendor-strategy.ts"
 
 export interface ErrorPresentation {
   readonly title: string
@@ -52,6 +53,13 @@ export interface UpdateFailedParams {
   readonly names: ReadonlyArray<string>
 }
 
+export interface VendorStrategyCommandFailedParams {
+  readonly action: "add" | "update" | "remove"
+  readonly strategy: VendorStrategy
+  readonly prefix: string
+  readonly output: string
+}
+
 export class GitCommandFailed extends Data.TaggedError(
   "GitCommandFailed"
 )<GitCommandFailedParams> {}
@@ -94,6 +102,10 @@ export class UpdateFailed extends Data.TaggedError(
   "UpdateFailed"
 )<UpdateFailedParams> {}
 
+export class VendorStrategyCommandFailed extends Data.TaggedError(
+  "VendorStrategyCommandFailed"
+)<VendorStrategyCommandFailedParams> {}
+
 export type VendorError =
   | GitCommandFailed
   | NotGitRepository
@@ -106,6 +118,7 @@ export type VendorError =
   | GitRemoveFailed
   | UpdateTargetMissing
   | UpdateFailed
+  | VendorStrategyCommandFailed
 
 const gitCommand = (args: ReadonlyArray<string>) => `git ${args.join(" ")}`
 
@@ -189,6 +202,13 @@ export const errorPresentation = (error: VendorError): ErrorPresentation => {
         title: "One or more updates failed",
         detail: `Failed repositories: ${error.names.join(", ")}`,
         hint: "Review the git error above, resolve conflicts if any, and retry the failed names.",
+        code: 3
+      }
+    case "VendorStrategyCommandFailed":
+      return {
+        title: `${error.strategy} ${error.action} failed`,
+        detail: error.output,
+        hint: `Check ${error.prefix} and the git output above, then retry.`,
         code: 3
       }
   }

@@ -1,20 +1,53 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Either, Option, ParseResult, Schema } from "effect"
-import { TRAILER_DIR, TRAILER_REF, TRAILER_URL } from "./constants.ts"
+import {
+  TRAILER_ACTION,
+  TRAILER_DIR,
+  TRAILER_REF,
+  TRAILER_STRATEGY,
+  TRAILER_URL
+} from "./constants.ts"
 import { git } from "./git.ts"
+import {
+  DEFAULT_VENDOR_STRATEGY,
+  VendorActionSchema,
+  VendorStrategySchema,
+} from "./vendor-strategy.ts"
 
 export const VendoredRepoSchema = Schema.Struct({
   name: Schema.String.pipe(Schema.minLength(1)),
   prefix: Schema.String.pipe(Schema.minLength(1)),
   url: Schema.String.pipe(Schema.minLength(1)),
   ref: Schema.String.pipe(Schema.minLength(1)),
+  strategy: VendorStrategySchema,
   sha: Schema.String.pipe(Schema.minLength(1)),
   date: Schema.String.pipe(Schema.minLength(1))
 })
 
 export type VendoredRepo = typeof VendoredRepoSchema.Type
 
-const decodeVendoredRepo = Schema.decodeUnknownEither(VendoredRepoSchema, {
+const VendoredLogRecordSchema = Schema.Struct({
+  ...VendoredRepoSchema.fields,
+  action: VendorActionSchema
+})
+
+interface ActiveVendoredLogRecord {
+  readonly _tag: "Active"
+  readonly repo: VendoredRepo
+}
+
+interface RemovedVendoredLogRecord {
+  readonly _tag: "Removed"
+  readonly prefix: string
+}
+
+type StoredVendoredLogRecord =
+  | ActiveVendoredLogRecord
+  | RemovedVendoredLogRecord
+
+type VendoredLogRecord = typeof VendoredLogRecordSchema.Type
+
+const decodeVendoredRecord = Schema.decodeUnknownEither(VendoredLogRecordSchema, {
   errors: "all"
 })
 
@@ -34,11 +67,13 @@ export interface FindVendoredRepoParams {
 }
 
 interface VendoredLogRecordFields {
+  readonly action: string
   readonly date: string
   readonly name: string
   readonly prefix: string
   readonly ref: string
   readonly sha: string
+  readonly strategy: string
   readonly url: string
 }
 
@@ -47,11 +82,13 @@ export const gitLogFormat = [
   "%cI",
   `%(trailers:key=${TRAILER_DIR},valueonly)`,
   `%(trailers:key=${TRAILER_URL},valueonly)`,
-  `%(trailers:key=${TRAILER_REF},valueonly)`
+  `%(trailers:key=${TRAILER_REF},valueonly)`,
+  `%(trailers:key=${TRAILER_STRATEGY},valueonly)`,
+  `%(trailers:key=${TRAILER_ACTION},valueonly)`
 ].join("%x00")
 
 interface VendoredLogAccumulator {
-  readonly byPrefix: ReadonlyMap<string, VendoredRepo>
+  readonly byPrefix: ReadonlyMap<string, StoredVendoredLogRecord>
   readonly diagnostics: ReadonlyArray<VendoredLogDiagnostic>
 }
 
@@ -73,8 +110,12 @@ const repoFromRecord = (record: string): VendoredLogRecordFields => {
   const prefix = recordPart(parts, 2)
   const url = recordPart(parts, 3)
   const ref = recordPart(parts, 4)
+  const rawStrategy = recordPart(parts, 5)
+  const rawAction = recordPart(parts, 6)
   const name = prefix.replace(/\/+$/, "").split("/").pop() ?? ""
-  return { date, name, prefix, ref, sha, url }
+  const strategy = rawStrategy === "" ? DEFAULT_VENDOR_STRATEGY : rawStrategy
+  const action = rawAction === "" ? "upsert" : rawAction
+  return { action, date, name, prefix, ref, sha, strategy, url }
 }
 
 const diagnosticFromRecord = (
@@ -91,16 +132,34 @@ const diagnosticFromRecord = (
 }
 
 const rememberRepo = (
-  byPrefix: ReadonlyMap<string, VendoredRepo>,
-  repo: VendoredRepo
-): ReadonlyMap<string, VendoredRepo> =>
-  byPrefix.has(repo.prefix) ? byPrefix : new Map([...byPrefix, [repo.prefix, repo]])
+  byPrefix: ReadonlyMap<string, StoredVendoredLogRecord>,
+  record: VendoredLogRecord
+): ReadonlyMap<string, StoredVendoredLogRecord> => {
+  if (byPrefix.has(record.prefix)) return byPrefix
+
+  const stored: StoredVendoredLogRecord =
+    record.action === "remove"
+      ? { _tag: "Removed", prefix: record.prefix }
+      : {
+          _tag: "Active",
+          repo: {
+            date: record.date,
+            name: record.name,
+            prefix: record.prefix,
+            ref: record.ref,
+            sha: record.sha,
+            strategy: record.strategy,
+            url: record.url
+          }
+        }
+  return new Map([...byPrefix, [record.prefix, stored]])
+}
 
 const appendRecord = (
   state: VendoredLogAccumulator,
   record: string
 ): VendoredLogAccumulator =>
-  Either.match(decodeVendoredRepo(repoFromRecord(record)), {
+  Either.match(decodeVendoredRecord(repoFromRecord(record)), {
     onRight: (repo) => ({
       ...state,
       byPrefix: rememberRepo(state.byPrefix, repo)
@@ -115,12 +174,14 @@ export const parseVendoredLogWithDiagnostics = (
   stdout: string
 ): VendoredLogParseResult => {
   const { byPrefix, diagnostics } = nonEmptyRecords(stdout).reduce(appendRecord, {
-    byPrefix: new Map<string, VendoredRepo>(),
+    byPrefix: new Map<string, StoredVendoredLogRecord>(),
     diagnostics: []
   })
 
   return {
-    repos: [...byPrefix.values()].sort((a, b) => a.name.localeCompare(b.name)),
+    repos: [...byPrefix.values()]
+      .flatMap((record) => (record._tag === "Active" ? [record.repo] : []))
+      .sort((a, b) => a.name.localeCompare(b.name)),
     diagnostics
   }
 }
@@ -151,7 +212,9 @@ export const listVendored = (cwd: string) =>
       { discard: true }
     )
     return yield* Effect.filter(parsed.repos, (repo) =>
-      fs.exists(path.resolve(cwd, repo.prefix))
+      repo.strategy === "clone-ignore"
+        ? Effect.succeed(true)
+        : fs.exists(path.resolve(cwd, repo.prefix))
     )
   })
 

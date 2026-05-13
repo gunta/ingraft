@@ -29,6 +29,17 @@ export interface CommitConfigChangesParams {
   readonly message: string
 }
 
+export interface CommitPathsIfChangedParams {
+  readonly cwd: string
+  readonly message: string
+  readonly paths: ReadonlyArray<string>
+}
+
+export interface EmptyCommitParams {
+  readonly cwd: string
+  readonly message: string
+}
+
 const gitCommandLabel = (args: ReadonlyArray<string>) => `git ${args.join(" ")}`
 
 const gitOutput = (result: GitResult) =>
@@ -140,13 +151,42 @@ export const commitConfigChanges = ({
 }: CommitConfigChangesParams) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    const candidates = [".vscode/settings.json", "AGENTS.md", "CLAUDE.md"]
+    const candidates = [
+      ".gitignore",
+      ".vscode/settings.json",
+      "AGENTS.md",
+      "CLAUDE.md"
+    ]
     const toStage = yield* Effect.filter(candidates, (relativePath) =>
-      fs.exists(`${cwd}/${relativePath}`)
+      fs.exists(`${cwd}/${relativePath}`).pipe(
+        Effect.flatMap((exists) =>
+          exists
+            ? Effect.succeed(true)
+            : git(["ls-files", "--error-unmatch", relativePath], { cwd }).pipe(
+                Effect.map((result) => result.exitCode === 0)
+              )
+        )
+      )
     )
     if (toStage.length === 0) return
-    yield* git(["add", "--", ...toStage], { cwd })
-    const diff = yield* git(["diff", "--cached", "--quiet"], { cwd })
-    if (diff.exitCode === 0) return
-    yield* git(["commit", "-m", message], { cwd })
+    yield* commitPathsIfChanged({ cwd, paths: toStage, message })
   })
+
+export const commitPathsIfChanged = ({
+  cwd,
+  message,
+  paths
+}: CommitPathsIfChangedParams) =>
+  Effect.gen(function* () {
+    if (paths.length === 0) return false
+    yield* git(["add", "--", ...paths], { cwd })
+    const diff = yield* git(["diff", "--cached", "--quiet"], { cwd })
+    if (diff.exitCode === 0) return false
+    yield* gitChecked(["commit", "-m", message], { cwd })
+    return true
+  })
+
+export const emptyCommit = ({ cwd, message }: EmptyCommitParams) =>
+  gitChecked(["commit", "--allow-empty", "-m", message], { cwd }).pipe(
+    Effect.asVoid
+  )

@@ -33,6 +33,7 @@ describe("agent docs", () => {
           prefix: "vendor/effect",
           url: "https://github.com/Effect-TS/effect.git",
           ref: "main",
+          strategy: "subtree",
           sha: "sha",
           date: "date"
         }

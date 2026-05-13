@@ -1,6 +1,7 @@
-import { Effect } from "effect"
+import { Effect, Option } from "effect"
 import { updateAgentDocs } from "./agent-docs.ts"
 import { commitConfigChanges } from "./git.ts"
+import { updateGitignore } from "./gitignore.ts"
 import { reportOptionalPath, reportWritten } from "./reports.ts"
 import { RuntimeConfig } from "./runtime.ts"
 import { commandInvocation } from "./script.ts"
@@ -24,7 +25,19 @@ export const refreshGeneratedFiles = ({
     const runtime = yield* RuntimeConfig
     const command = commandInvocation({ cwd, argv: runtime.argv })
     const written = yield* updateAgentDocs({ cwd, repos, command })
-    yield* reportWritten({ cwd, paths: written })
+    const gitignore = yield* updateGitignore({
+      cwd,
+      prefixes: repos
+        .filter((repo) => repo.strategy === "clone-ignore")
+        .map((repo) => repo.prefix)
+    })
+    yield* reportWritten({
+      cwd,
+      paths: [...written, ...Option.match(gitignore, {
+        onNone: () => [],
+        onSome: (path) => [path]
+      })]
+    })
     if (vscode) {
       const settings = yield* updateVscodeSettings(cwd)
       yield* reportOptionalPath({ cwd, path: settings })

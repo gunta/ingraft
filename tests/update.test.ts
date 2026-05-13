@@ -8,6 +8,7 @@ const repo = {
   prefix: "vendor/effect",
   url: "https://github.com/Effect-TS/effect.git",
   ref: "main",
+  strategy: "subtree",
   sha: "sha",
   date: "date"
 } satisfies VendoredRepo

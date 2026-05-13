@@ -27,11 +27,12 @@ export const renderVendoredList = ({
 
   const nameWidth = Math.max(...repos.map((repo) => repo.name.length))
   const prefixWidth = Math.max(...repos.map((repo) => repo.prefix.length))
+  const strategyWidth = Math.max(...repos.map((repo) => repo.strategy.length))
   return [
     `vendor_dir: ${VENDOR_DIR}/`,
     ...repos.map(
       (repo) =>
-        `  ${repo.name.padEnd(nameWidth)}  ${repo.prefix.padEnd(prefixWidth)}  ${repo.url} @ ${repo.ref}`
+        `  ${repo.name.padEnd(nameWidth)}  ${repo.strategy.padEnd(strategyWidth)}  ${repo.prefix.padEnd(prefixWidth)}  ${repo.url} @ ${repo.ref}`
     )
   ].join("\n")
 }

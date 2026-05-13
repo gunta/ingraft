@@ -66,6 +66,7 @@ const app = RuntimeConfig.pipe(
     UpdateFailed: handleVendorError,
     UpdateTargetMissing: handleVendorError,
     VendorPathAlreadyExists: handleVendorError,
+    VendorStrategyCommandFailed: handleVendorError,
     VendoredRepoAlreadyExists: handleVendorError,
     VendoredRepoNotFound: handleVendorError
   })

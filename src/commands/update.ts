@@ -1,15 +1,29 @@
 import { Args, Command as Cli, Options } from "@effect/cli"
+import { FileSystem, Path } from "@effect/platform"
 import { Array as Arr, Effect, Option } from "effect"
-import { TRAILER_DIR, TRAILER_REF, TRAILER_URL } from "../constants.ts"
+import {
+  TRAILER_ACTION,
+  TRAILER_DIR,
+  TRAILER_REF,
+  TRAILER_STRATEGY,
+  TRAILER_URL
+} from "../constants.ts"
 import {
   UpdateFailed,
   UpdateTargetMissing,
+  VendorStrategyCommandFailed,
   VendoredRepoNotFound
 } from "../errors.ts"
-import { assertCleanTree, git, repoRoot } from "../git.ts"
+import {
+  assertCleanTree,
+  commitPathsIfChanged,
+  git,
+  repoRoot
+} from "../git.ts"
 import { error, info, ok, warn, withCommandTelemetry } from "../log.ts"
 import { refreshGeneratedFiles } from "../project-files.ts"
 import { listVendored, type VendoredRepo } from "../vendor-state.ts"
+import type { VendorStrategy } from "../vendor-strategy.ts"
 
 export interface SelectUpdateTargetsParams {
   readonly all: boolean
@@ -30,6 +44,12 @@ interface GitOutputParams {
 interface VendoredRepoCommandParams {
   readonly cwd: string
   readonly repo: VendoredRepo
+}
+
+interface StrategyGitFailureParams {
+  readonly prefix: string
+  readonly result: { readonly stdout: string; readonly stderr: string }
+  readonly strategy: VendorStrategy
 }
 
 const updateNameArg = Args.text({ name: "name" }).pipe(
@@ -77,10 +97,20 @@ export const selectUpdateTargets = ({
 }
 
 const updateMessage = (repo: VendoredRepo) =>
-  `vendor: update ${repo.name} (${repo.url}@${repo.ref})\n\n${TRAILER_DIR}: ${repo.prefix}\n${TRAILER_URL}: ${repo.url}\n${TRAILER_REF}: ${repo.ref}`
+  `vendor: update ${repo.name} (${repo.url}@${repo.ref}) [${repo.strategy}]\n\n${TRAILER_DIR}: ${repo.prefix}\n${TRAILER_URL}: ${repo.url}\n${TRAILER_REF}: ${repo.ref}\n${TRAILER_STRATEGY}: ${repo.strategy}\n${TRAILER_ACTION}: upsert`
 
 const lastGitLine = ({ stdout, stderr }: GitOutputParams): string =>
   (stderr.trim() || stdout.trim()).split("\n").slice(-1)[0] ?? "unknown error"
+
+const failureOutput = (cause: unknown): string => {
+  if (typeof cause === "object" && cause !== null) {
+    if ("output" in cause && typeof cause.output === "string") return cause.output
+    if ("message" in cause && typeof cause.message === "string") {
+      return cause.message
+    }
+  }
+  return String(cause)
+}
 
 const pullSubtree = ({ cwd, repo }: VendoredRepoCommandParams) =>
   git(
@@ -97,16 +127,105 @@ const pullSubtree = ({ cwd, repo }: VendoredRepoCommandParams) =>
     { cwd }
   )
 
+const strategyGitFailed = ({
+  prefix,
+  result,
+  strategy
+}: StrategyGitFailureParams) =>
+  new VendorStrategyCommandFailed({
+    action: "update",
+    prefix,
+    strategy,
+    output: result.stderr.trim() || result.stdout.trim() || "unknown error"
+  })
+
+const checkedStrategyGit = (
+  args: ReadonlyArray<string>,
+  { cwd, repo }: VendoredRepoCommandParams
+) =>
+  git(args, { cwd }).pipe(
+    Effect.filterOrFail(
+      (result) => result.exitCode === 0,
+      (result) =>
+        strategyGitFailed({
+          prefix: repo.prefix,
+          result,
+          strategy: repo.strategy
+        })
+    ),
+    Effect.asVoid
+  )
+
+const checkoutRepoRef = (params: VendoredRepoCommandParams) =>
+  Effect.gen(function* () {
+    yield* checkedStrategyGit(
+      ["-C", params.repo.prefix, "fetch", "--tags", "origin", params.repo.ref],
+      params
+    )
+    yield* checkedStrategyGit(["-C", params.repo.prefix, "checkout", "FETCH_HEAD"], params)
+  })
+
+const updateSubmodule = (params: VendoredRepoCommandParams) =>
+  Effect.gen(function* () {
+    yield* checkedStrategyGit(
+      ["submodule", "update", "--init", "--recursive", "--", params.repo.prefix],
+      params
+    )
+    yield* checkoutRepoRef(params)
+    yield* commitPathsIfChanged({
+      cwd: params.cwd,
+      paths: [params.repo.prefix],
+      message: updateMessage(params.repo)
+    })
+  })
+
+const updateCloneIgnore = (params: VendoredRepoCommandParams) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const target = path.resolve(params.cwd, params.repo.prefix)
+    const exists = yield* fs.exists(target)
+    if (!exists) {
+      yield* fs.makeDirectory(path.dirname(target), { recursive: true }).pipe(
+        Effect.ignore
+      )
+      yield* checkedStrategyGit(["clone", params.repo.url, params.repo.prefix], params)
+    }
+    yield* checkoutRepoRef(params)
+  })
+
+const updateByStrategy = (params: VendoredRepoCommandParams) => {
+  switch (params.repo.strategy) {
+    case "subtree":
+      return pullSubtree(params).pipe(
+        Effect.filterOrFail(
+          (result) => result.exitCode === 0,
+          (result) =>
+            strategyGitFailed({
+              prefix: params.repo.prefix,
+              result,
+              strategy: params.repo.strategy
+            })
+        ),
+        Effect.asVoid
+      )
+    case "submodule":
+      return updateSubmodule(params)
+    case "clone-ignore":
+      return updateCloneIgnore(params)
+  }
+}
+
 const updateOne = ({ cwd, repo }: VendoredRepoCommandParams) =>
   info(`Updating ${repo.name}: ${repo.url} @ ${repo.ref}`).pipe(
-    Effect.zipRight(pullSubtree({ cwd, repo })),
-    Effect.flatMap((subtree) =>
-      subtree.exitCode === 0
-        ? ok(`updated ${repo.name}`).pipe(Effect.as(Option.none<string>()))
+    Effect.zipRight(updateByStrategy({ cwd, repo }).pipe(Effect.either)),
+    Effect.flatMap((result) =>
+      result._tag === "Right"
+          ? ok(`updated ${repo.name}`).pipe(Effect.as(Option.none<string>()))
         : error(
             `failed: ${lastGitLine({
-              stdout: subtree.stdout,
-              stderr: subtree.stderr
+              stdout: "",
+              stderr: failureOutput(result.left)
             })}`
           ).pipe(Effect.as(Option.some(repo.name)))
     )

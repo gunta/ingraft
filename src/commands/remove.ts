@@ -1,12 +1,23 @@
 import { Args, Command as Cli } from "@effect/cli"
+import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
 import { GitRemoveFailed, VendoredRepoNotFound } from "../errors.ts"
 import {
   assertCleanTree,
+  commitPathsIfChanged,
+  emptyCommit,
   git,
   gitChecked,
   repoRoot
 } from "../git.ts"
+import {
+  TRAILER_ACTION,
+  TRAILER_DIR,
+  TRAILER_REF,
+  TRAILER_STRATEGY,
+  TRAILER_URL
+} from "../constants.ts"
+import { updateGitignore } from "../gitignore.ts"
 import { info, ok, withCommandTelemetry } from "../log.ts"
 import { refreshGeneratedFiles } from "../project-files.ts"
 import { findByName, listVendored, type VendoredRepo } from "../vendor-state.ts"
@@ -25,6 +36,12 @@ interface RemoveFromGitParams {
   readonly target: VendoredRepo
 }
 
+interface RemoveCloneIgnoreParams {
+  readonly cwd: string
+  readonly reposBefore: ReadonlyArray<VendoredRepo>
+  readonly target: VendoredRepo
+}
+
 const removeNameArg = Args.text({ name: "name" }).pipe(
   Args.withDescription("Name (or prefix path) of the vendored repository to remove.")
 )
@@ -40,7 +57,12 @@ const removeTarget = ({ cwd, name }: RemoveTargetParams) =>
   )
 
 const removeFromGit = ({ cwd, target }: RemoveFromGitParams) =>
-  git(["rm", "-rf", target.prefix], { cwd }).pipe(
+  git(
+    target.strategy === "submodule"
+      ? ["rm", "-f", target.prefix]
+      : ["rm", "-rf", target.prefix],
+    { cwd }
+  ).pipe(
     Effect.filterOrFail(
       (result) => result.exitCode === 0,
       (result) =>
@@ -52,16 +74,53 @@ const removeFromGit = ({ cwd, target }: RemoveFromGitParams) =>
     Effect.asVoid
   )
 
+const removeMessage = (target: VendoredRepo) =>
+  `vendor: remove ${target.name} (${target.url}@${target.ref}) [${target.strategy}]\n\n${TRAILER_DIR}: ${target.prefix}\n${TRAILER_URL}: ${target.url}\n${TRAILER_REF}: ${target.ref}\n${TRAILER_STRATEGY}: ${target.strategy}\n${TRAILER_ACTION}: remove`
+
+const removeCloneIgnore = ({
+  cwd,
+  reposBefore,
+  target
+}: RemoveCloneIgnoreParams) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    yield* fs.remove(path.resolve(cwd, target.prefix), {
+      force: true,
+      recursive: true
+    })
+    yield* updateGitignore({
+      cwd,
+      prefixes: reposBefore
+        .filter(
+          (repo) =>
+            repo.strategy === "clone-ignore" && repo.prefix !== target.prefix
+        )
+        .map((repo) => repo.prefix)
+    })
+    const committed = yield* commitPathsIfChanged({
+      cwd,
+      paths: [".gitignore"],
+      message: removeMessage(target)
+    })
+    if (!committed) yield* emptyCommit({ cwd, message: removeMessage(target) })
+  })
+
 export const removeImpl = ({ name }: RemoveCommandParams) =>
   Effect.gen(function* () {
     const cwd = yield* repoRoot
     yield* assertCleanTree(cwd)
 
     const target = yield* removeTarget({ cwd, name })
+    const reposBefore = yield* listVendored(cwd)
 
     yield* info(`Removing ${target.prefix}/`)
-    yield* removeFromGit({ cwd, target })
-    yield* gitChecked(["commit", "-m", `vendor: remove ${target.name}`], { cwd })
+    if (target.strategy === "clone-ignore") {
+      yield* removeCloneIgnore({ cwd, reposBefore, target })
+    } else {
+      yield* removeFromGit({ cwd, target })
+      yield* gitChecked(["commit", "-m", removeMessage(target)], { cwd })
+    }
 
     const reposAfter = yield* listVendored(cwd)
     yield* refreshGeneratedFiles({

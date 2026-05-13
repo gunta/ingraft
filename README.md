@@ -1,6 +1,6 @@
 # vendor-subtree-skill
 
-A cross-agent skill that vendors external git repositories into your project as `git subtree` directories, so coding agents (Claude Code, Codex, Cursor, etc.) can read the source as plain files instead of guessing from docs and web snippets.
+A cross-agent skill that vendors external git repositories into your project for coding agents (Claude Code, Codex, Cursor, etc.) using one of three strategies: committed `git subtree` source, `git submodule` gitlinks, or local clones that are added to `.gitignore`.
 
 Inspired by [Maxwell Brown's post on the Effect blog](https://effect.website/blog/the-one-weird-git-trick-that-makes-coding-agents-more-effect-ive/).
 
@@ -10,12 +10,13 @@ Inspired by [Maxwell Brown's post on the Effect blog](https://effect.website/blo
 
 After one command:
 
-- `vendor/<name>/` — the external repo's source, flat files, no submodule boundary.
+- `vendor/<name>/` — the external repo's source or gitlink, depending on strategy.
 - An auto-generated `<!-- vendor-subtree-skill:begin -->` section in `AGENTS.md` (and `CLAUDE.md` if present) telling every agent how to treat the vendored code.
 - `.vscode/settings.json` exclusions so the editor doesn't suggest auto-imports from, search, or watch the vendored directory.
-- A clean `--squash`ed commit per add/update.
+- For `clone-ignore`, a managed `.gitignore` section that keeps local clones out of git.
+- Git trailer metadata for each add/update/remove, so `list`, `update`, and `refresh` have a source of truth.
 
-**No manifest file.** Metadata lives in git commit trailers, so git itself is the source of truth.
+**No manifest file.** Metadata lives in git commit trailers, so git itself is the source of truth. `clone-ignore` stores only metadata in git; the cloned repo stays local.
 
 **Standalone CLI.** The tool is a Bun + TypeScript package built on [Effect](https://effect.website/) (`@effect/cli`, `@effect/platform`, `@effect/platform-bun`, and Effect Schema). It can run as a project-local script with `bun scripts/vendor.ts`, or as an installed CLI via the `vendor-subtree` bin.
 
@@ -64,7 +65,7 @@ vendor-subtree --help
 ## Requirements
 
 - **Bun** ≥ 1.0 — `curl -fsSL https://bun.sh/install | bash` or `npm install -g bun`
-- **git** with `git subtree` (ships with git ≥ 1.7.11; present in every modern install)
+- **git** with `git subtree` for the default `subtree` strategy (ships with git ≥ 1.7.11; present in every modern install)
 
 ## Caveats
 
@@ -95,6 +96,8 @@ bun scripts/vendor.ts --version                         # 0.3.0
 bun scripts/vendor.ts init                              # one-time bootstrap
 bun scripts/vendor.ts add Effect-TS/effect              # add a vendored repo
 bun scripts/vendor.ts add Effect-TS/effect --ref main   # pin a ref
+bun scripts/vendor.ts add Effect-TS/effect --strategy submodule
+bun scripts/vendor.ts add Effect-TS/effect --strategy clone-ignore
 bun scripts/vendor.ts add git@github.com:org/lib.git    # SSH (private)
 bun scripts/vendor.ts update Hello-World                # pull latest
 bun scripts/vendor.ts update --all                      # pull all
@@ -107,7 +110,7 @@ bun scripts/vendor.ts --completions zsh                 # generate shell complet
 
 ## How it works
 
-`git subtree` already records `git-subtree-dir:` trailers in the commit messages it creates. This skill adds two more — `vendor-source-url:` and `vendor-source-ref:` — to the merge commit it generates for every `add` and `update`:
+The tool records metadata as git trailers. `git subtree` already uses `git-subtree-dir:`; this skill also records `vendor-source-url:`, `vendor-source-ref:`, `vendor-strategy:`, and `vendor-action:` for every managed add/update/remove:
 
 ```
 vendor: add effect (https://github.com/Effect-TS/effect.git@main)
@@ -115,19 +118,21 @@ vendor: add effect (https://github.com/Effect-TS/effect.git@main)
 git-subtree-dir: vendor/effect
 vendor-source-url: https://github.com/Effect-TS/effect.git
 vendor-source-ref: main
+vendor-strategy: subtree
+vendor-action: upsert
 ```
 
 `list`, `update`, and `refresh` discover the current state from `git log` trailer placeholders and validate parsed records with Effect Schema. No `.vendor.json`, no hidden state.
 
-## Why subtree, not submodule
+## Strategy guide
 
-For the "agent reads source as reference" use case, subtree is materially better:
+`subtree` is the default. It commits a squashed copy of the upstream source into the parent repo. Use it when agent portability matters most and the repo size is acceptable.
 
-- Submodule boundaries (`.git` inside the submodule directory) cause many agents' file-search tools to stop traversal. There are open issues on Claude Code documenting this for Glob/Grep/LS. Subtree directories are just files.
-- Submodules require explicit init after clone (`git submodule update --init --recursive`) — easy to forget, breaks CI for the unaware.
-- Codex Cloud and similar ephemeral environments need per-submodule auth setup to clone private submodules. Subtree's content is already in the parent repo.
+`submodule` commits only a gitlink plus `.gitmodules`. Use it when the upstream repo is too large to subtree, but you still want git to track a pinned checkout.
 
-The tradeoff is repo size: subtrees commit the full content (squashed). For the agent-reference use case, that's the right tradeoff.
+`clone-ignore` clones into `vendor/<name>/`, adds that path to a managed `.gitignore` section, and commits only metadata. Use it when the repo should be local-only, private, huge, experimental, or not part of the parent repo history.
+
+Subtree remains the best default for "agent always sees source after clone." Submodules and ignored clones trade portability for smaller parent repos.
 
 ## Compatibility
 

@@ -29,10 +29,64 @@ describe("vendor state parsing", () => {
         prefix: "vendor/effect",
         url: "https://github.com/Effect-TS/effect.git",
         ref: "main",
+        strategy: "subtree",
         sha: "new-sha",
         date: "2026-05-13T00:00:00Z"
       }
     ])
+  })
+
+  test("parses explicit non-subtree strategies from git trailers", () => {
+    const log = [
+      [
+        "sha-submodule",
+        "2026-05-13T00:00:00Z",
+        "vendor/effect",
+        "https://github.com/Effect-TS/effect.git",
+        "main",
+        "submodule",
+        "upsert"
+      ].join("\x00"),
+      [
+        "sha-clone",
+        "2026-05-13T00:00:00Z",
+        "vendor/effect-platform",
+        "https://github.com/Effect-TS/effect.git",
+        "main",
+        "clone-ignore",
+        "upsert"
+      ].join("\x00")
+    ].join("\x1e")
+
+    expect(parseVendoredLog(log).map((repo) => repo.strategy)).toEqual([
+      "submodule",
+      "clone-ignore"
+    ])
+  })
+
+  test("excludes repos whose latest trailer record is a remove action", () => {
+    const log = [
+      [
+        "remove-sha",
+        "2026-05-14T00:00:00Z",
+        "vendor/effect",
+        "https://github.com/Effect-TS/effect.git",
+        "main",
+        "clone-ignore",
+        "remove"
+      ].join("\x00"),
+      [
+        "add-sha",
+        "2026-05-13T00:00:00Z",
+        "vendor/effect",
+        "https://github.com/Effect-TS/effect.git",
+        "main",
+        "clone-ignore",
+        "upsert"
+      ].join("\x00")
+    ].join("\x1e")
+
+    expect(parseVendoredLog(log)).toEqual([])
   })
 
   test("ignores malformed records instead of creating partial state", () => {

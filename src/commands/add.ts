@@ -1,28 +1,44 @@
 import { Args, Command as Cli, Options } from "@effect/cli"
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
-import { TRAILER_DIR, TRAILER_REF, TRAILER_URL, VENDOR_DIR } from "../constants.ts"
+import {
+  TRAILER_ACTION,
+  TRAILER_DIR,
+  TRAILER_REF,
+  TRAILER_STRATEGY,
+  TRAILER_URL,
+  VENDOR_DIR
+} from "../constants.ts"
 import {
   SubtreeAddFailed,
   VendorPathAlreadyExists,
+  VendorStrategyCommandFailed,
   VendoredRepoAlreadyExists
 } from "../errors.ts"
 import {
   assertCleanTree,
+  commitPathsIfChanged,
   detectDefaultBranch,
+  emptyCommit,
   git,
   repoRoot
 } from "../git.ts"
+import { updateGitignore } from "../gitignore.ts"
 import { info, ok, warn, withCommandTelemetry } from "../log.ts"
 import { inferRepoName, normalizeRepoUrl } from "../repo.ts"
 import { refreshGeneratedFiles } from "../project-files.ts"
-import { findByName, listVendored } from "../vendor-state.ts"
+import { findByName, listVendored, type VendoredRepo } from "../vendor-state.ts"
+import {
+  DEFAULT_VENDOR_STRATEGY,
+  type VendorStrategy
+} from "../vendor-strategy.ts"
 
 export interface AddCommandParams {
   readonly repo: string
   readonly ref: Option.Option<string>
   readonly prefix: Option.Option<string>
   readonly name: Option.Option<string>
+  readonly strategy: VendorStrategy
 }
 
 interface SubtreeAddMessageParams {
@@ -30,6 +46,8 @@ interface SubtreeAddMessageParams {
   readonly prefix: string
   readonly ref: string
   readonly url: string
+  readonly strategy: VendorStrategy
+  readonly action?: "upsert" | "remove"
 }
 
 interface EnsureNewVendorTargetParams {
@@ -46,6 +64,23 @@ interface AddSubtreeParams {
   readonly finalPrefix: string
   readonly finalRef: string
   readonly url: string
+}
+
+interface AddStrategyParams extends AddSubtreeParams {
+  readonly strategy: VendorStrategy
+  readonly existingRepos: ReadonlyArray<VendoredRepo>
+}
+
+interface CheckoutVendorRefParams {
+  readonly cwd: string
+  readonly prefix: string
+  readonly ref: string
+  readonly strategy: VendorStrategy
+}
+
+interface EnsureParentDirectoryParams {
+  readonly cwd: string
+  readonly prefix: string
 }
 
 interface ResolveRefParams {
@@ -81,6 +116,18 @@ const addNameOption = Options.text("name").pipe(
   Options.optional
 )
 
+const addStrategyOption = Options.choiceWithValue("strategy", [
+  ["subtree", "subtree"],
+  ["submodule", "submodule"],
+  ["clone-ignore", "clone-ignore"],
+  ["clone", "clone-ignore"]
+] as const).pipe(
+  Options.withDefault(DEFAULT_VENDOR_STRATEGY),
+  Options.withDescription(
+    "Vendoring strategy: subtree commits source, submodule commits a gitlink, clone-ignore clones locally and gitignores it."
+  )
+)
+
 const optionOrElseEffect = <A, E, R>(
   option: Option.Option<A>,
   orElse: Effect.Effect<A, E, R>
@@ -111,12 +158,14 @@ const resolveRef = ({ ref, url }: ResolveRefParams) =>
   )
 
 const subtreeAddMessage = ({
+  action = "upsert",
   name,
   prefix,
   ref,
+  strategy,
   url
 }: SubtreeAddMessageParams) =>
-  `vendor: add ${name} (${url}@${ref})\n\n${TRAILER_DIR}: ${prefix}\n${TRAILER_URL}: ${url}\n${TRAILER_REF}: ${ref}`
+  `vendor: add ${name} (${url}@${ref}) [${strategy}]\n\n${TRAILER_DIR}: ${prefix}\n${TRAILER_URL}: ${url}\n${TRAILER_REF}: ${ref}\n${TRAILER_STRATEGY}: ${strategy}\n${TRAILER_ACTION}: ${action}`
 
 const ensureNewVendorTarget = ({
   cwd,
@@ -160,11 +209,12 @@ const addSubtree = ({
       "--squash",
       "-m",
       subtreeAddMessage({
-        name: finalName,
-        prefix: finalPrefix,
-        ref: finalRef,
-        url
-      })
+          name: finalName,
+          prefix: finalPrefix,
+          ref: finalRef,
+          strategy: "subtree",
+          url
+        })
     ],
     { cwd }
   ).pipe(
@@ -181,11 +231,196 @@ const addSubtree = ({
     Effect.asVoid
   )
 
+const strategyGitFailed = ({
+  action,
+  prefix,
+  result,
+  strategy
+}: {
+  readonly action: "add" | "update" | "remove"
+  readonly prefix: string
+  readonly result: { readonly stdout: string; readonly stderr: string }
+  readonly strategy: VendorStrategy
+}) =>
+  new VendorStrategyCommandFailed({
+    action,
+    prefix,
+    strategy,
+    output: result.stderr.trim() || result.stdout.trim() || "unknown error"
+  })
+
+const checkoutVendorRef = ({
+  cwd,
+  prefix,
+  ref,
+  strategy
+}: CheckoutVendorRefParams) =>
+  Effect.gen(function* () {
+    const fetch = yield* git(["-C", prefix, "fetch", "--tags", "origin", ref], {
+      cwd
+    })
+    if (fetch.exitCode !== 0) {
+      return yield* Effect.fail(
+        strategyGitFailed({ action: "add", prefix, result: fetch, strategy })
+      )
+    }
+
+    const checkout = yield* git(["-C", prefix, "checkout", "FETCH_HEAD"], {
+      cwd
+    })
+    if (checkout.exitCode !== 0) {
+      return yield* Effect.fail(
+        strategyGitFailed({ action: "add", prefix, result: checkout, strategy })
+      )
+    }
+  })
+
+const ensureParentDirectory = ({
+  cwd,
+  prefix
+}: EnsureParentDirectoryParams) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    yield* fs.makeDirectory(path.dirname(path.resolve(cwd, prefix)), {
+      recursive: true
+    }).pipe(Effect.ignore)
+  })
+
+const addSubmodule = ({
+  cwd,
+  existingRepos: _existingRepos,
+  finalName,
+  finalPrefix,
+  finalRef,
+  strategy,
+  url
+}: AddStrategyParams) =>
+  Effect.gen(function* () {
+    yield* ensureParentDirectory({ cwd, prefix: finalPrefix })
+    const result = yield* git(["submodule", "add", url, finalPrefix], { cwd })
+    if (result.exitCode !== 0) {
+      return yield* Effect.fail(
+        strategyGitFailed({
+          action: "add",
+          prefix: finalPrefix,
+          result,
+          strategy
+        })
+      )
+    }
+
+    yield* checkoutVendorRef({
+      cwd,
+      prefix: finalPrefix,
+      ref: finalRef,
+      strategy
+    })
+    const committed = yield* commitPathsIfChanged({
+      cwd,
+      paths: [".gitmodules", finalPrefix],
+      message: subtreeAddMessage({
+        name: finalName,
+        prefix: finalPrefix,
+        ref: finalRef,
+        strategy,
+        url
+      })
+    })
+    if (!committed) {
+      yield* emptyCommit({
+        cwd,
+        message: subtreeAddMessage({
+          name: finalName,
+          prefix: finalPrefix,
+          ref: finalRef,
+          strategy,
+          url
+        })
+      })
+    }
+  })
+
+const addCloneIgnore = ({
+  cwd,
+  existingRepos,
+  finalName,
+  finalPrefix,
+  finalRef,
+  strategy,
+  url
+}: AddStrategyParams) =>
+  Effect.gen(function* () {
+    yield* ensureParentDirectory({ cwd, prefix: finalPrefix })
+    const result = yield* git(["clone", url, finalPrefix], { cwd })
+    if (result.exitCode !== 0) {
+      return yield* Effect.fail(
+        strategyGitFailed({
+          action: "add",
+          prefix: finalPrefix,
+          result,
+          strategy
+        })
+      )
+    }
+
+    yield* checkoutVendorRef({
+      cwd,
+      prefix: finalPrefix,
+      ref: finalRef,
+      strategy
+    })
+    yield* updateGitignore({
+      cwd,
+      prefixes: [
+        ...existingRepos
+          .filter((repo) => repo.strategy === "clone-ignore")
+          .map((repo) => repo.prefix),
+        finalPrefix
+      ]
+    })
+    const committed = yield* commitPathsIfChanged({
+      cwd,
+      paths: [".gitignore"],
+      message: subtreeAddMessage({
+        name: finalName,
+        prefix: finalPrefix,
+        ref: finalRef,
+        strategy,
+        url
+      })
+    })
+    if (!committed) {
+      yield* emptyCommit({
+        cwd,
+        message: subtreeAddMessage({
+          name: finalName,
+          prefix: finalPrefix,
+          ref: finalRef,
+          strategy,
+          url
+        })
+      })
+    }
+  })
+
+const addByStrategy = (params: AddStrategyParams) => {
+  switch (params.strategy) {
+    case "subtree":
+      return addSubtree(params)
+    case "submodule":
+      return addSubmodule(params)
+    case "clone-ignore":
+      return addCloneIgnore(params)
+  }
+}
+
 export const addImpl = ({
   name,
   prefix,
   ref,
-  repo
+  repo,
+  strategy
 }: AddCommandParams) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
@@ -201,9 +436,20 @@ export const addImpl = ({
     const finalRef = yield* resolveRef({ url, ref })
 
     yield* ensureNewVendorTarget({ cwd, finalName, finalPrefix, fs, path })
+    const existingRepos = yield* listVendored(cwd)
 
-    yield* info(`Adding subtree: ${url} @ ${finalRef} -> ${finalPrefix}/`)
-    yield* addSubtree({ cwd, finalName, finalPrefix, finalRef, url })
+    yield* info(
+      `Adding ${strategy}: ${url} @ ${finalRef} -> ${finalPrefix}/`
+    )
+    yield* addByStrategy({
+      cwd,
+      existingRepos,
+      finalName,
+      finalPrefix,
+      finalRef,
+      strategy,
+      url
+    })
 
     const repos = yield* listVendored(cwd)
     yield* refreshGeneratedFiles({
@@ -213,7 +459,7 @@ export const addImpl = ({
       vscode: true
     })
 
-    yield* ok(`Vendored '${finalName}' at ${finalPrefix}/.`)
+    yield* ok(`Vendored '${finalName}' at ${finalPrefix}/ using ${strategy}.`)
   }).pipe(withCommandTelemetry("add"))
 
 export const addCmd = Cli.make(
@@ -222,7 +468,8 @@ export const addCmd = Cli.make(
     repo: addRepoArg,
     ref: addRefOption,
     prefix: addPrefixOption,
-    name: addNameOption
+    name: addNameOption,
+    strategy: addStrategyOption
   },
   addImpl
 ).pipe(

@@ -60,7 +60,8 @@ const vendorRepoLines = (
         "**Vendored repositories:**",
         "",
         ...repos.map(
-          (repo) => `- **\`${repo.prefix}\`** — \`${repo.url}\` @ \`${repo.ref}\``
+          (repo) =>
+            `- **\`${repo.prefix}\`** — ${repo.strategy} — \`${repo.url}\` @ \`${repo.ref}\``
         )
       ]
 
@@ -81,6 +82,7 @@ export const renderVendorSection = ({
     `- Do NOT edit files under \`${VENDOR_DIR}/\` unless explicitly asked.`,
     `- Do NOT import from \`${VENDOR_DIR}/\` — application code imports from normal package dependencies.`,
     `- Prefer examples and patterns from \`${VENDOR_DIR}/\` over web search or generated guesses.`,
+    "- Strategies: `subtree` is committed source, `submodule` is a gitlink, and `clone-ignore` is a local ignored clone.",
     `- Use \`${invocation} list\` to see what is vendored.`,
     `- To add or update vendored repos, run \`${invocation} add <repo>\` or \`update <name>\`.`,
     "",

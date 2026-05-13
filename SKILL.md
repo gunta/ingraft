@@ -1,19 +1,21 @@
 ---
 name: vendor-subtree-skill
-description: Vendor external git repositories into the project as `git subtree` so coding agents can read source code as plain files. Trigger on phrases like "vendor X", "subtree X", "add X as reference", "let the agent see the source of X", or any request to manage existing vendored repos (update, remove, list). Works for any public or private repo (HTTPS or SSH). Prefer subtree over submodule for this use case — many agents have known issues traversing submodule boundaries, while subtree directories are indistinguishable from regular files to search tools.
+description: Vendor external git repositories into the project for coding agents using `git subtree`, `git submodule`, or local clone-and-ignore. Trigger on phrases like "vendor X", "subtree X", "submodule X", "clone and ignore X", "add X as reference", "let the agent see the source of X", or any request to manage existing vendored repos (update, remove, list). Works for any public or private repo (HTTPS or SSH). Prefer subtree by default; use submodule or clone-ignore when the upstream repo is too large or should not be committed.
 ---
 
 # vendor-subtree-skill
 
-Manage vendored external git repositories as `git subtree` directories so the coding agent can read them as ordinary files.
+Manage vendored external git repositories so coding agents can read them as reference material.
 
-The skill ships a Bun TypeScript CLI package built on [Effect](https://effect.website/) (`@effect/cli`, `@effect/platform`, `@effect/platform-bun`, and Effect Schema). It drives `git subtree` and keeps the project's agent docs and editor settings in sync. There is no separate manifest file — metadata lives in git commit trailers, so git is the single source of truth.
+The skill ships a Bun TypeScript CLI package built on [Effect](https://effect.website/) (`@effect/cli`, `@effect/platform`, `@effect/platform-bun`, and Effect Schema). It supports three strategies and keeps the project's agent docs, editor settings, and clone-ignore `.gitignore` section in sync. There is no separate manifest file — metadata lives in git commit trailers, so git is the single source of truth.
 
 ## When to trigger
 
 | User says | Command |
 |---|---|
 | "subtree X", "vendor X", "add X as reference" | `add` |
+| "submodule X", "repo is too big to commit" | `add --strategy submodule` |
+| "clone X locally", "clone and gitignore X" | `add --strategy clone-ignore` |
 | "update vendored X", "pull latest from the X vendor" | `update` |
 | "remove vendored X", "unvendor X" | `remove` |
 | "what's vendored", "list vendored repos" | `list` |
@@ -61,6 +63,8 @@ This creates `AGENTS.md` (and updates `CLAUDE.md` if it exists), adds `vendor/**
 ```bash
 vendor-subtree add Effect-TS/effect
 vendor-subtree add Effect-TS/effect --ref main
+vendor-subtree add Effect-TS/effect --strategy submodule
+vendor-subtree add Effect-TS/effect --strategy clone-ignore
 vendor-subtree add git@github.com:org/private-lib.git
 vendor-subtree update effect
 vendor-subtree update --all
@@ -85,7 +89,7 @@ After a successful `add`, summarize for the user: which repo, which ref, the pre
 
 - **`vendor/` is hardcoded.** This is intentional. If the project is a Go module that uses `vendor/` for `go mod vendor`, vendor-subtree-skill will conflict. Suggest the user pass `--prefix third_party/<name>` on each `add` to use a different parent directory.
 
-- **The repo grows.** Each `add` brings the full file content of the upstream repo into git history (squashed to one commit per add/update). For a library like Effect, that's a few hundred MB. This is the documented tradeoff for "agent always sees the source." If the user cares more about repo size than portability, suggest gitignoring `repos/` and cloning via a setup script instead.
+- **Strategy choice matters.** `subtree` commits source and is the portable default. `submodule` commits only a gitlink plus `.gitmodules`. `clone-ignore` clones locally under `vendor/<name>/`, adds that exact path to a managed `.gitignore` section, and commits only metadata. Use `submodule` or `clone-ignore` when the repo is too large or should not be committed.
 
 - **JSONC comments in `.vscode/settings.json` are preserved.** The CLI uses `jsonc-parser` edits instead of hand-stripping comments.
 
@@ -96,11 +100,11 @@ Run `vendor-subtree --help` or `bun "$SKILL_DIR/scripts/vendor.ts" --help` for t
 | Command | Behavior |
 |---|---|
 | `init` | Create the managed section in `AGENTS.md`/`CLAUDE.md`, add `vendor/**` to `.vscode/settings.json` exclusions, commit. |
-| `add <repo>` | `git subtree add --squash` with metadata trailers, update agent docs, commit. Flags: `--ref/-r`, `--prefix/-p`, `--name/-n`. |
-| `update <name>` / `update --all` | `git subtree pull --squash`, refresh agent docs. |
-| `remove <name>` | `git rm` the vendored prefix, refresh agent docs, commit. |
-| `list` | Show vendored repos, derived from git commit trailers. Use `--json` for machine output. |
-| `refresh` | Re-generate `AGENTS.md` section and `.vscode/settings.json` from git state. Useful if files were edited by hand. |
+| `add <repo>` | Add a vendored repo with metadata trailers, update agent docs, commit. Flags: `--strategy subtree\|submodule\|clone-ignore`, `--ref/-r`, `--prefix/-p`, `--name/-n`. |
+| `update <name>` / `update --all` | Pull subtree changes, update submodule gitlinks, or refresh local ignored clones, then refresh agent docs. |
+| `remove <name>` | Remove/deinit the managed repo, record a removal trailer, refresh agent docs and `.gitignore`, commit. |
+| `list` | Show vendored repos and their strategies, derived from git commit trailers. Use `--json` for machine output. |
+| `refresh` | Re-generate `AGENTS.md` section, clone-ignore `.gitignore`, and `.vscode/settings.json` from git state. Useful if files were edited by hand. |
 
 ## Exit codes
 
@@ -108,7 +112,7 @@ Run `vendor-subtree --help` or `bun "$SKILL_DIR/scripts/vendor.ts" --help` for t
 
 ## How metadata is stored
 
-There is no `.vendor.json`, `.vendor/`, or any other config file. The script encodes per-repo metadata as trailers in the git commit message it creates for each `add`/`update`:
+There is no `.vendor.json`, `.vendor/`, or any other config file. The script encodes per-repo metadata as trailers in the git commit message it creates for each `add`/`update`/`remove`:
 
 ```
 vendor: add effect (https://github.com/Effect-TS/effect.git@main)
@@ -116,12 +120,14 @@ vendor: add effect (https://github.com/Effect-TS/effect.git@main)
 git-subtree-dir: vendor/effect
 vendor-source-url: https://github.com/Effect-TS/effect.git
 vendor-source-ref: main
+vendor-strategy: subtree
+vendor-action: upsert
 ```
 
-`list` and `update` discover this by walking `git log` trailer placeholders for commits whose body contains `vendor-source-url:`. Parsed records are validated with Effect Schema. The repo is the single source of truth; the agent doc section is a derived view.
+`list` and `update` discover this by walking `git log` trailer placeholders for commits whose body contains `vendor-source-url:`. Parsed records are validated with Effect Schema. The repo is the single source of truth; the agent doc section and `.gitignore` clone-ignore section are derived views.
 
 ## When this is not the right tool
 
 - The user wants to *modify* upstream code and contribute back: use `git submodule` (or work in a separate clone). Subtree push exists but is awkward.
-- The repo size impact is unacceptable and ephemeral CI doesn't matter: gitignore `repos/` and clone via a setup script instead.
+- The repo size impact is unacceptable and the source should remain local-only: use `--strategy clone-ignore`.
 - The user is on Windows without WSL: Bun and `git subtree` both work on Windows, but the SSH credential story is messier; warn them.
