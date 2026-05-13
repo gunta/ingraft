@@ -1,32 +1,23 @@
 {
-  "name": "vendor-subtree-skill",
+  "name": "vendor-subtree-workspace",
   "version": "0.3.0",
-  "description": "Vendor external git repositories into a project as git subtrees for coding agents.",
+  "private": true,
   "type": "module",
-  "bin": {
-    "vendor-subtree": "./scripts/vendor.ts"
-  },
-  "scripts": {
-    "test": "bun test",
-    "typecheck": "tsc --noEmit",
-    "vendor": "bun scripts/vendor.ts"
-  },
-  "files": [
-    "README.md",
-    "SKILL.md",
-    "LICENSE",
-    "scripts",
-    "src"
+  "packageManager": "bun@1.3.11",
+  "workspaces": [
+    "packages/*"
   ],
-  "license": "MIT",
-  "dependencies": {
-    "@effect/cli": "^0.75.1",
-    "@effect/platform": "^0.96.1",
-    "@effect/platform-bun": "^0.89.0",
-    "effect": "^3.21.2",
-    "jsonc-parser": "^3.3.1"
+  "scripts": {
+    "build": "bun run --cwd packages/cli build",
+    "clean": "rm -rf packages/cli/dist",
+    "test": "bun test packages/cli/tests packages/tui/tests",
+    "tui": "bun run --cwd packages/tui dev",
+    "typecheck": "tsc -b",
+    "vendor": "bun packages/cli/scripts/vendor.ts"
   },
   "devDependencies": {
+    "@types/jscodeshift": "17.3.0",
+    "@types/node": "^24.10.2",
     "bun-types": "^1.3.13",
     "typescript": "^6.0.3"
   }

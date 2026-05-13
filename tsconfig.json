@@ -1,18 +1,7 @@
 {
-  "compilerOptions": {
-    "allowImportingTsExtensions": true,
-    "exactOptionalPropertyTypes": true,
-    "forceConsistentCasingInFileNames": true,
-    "lib": ["ESNext", "DOM"],
-    "module": "ESNext",
-    "moduleDetection": "force",
-    "moduleResolution": "Bundler",
-    "noEmit": true,
-    "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "target": "ESNext",
-    "types": ["bun-types"]
-  },
-  "include": ["scripts/**/*.ts", "src/**/*.ts", "tests/**/*.ts"]
+  "files": [],
+  "references": [
+    { "path": "./packages/cli" },
+    { "path": "./packages/tui" }
+  ]
 }

@@ -1,148 +1,30 @@
 ---
 name: vendor-subtree-skill
-description: Vendor external git repositories into the project for coding agents using `git subtree`, `git submodule`, or local clone-and-ignore. Trigger on phrases like "vendor X", "subtree X", "submodule X", "clone and ignore X", "add X as reference", "let the agent see the source of X", or any request to manage existing vendored repos (update, remove, list). Works for any public or private repo (HTTPS or SSH). Prefer subtree by default; use submodule or clone-ignore when the upstream repo is too large or should not be committed.
+description: Use the package-managed vendor-subtree CLI to vendor upstream repositories for coding agents.
 ---
 
 # vendor-subtree-skill
 
-Manage vendored external git repositories so coding agents can read them as reference material.
+Compatibility shim for skill installers that read `SKILL.md` from the repository root. The canonical skill package lives in `packages/skill`, and the vendoring implementation lives in the `vendor-subtree` CLI package.
 
-The skill ships a Bun TypeScript CLI package built on [Effect](https://effect.website/) (`@effect/cli`, `@effect/platform`, `@effect/platform-bun`, and Effect Schema). It supports three strategies and keeps the project's agent docs, editor settings, and clone-ignore `.gitignore` section in sync. There is no separate manifest file — metadata lives in git commit trailers, so git is the single source of truth.
+Use the package-managed CLI:
 
-## When to trigger
-
-| User says | Command |
-|---|---|
-| "subtree X", "vendor X", "add X as reference" | `add` |
-| "submodule X", "repo is too big to commit" | `add --strategy submodule` |
-| "clone X locally", "clone and gitignore X" | `add --strategy clone-ignore` |
-| "update vendored X", "pull latest from the X vendor" | `update` |
-| "remove vendored X", "unvendor X" | `remove` |
-| "what's vendored", "list vendored repos" | `list` |
-| "set up vendoring", "initialize vendor-subtree-skill" | `init` |
-
-`X` may be GitHub shorthand (`Effect-TS/effect`), HTTPS, or SSH. Private repos work — auth comes from the user's local git credential helper (SSH agent, gh CLI, stored token).
-
-## Workflow
-
-### 1 — Confirm context
-
-The script needs a git repository. If the working directory is not a git repo, ask before running `git init`. The script's own errors are clear (`exit 5` for "not in a git repo"), but a friendly confirmation is nicer.
-
-### 2 — Choose the command form
-
-Prefer an installed or project-local CLI command when available:
-
-```bash
-vendor-subtree --help
+```sh
+bunx vendor-subtree@latest --help
 ```
 
-If the CLI is not linked globally, run it from this skill checkout:
+Common commands:
 
-```bash
-bun "$SKILL_DIR/scripts/vendor.ts" --help
+```sh
+bunx vendor-subtree@latest
+bunx vendor-subtree@latest deps
+bunx vendor-subtree@latest init
+bunx vendor-subtree@latest add <repo>
+bunx vendor-subtree@latest list
+bunx vendor-subtree@latest doctor
+bunx vendor-subtree@latest refresh
+bunx vendor-subtree@latest update --all
+bunx vendor-subtree@latest remove <name>
 ```
 
-Replace `$SKILL_DIR` with the absolute path to this skill's directory (the parent of this SKILL.md). The agent knows this path from context.
-
-If the user wants the tool committed into the target project, copy `package.json`, `bun.lock`, `scripts/`, and `src/` from this skill directory, then run `bun install`.
-
-### 3 — Initialize (first use per project)
-
-If the project has no `<!-- vendor-subtree-skill:begin -->` section in `AGENTS.md`, run:
-
-```bash
-vendor-subtree init
-# or: bun "$SKILL_DIR/scripts/vendor.ts" init
-```
-
-This creates `AGENTS.md` (and updates `CLAUDE.md` if it exists), adds editor exclusions for VS Code, Zed, and ripgrep-backed editors, and commits.
-
-### 4 — Run the requested operation
-
-```bash
-vendor-subtree add Effect-TS/effect
-vendor-subtree add Effect-TS/effect --ref main
-vendor-subtree add Effect-TS/effect --tag v3.21.2
-vendor-subtree add Effect-TS/effect --release latest
-vendor-subtree add Effect-TS/effect --exclude-ext png --max-file-size 1MB
-vendor-subtree add Effect-TS/effect --exclude-dir docs --exclude '*.snap'
-vendor-subtree add Effect-TS/effect --strategy submodule
-vendor-subtree add Effect-TS/effect --strategy clone-ignore
-vendor-subtree add git@github.com:org/private-lib.git
-vendor-subtree update effect
-vendor-subtree update --all
-vendor-subtree remove effect
-vendor-subtree list
-vendor-subtree --help
-```
-
-After a successful `add`, summarize for the user: which repo, which ref, the prefix path. A one-line nudge helps: "You can point me at `vendor/<name>/` when working with this library."
-
-## Gotchas
-
-- **Bun is required.** The script's shebang is `#!/usr/bin/env bun`. If the user doesn't have Bun, install it first with `curl -fsSL https://bun.sh/install | bash` or `npm install -g bun`. Most users targeting this skill already have Bun.
-
-- **Dependencies are package-managed.** The repository commits `package.json` and `bun.lock`; run `bun install` in the skill checkout before invoking `bun "$SKILL_DIR/scripts/vendor.ts"` if dependencies are missing.
-
-- **Dirty working tree blocks subtree ops.** Git subtree refuses to run with uncommitted tracked changes. The script exits with code 4 and a clear message. If the user has uncommitted work, surface it back to them — don't auto-stash unless they ask.
-
-- **Auth for private repos is the user's git credential helper.** SSH URLs use the SSH agent; HTTPS uses a stored token. If `git subtree add` fails with an auth error, suggest `git ls-remote <url>` to test access independently of this script.
-
-- **Host CLIs are preferred when useful.** If `gh` is installed and authenticated, the CLI uses it for GitHub default-branch detection, release lookup, and `clone-ignore` clones. If `glab` is installed and authenticated, the CLI can use it for GitLab default-branch detection, release lookup, and clones. It still falls back to git, and git remains required for subtree, submodule gitlinks, commits, and generic repos.
-
-- **Default branch detection.** When no version selector is given, the script asks GitHub/GitLab through host CLIs when possible, then falls back to `git ls-remote --symref`. Most repos resolve to `main` or `master`. For non-standard defaults (`trunk`, `develop`), the detection still works. If detection fails, it falls back to `main` with a warning — pass `--ref` explicitly to avoid surprises.
-
-- **Version selection.** Use `--ref <branch-or-sha>` for raw git refs, `--tag <tag>` for an exact git tag, or `--release <name>` / `--release latest` to resolve a GitHub/GitLab release to its tag. Use only one of these selectors.
-
-- **Filtered vendoring.** Use repeatable `--exclude <glob>`, `--exclude-dir <dir>`, `--exclude-ext <ext>`, and `--max-file-size <size>` to omit generated docs, media, fixtures, archives, or huge files. Example: `--exclude-ext png --exclude-ext jpg --max-file-size 1MB`. Filters work for `subtree` and `clone-ignore`; `submodule` rejects filters because a gitlink cannot portably encode file-level omissions.
-
-- **`vendor/` is hardcoded.** This is intentional. If the project is a Go module that uses `vendor/` for `go mod vendor`, vendor-subtree-skill will conflict. Suggest the user pass `--prefix third_party/<name>` on each `add` to use a different parent directory.
-
-- **Strategy choice matters.** `subtree` commits source and is the portable default. `submodule` commits only a gitlink plus `.gitmodules`. `clone-ignore` clones locally under `vendor/<name>/`, adds that exact path to a managed `.gitignore` section, and commits only metadata. Use `submodule` or `clone-ignore` when the repo is too large or should not be committed.
-
-- **Editor settings are generated.** The CLI updates `.vscode/settings.json`, `.zed/settings.json`, and `.ignore`. VS Code gets search/watch/auto-import exclusions plus a Material Icon Theme `vendor` folder association. Zed gets `file_scan_exclusions`. `.ignore` keeps `vendor/` out of ripgrep-backed editor pickers.
-
-- **JSONC comments in editor settings are preserved.** The CLI uses `jsonc-parser` edits instead of hand-stripping comments.
-
-- **Ripgrep ignores `vendor/` after init.** When intentionally inspecting vendored code, use direct paths or `rg -u vendor/<name>` so `.ignore` does not hide the files.
-
-## Commands reference
-
-Run `vendor-subtree --help` or `bun "$SKILL_DIR/scripts/vendor.ts" --help` for the live version (auto-generated by `@effect/cli`, with per-subcommand `--help`, `--version`, `--completions`, and `--wizard`).
-
-| Command | Behavior |
-|---|---|
-| `init` | Create the managed section in `AGENTS.md`/`CLAUDE.md`, add editor exclusions for VS Code, Zed, and ripgrep-backed editors, commit. |
-| `add <repo>` | Add a vendored repo with metadata trailers, update agent docs, commit. Flags: `--strategy subtree\|submodule\|clone-ignore`, `--ref/-r`, `--tag`, `--release`, `--exclude`, `--exclude-dir`, `--exclude-ext`, `--max-file-size`, `--prefix/-p`, `--name/-n`. |
-| `update <name>` / `update --all` | Pull subtree changes, update submodule gitlinks, or refresh local ignored clones, then refresh agent docs. |
-| `remove <name>` | Remove/deinit the managed repo, record a removal trailer, refresh agent docs and `.gitignore`, commit. |
-| `list` | Show vendored repos and their strategies, derived from git commit trailers. Use `--json` for machine output. |
-| `refresh` | Re-generate `AGENTS.md` section, clone-ignore `.gitignore`, and editor settings from git state. Useful if files were edited by hand. |
-
-## Exit codes
-
-`0` success · `1` generic · `2` argument error · `3` git operation failed · `4` conflict (dirty tree, name collision) · `5` not a git repo.
-
-## How metadata is stored
-
-There is no `.vendor.json`, `.vendor/`, or any other config file. The script encodes per-repo metadata as trailers in the git commit message it creates for each `add`/`update`/`remove`:
-
-```
-vendor: add effect (https://github.com/Effect-TS/effect.git@main)
-
-git-subtree-dir: vendor/effect
-vendor-source-url: https://github.com/Effect-TS/effect.git
-vendor-source-ref: main
-vendor-strategy: subtree
-vendor-action: upsert
-vendor-filter: {"exclude":[],"excludeDirs":["docs"],"excludeExtensions":["png"],"maxFileSizeBytes":1048576}
-```
-
-`list` and `update` discover this by walking `git log` trailer placeholders for commits whose body contains `vendor-source-url:`. Parsed records are validated with Effect Schema. The repo is the single source of truth; the agent doc section and `.gitignore` clone-ignore section are derived views.
-
-## When this is not the right tool
-
-- The user wants to *modify* upstream code and contribute back: use `git submodule` (or work in a separate clone). Subtree push exists but is awkward.
-- The repo size impact is unacceptable and the source should remain local-only: use `--strategy clone-ignore`.
-- The user is on Windows without WSL: Bun and `git subtree` both work on Windows, but the SSH credential story is messier; warn them.
+Do not run a local `scripts/vendor.ts` from the skill. The skill delegates to the standalone CLI so agents use the package-managed implementation.
