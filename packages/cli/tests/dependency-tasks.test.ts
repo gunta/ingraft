@@ -6,7 +6,12 @@ import { dependencyVendorTasks, vendoredPackageVersionKey } from "../src/command
 import { EMPTY_VENDOR_FILTER } from "../src/domain/vendor-filter.ts"
 import type { DependencyVendorCandidate } from "../src/package-sync/service.ts"
 
-const matched = (packageName: string, repositoryUrl: string): DependencyVendorCandidate => ({
+const matched = (
+  packageName: string,
+  repositoryUrl: string,
+  version = "1.0.0",
+  remoteVersion = "1.1.0"
+): DependencyVendorCandidate => ({
   manifestPath: "package.json",
   packageName,
   packageSpec: "^1.0.0",
@@ -20,9 +25,9 @@ const matched = (packageName: string, repositoryUrl: string): DependencyVendorCa
       .at(-1)
       ?.replace(/\.git$/, "") ?? "repo",
   syncPackage: packageName,
-  version: "1.0.0",
+  version,
   versionSource: "bun-lock",
-  remoteVersion: "1.1.0"
+  remoteVersion
 })
 
 describe("dependency vendoring tasks", () => {
@@ -88,5 +93,34 @@ describe("dependency vendoring tasks", () => {
         }
       }
     ])
+  })
+
+  test("uses the repo-named package as the displayed version for grouped updates", () => {
+    expect(
+      dependencyVendorTasks(
+        [
+          matched("@effect/cli", "https://github.com/Effect-TS/effect.git", "0.75.1", "0.75.1"),
+          matched("effect", "https://github.com/Effect-TS/effect.git", "3.21.2", "3.21.2")
+        ],
+        [
+          {
+            date: "today",
+            filter: EMPTY_VENDOR_FILTER,
+            name: "effect",
+            prefix: "vendor/effect",
+            ref: "main",
+            sha: "abc",
+            strategy: "subtree",
+            url: "https://github.com/Effect-TS/effect.git"
+          }
+        ],
+        new Map([[vendoredPackageVersionKey("effect", "effect"), "3.21.2"]])
+      )[0]?.versions
+    ).toEqual({
+      local: "effect@3.21.2 (bun-lock)",
+      remote: "effect@3.21.2 (npm latest)",
+      status: "synced",
+      vendor: "effect@3.21.2 (vendored source)"
+    })
   })
 })

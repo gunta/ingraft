@@ -163,6 +163,15 @@ const dependencyVersions = ({
   }
 }
 
+const shouldDisplayCandidateVersions = (
+  candidate: DependencyVendorCandidate,
+  existing: Option.Option<VendoredRepo>
+): boolean =>
+  Option.match(existing, {
+    onNone: () => false,
+    onSome: (repo) => repo.name === candidate.packageName || repo.syncPackage === candidate.packageName
+  })
+
 const detectVendoredPackageVersions = (
   cwd: string,
   candidates: ReadonlyArray<DependencyVendorCandidate>,
@@ -212,9 +221,20 @@ export const dependencyVendorTasks = (
     const key = Option.isSome(existing) ? `update:${existing.value.name}` : `add:${repositoryUrl}`
     const previous = tasks.get(key)
     if (previous) {
+      const preferCandidate = shouldDisplayCandidateVersions(candidate, existing)
       tasks.set(key, {
         ...previous,
-        packageNames: [...previous.packageNames, candidate.packageName]
+        packageNames: [...previous.packageNames, candidate.packageName],
+        ...(preferCandidate
+          ? {
+              primaryPackageName: candidate.packageName,
+              versions: dependencyVersions({
+                candidate,
+                existing,
+                vendoredPackageVersions
+              })
+            }
+          : {})
       })
       continue
     }
