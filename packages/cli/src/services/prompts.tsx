@@ -1,11 +1,12 @@
 import { stdin as input, stdout as output } from "node:process"
 import { createInterface } from "node:readline/promises"
 
-import { Effect } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { Box } from "ink"
 
 import { Header, Section, Table } from "../app/ink/components.tsx"
 import { renderInkOnce } from "../app/ink/render.tsx"
+import { InkRenderFailed, PromptInputFailed } from "../domain/errors.ts"
 
 export interface SelectionChoice {
   readonly description?: string
@@ -63,22 +64,31 @@ const ChoicesView = ({ choices }: { readonly choices: ReadonlyArray<SelectionCho
 const selectMany = ({ choices, message }: SelectManyParams) =>
   Effect.gen(function* () {
     if (choices.length === 0) return []
-    yield* Effect.promise(() => renderInkOnce(<ChoicesView choices={choices} />))
+    yield* Effect.tryPromise({
+      try: () => renderInkOnce(<ChoicesView choices={choices} />),
+      catch: (cause) => new InkRenderFailed({ view: "ChoicesView", cause })
+    })
     if (!input.isTTY || !output.isTTY) return []
 
-    const answer = yield* Effect.promise(async () => {
-      const rl = createInterface({ input, output })
-      try {
-        return await rl.question(`${message} `)
-      } finally {
-        rl.close()
-      }
+    const answer = yield* Effect.tryPromise({
+      try: async () => {
+        const rl = createInterface({ input, output })
+        try {
+          return await rl.question(`${message} `)
+        } finally {
+          rl.close()
+        }
+      },
+      catch: (cause) => new PromptInputFailed({ cause })
     })
     const indexes = parseSelectionInput(answer, choices.length)
     return indexes.map((index) => choices[index]).filter((choice) => choice !== undefined)
   })
 
-export class Prompts extends Effect.Service<Prompts>()("ingraft/Prompts", {
-  accessors: true,
-  sync: () => ({ selectMany })
-}) {}
+export interface PromptsShape {
+  readonly selectMany: (params: SelectManyParams) => Effect.Effect<ReadonlyArray<SelectionChoice>>
+}
+
+export class Prompts extends Context.Service<Prompts, PromptsShape>()("ingraft/Prompts") {}
+
+export const PromptsLive = Layer.sync(Prompts, () => ({ selectMany }))

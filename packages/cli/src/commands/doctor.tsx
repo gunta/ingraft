@@ -1,11 +1,12 @@
-import { Command as Cli, Options } from "@effect/cli"
 import { Console, Effect } from "effect"
+import { Command, Flag } from "effect/unstable/cli"
 import { Box } from "ink"
 
 import { Header, KeyValues, Section, Table } from "../app/ink/components.tsx"
 import { renderInkOnce } from "../app/ink/render.tsx"
 import { withCommandTelemetry } from "../app/log.tsx"
 import { VENDOR_DIR } from "../domain/constants.ts"
+import { InkRenderFailed } from "../domain/errors.ts"
 import { listVendored, type VendoredRepo } from "../domain/vendor-state.ts"
 import { relativeTo } from "../project/reports.ts"
 import { ProjectFiles } from "../project/service.ts"
@@ -33,12 +34,12 @@ export interface FixDoctorParams {
   readonly repos: ReadonlyArray<VendoredRepo>
 }
 
-const doctorJsonOption = Options.boolean("json").pipe(
-  Options.withDescription("Output machine-readable JSON to stdout.")
+const doctorJsonOption = Flag.boolean("json").pipe(
+  Flag.withDescription("Output machine-readable JSON to stdout.")
 )
 
-const doctorFixOption = Options.boolean("fix").pipe(
-  Options.withDescription(
+const doctorFixOption = Flag.boolean("fix").pipe(
+  Flag.withDescription(
     "Repair generated agent docs, repository hygiene files, editor settings, and detected tool ignores before reporting."
   )
 )
@@ -115,11 +116,14 @@ const DoctorView = ({
 )
 
 export const fixDoctor = ({ cwd, repos }: FixDoctorParams) =>
-  ProjectFiles.refresh({
-    commitMessage: "vendor: repair project vendor files",
-    cwd,
-    editorSettings: true,
-    repos
+  Effect.gen(function* () {
+    const projectFiles = yield* ProjectFiles
+    yield* projectFiles.refresh({
+      commitMessage: "vendor: repair project vendor files",
+      cwd,
+      editorSettings: true,
+      repos
+    })
   })
 
 export const doctorImpl = ({ fix, json }: DoctorCommandParams) =>
@@ -128,8 +132,10 @@ export const doctorImpl = ({ fix, json }: DoctorCommandParams) =>
     const initialRepos = yield* listVendored(cwd)
     if (fix) yield* fixDoctor({ cwd, repos: initialRepos })
     const repos = fix ? yield* listVendored(cwd) : initialRepos
-    const surfaces = yield* ProjectSurfaces.doctor({ cwd, repos })
-    const toolReports = yield* ToolIgnores.doctor({ cwd })
+    const projectSurfaces = yield* ProjectSurfaces
+    const toolIgnores = yield* ToolIgnores
+    const surfaces = yield* projectSurfaces.doctor({ cwd, repos })
+    const toolReports = yield* toolIgnores.doctor({ cwd })
 
     if (json) {
       yield* Console.log(
@@ -149,21 +155,23 @@ export const doctorImpl = ({ fix, json }: DoctorCommandParams) =>
       return
     }
 
-    yield* Effect.promise(() =>
-      renderInkOnce(
-        <DoctorView
-          cwd={cwd}
-          repos={repos}
-          agentFiles={surfaces.agentFiles}
-          editorFiles={surfaces.editorFiles}
-          repositoryFiles={surfaces.repositoryFiles}
-          toolReports={toolReports}
-        />
-      )
-    )
+    yield* Effect.tryPromise({
+      try: () =>
+        renderInkOnce(
+          <DoctorView
+            cwd={cwd}
+            repos={repos}
+            agentFiles={surfaces.agentFiles}
+            editorFiles={surfaces.editorFiles}
+            repositoryFiles={surfaces.repositoryFiles}
+            toolReports={toolReports}
+          />
+        ),
+      catch: (cause) => new InkRenderFailed({ view: "DoctorView", cause })
+    })
   }).pipe(withCommandTelemetry("doctor"))
 
-export const doctorCmd = Cli.make(
+export const doctorCmd = Command.make(
   "doctor",
   {
     fix: doctorFixOption,
@@ -171,7 +179,7 @@ export const doctorCmd = Cli.make(
   },
   doctorImpl
 ).pipe(
-  Cli.withDescription(
+  Command.withDescription(
     "Inspect vendored repositories and detected formatter, linter, editor, and monorepo tool status."
   )
 )

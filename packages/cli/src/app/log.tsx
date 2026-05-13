@@ -1,5 +1,6 @@
 import { Effect } from "effect"
 
+import { InkRenderFailed } from "../domain/errors.ts"
 import { StatusLine, type StatusKind } from "./ink/components.tsx"
 import { renderInkOnce } from "./ink/render.tsx"
 
@@ -15,7 +16,10 @@ export const withCommandTelemetry =
     )
 
 const logStatus = (kind: StatusKind, label: string) =>
-  Effect.promise(() => renderInkOnce(<StatusLine kind={kind} label={label} />))
+  Effect.tryPromise({
+    try: () => renderInkOnce(<StatusLine kind={kind} label={label} />),
+    catch: (cause) => new InkRenderFailed({ view: "StatusLine", cause })
+  })
 
 export const info = (message: string) => logStatus("info", message)
 export const ok = (message: string) => logStatus("success", message)
