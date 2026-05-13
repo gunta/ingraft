@@ -41,9 +41,10 @@ describe("VS Code settings", () => {
       expect(result.text).toContain('"javascript.preferences.autoImportFileExcludePatterns"')
       expect(result.text).toContain('"material-icon-theme.folders.associations"')
       expect(result.text).toContain('"vendor": "packages"')
-      expect(result.text).not.toContain('"files.exclude"')
-      expect(result.text).not.toContain('"files.watcherExclude"')
-      expect(result.text).not.toContain('"vendor/**": true')
+      expect(result.text).toContain('"files.exclude"')
+      expect(result.text).toContain('"files.watcherExclude"')
+      expect(result.text).toContain('"search.exclude"')
+      expect(result.text).toContain('"vendor/**": true')
     }
   })
 

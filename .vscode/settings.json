@@ -1,4 +1,13 @@
 {
+  "files.exclude": {
+    "vendor/**": true
+  },
+  "files.watcherExclude": {
+    "vendor/**": true
+  },
+  "search.exclude": {
+    "vendor/**": true
+  },
   "typescript.preferences.autoImportFileExcludePatterns": ["vendor/**"],
   "material-icon-theme.folders.associations": {
     "vendor": "packages"

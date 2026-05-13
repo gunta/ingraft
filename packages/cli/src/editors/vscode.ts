@@ -19,6 +19,7 @@ import { GitMetadata } from "../services/git-metadata.ts"
 const VENDOR_GLOB = `${VENDOR_DIR}/**`
 const MATERIAL_ICON_FOLDER_ASSOCIATIONS = "material-icon-theme.folders.associations"
 const MATERIAL_ICON_VENDOR_FOLDER = "packages"
+const OBJECT_EXCLUSION_KEYS = ["files.exclude", "files.watcherExclude", "search.exclude"] as const
 const ARRAY_KEYS_BY_LANGUAGE = {
   typescript: "typescript.preferences.autoImportFileExcludePatterns",
   javascript: "javascript.preferences.autoImportFileExcludePatterns"
@@ -26,6 +27,7 @@ const ARRAY_KEYS_BY_LANGUAGE = {
 const ARRAY_KEYS = Object.values(ARRAY_KEYS_BY_LANGUAGE)
 
 type ArrayExclusionKey = (typeof ARRAY_KEYS)[number]
+type ObjectExclusionKey = (typeof OBJECT_EXCLUSION_KEYS)[number]
 type VscodeProjectLanguage = keyof typeof ARRAY_KEYS_BY_LANGUAGE
 
 export interface VscodeLanguageUsage {
@@ -79,13 +81,27 @@ const ensureVendorFolderIcon = (state: SettingsMergeState): SettingsMergeState =
     value: MATERIAL_ICON_VENDOR_FOLDER
   })
 
+const ensureObjectExclusion = (
+  state: SettingsMergeState,
+  key: ObjectExclusionKey
+): SettingsMergeState =>
+  ensureObjectProperty({
+    key,
+    property: VENDOR_GLOB,
+    state,
+    value: true
+  })
+
 const mergeValidSettings = (
   source: string,
   value: Record<string, unknown>,
   languages: VscodeLanguageUsage
 ): SettingsMergeState =>
   ensureVendorFolderIcon(
-    selectedArrayKeys(languages).reduce(ensureArrayExclusion, initialSettingsState(source, value))
+    selectedArrayKeys(languages).reduce(
+      ensureArrayExclusion,
+      OBJECT_EXCLUSION_KEYS.reduce(ensureObjectExclusion, initialSettingsState(source, value))
+    )
   )
 
 export const mergeVscodeSettingsText = (

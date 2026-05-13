@@ -28,6 +28,9 @@ describe("project surface detection", () => {
       writeFileSync(
         join(cwd, ".vscode/settings.json"),
         JSON.stringify({
+          "files.exclude": { "vendor/**": true },
+          "files.watcherExclude": { "vendor/**": true },
+          "search.exclude": { "vendor/**": true },
           "typescript.preferences.autoImportFileExcludePatterns": ["vendor/**"],
           "javascript.preferences.autoImportFileExcludePatterns": ["vendor/**"],
           "material-icon-theme.folders.associations": { vendor: "packages" }
