@@ -35,12 +35,18 @@ export interface ProjectPackageVersion {
   readonly version: Option.Option<string>
 }
 
+export interface VendoredPackageVersion {
+  readonly manifestPath: string
+  readonly version: string
+}
+
 export interface DependencyVendorCandidate {
   readonly manifestPath: string
   readonly packageName: string
   readonly packageSpec: string
   readonly reason?: string
   readonly repositoryUrl?: string
+  readonly remoteVersion?: string
   readonly section: PackageDependencySection
   readonly source: "npm"
   readonly status: "matched" | "metadata-unavailable" | "missing-repository"
@@ -192,6 +198,9 @@ const packageJsonVersion = (json: string): Option.Option<string> =>
     Option.flatMap((value) => stringProperty(value, "version")),
     Option.flatMap(nonEmptyVersion)
   )
+
+const packageJsonName = (json: string): Option.Option<string> =>
+  parseJsonObject(json).pipe(Option.flatMap((value) => stringProperty(value, "name")))
 
 const nodeModulesPackagePath = (packageName: string): string =>
   `node_modules/${packageName}/package.json`
@@ -596,6 +605,40 @@ const detectProjectPackageVersionWith = (
     )
   )
 
+const prefixedManifestPath = (prefix: string, manifestPath: string): string =>
+  `${prefix.replace(/\/+$/, "")}/${manifestPath}`.replaceAll("\\", "/")
+
+export const detectVendoredPackageVersion = ({
+  cwd,
+  packageName,
+  prefix
+}: {
+  readonly cwd: string
+  readonly packageName: string
+  readonly prefix: string
+}) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const vendorRoot = path.resolve(cwd, prefix)
+    const manifests = yield* listPackageManifestPaths(fs, path, vendorRoot)
+    for (const manifestPath of manifests) {
+      const json = yield* fs
+        .readFileString(path.resolve(vendorRoot, manifestPath))
+        .pipe(Effect.catchAll(() => Effect.succeed("")))
+      const name = packageJsonName(json)
+      if (Option.isNone(name) || name.value !== packageName) continue
+      const version = packageJsonVersion(json)
+      if (Option.isSome(version)) {
+        return Option.some({
+          manifestPath: prefixedManifestPath(prefix, manifestPath),
+          version: version.value
+        } satisfies VendoredPackageVersion)
+      }
+    }
+    return Option.none<VendoredPackageVersion>()
+  })
+
 const npmDescriptorForProjectVersion = (
   packageName: string,
   detected: ProjectPackageVersion
@@ -633,6 +676,27 @@ const npmViewPackageMetadata = (
       } satisfies CommandResult
     })
   )
+
+const npmLatestMetadata = (
+  executor: CommandExecutor.CommandExecutor,
+  cwd: string,
+  packageName: string
+): Effect.Effect<Option.Option<NpmPackageMetadata>> =>
+  npmViewPackageMetadata(executor, cwd, npmDescriptor(packageName, "latest")).pipe(
+    Effect.map((result) =>
+      result.exitCode === 0 ? parseNpmPackageMetadata(result.stdout) : Option.none()
+    ),
+    Effect.catchAll(() => Effect.succeed(Option.none<NpmPackageMetadata>()))
+  )
+
+const withRemoteVersion = <A extends DependencyVendorCandidate>(
+  candidate: A,
+  metadata: Option.Option<NpmPackageMetadata>
+): A =>
+  Option.match(metadata, {
+    onNone: () => candidate,
+    onSome: (value) => ({ ...candidate, remoteVersion: value.version })
+  })
 
 const failedSync = ({ packageName, repoUrl }: PackageVersionSyncParams, reason: string) =>
   new PackageVersionSyncFailed({
@@ -872,38 +936,50 @@ const scanPackageDependency = (
 ): Effect.Effect<DependencyVendorCandidate> =>
   detectProjectPackageVersionWith(fs, path, cwd, dependency).pipe(
     Effect.flatMap((detected) =>
-      npmViewPackageMetadata(
-        executor,
-        cwd,
-        npmDescriptorForProjectVersion(dependency.name, detected)
-      ).pipe(
-        Effect.map((result) => {
-          if (result.exitCode !== 0) {
-            return {
+      Effect.gen(function* () {
+        const remoteMetadata = yield* npmLatestMetadata(executor, cwd, dependency.name)
+        const result = yield* npmViewPackageMetadata(
+          executor,
+          cwd,
+          npmDescriptorForProjectVersion(dependency.name, detected)
+        )
+        if (result.exitCode !== 0) {
+          return withRemoteVersion(
+            {
               ...unavailableCandidate(
                 dependency,
                 result.stderr.trim() || result.stdout.trim() || "npm view returned no metadata"
               ),
               versionSource: detected.source
-            }
-          }
-          const metadata = parseNpmPackageMetadata(result.stdout)
-          return Option.match(metadata, {
-            onNone: () => ({
-              ...unavailableCandidate(dependency, "npm metadata did not include a usable version"),
-              versionSource: detected.source
-            }),
-            onSome: (value) => ({
-              ...dependencyCandidateFromMetadata(dependency, value),
-              versionSource: detected.source
-            })
-          })
-        }),
-        Effect.catchAll(() =>
-          Effect.succeed({
-            ...unavailableCandidate(dependency, "npm view failed"),
+            },
+            remoteMetadata
+          )
+        }
+        const metadata = parseNpmPackageMetadata(result.stdout)
+        const candidate = Option.match(metadata, {
+          onNone: () => ({
+            ...unavailableCandidate(dependency, "npm metadata did not include a usable version"),
+            versionSource: detected.source
+          }),
+          onSome: (value) => ({
+            ...dependencyCandidateFromMetadata(dependency, value),
             versionSource: detected.source
           })
+        })
+        return withRemoteVersion(candidate, remoteMetadata)
+      }).pipe(
+        Effect.catchAll(() =>
+          npmLatestMetadata(executor, cwd, dependency.name).pipe(
+            Effect.map((remoteMetadata) =>
+              withRemoteVersion(
+                {
+                  ...unavailableCandidate(dependency, "npm view failed"),
+                  versionSource: detected.source
+                },
+                remoteMetadata
+              )
+            )
+          )
         )
       )
     )
