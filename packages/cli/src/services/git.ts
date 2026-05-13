@@ -71,21 +71,23 @@ const nonZeroExit = (
   return new GitCommandFailed(options.cwd === undefined ? params : { ...params, cwd: options.cwd })
 }
 
-const makeGitExec =
-  (executor: ChildProcessSpawner.ChildProcessSpawner["Service"]) =>
-  (args: ReadonlyArray<string>, options: GitOptions = {}) =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        const base = ChildProcess.make("git", Array.from(args))
-        const cmd = options.cwd ? ChildProcess.setCwd(base, options.cwd) : base
-        const proc = yield* executor.spawn(cmd)
-        const [exitCode, stdout, stderr] = yield* Effect.all(
-          [proc.exitCode, collect(proc.stdout), collect(proc.stderr)],
-          { concurrency: 3 }
-        )
-        return { stdout, stderr, exitCode: Number(exitCode) } satisfies GitResult
-      })
-    )
+const runGitExec = (
+  executor: ChildProcessSpawner.ChildProcessSpawner["Service"],
+  args: ReadonlyArray<string>,
+  options: GitOptions
+) =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const base = ChildProcess.make("git", Array.from(args))
+      const cmd = options.cwd ? ChildProcess.setCwd(base, options.cwd) : base
+      const proc = yield* executor.spawn(cmd)
+      const [exitCode, stdout, stderr] = yield* Effect.all(
+        [proc.exitCode, collect(proc.stdout), collect(proc.stderr)],
+        { concurrency: 3 }
+      )
+      return { stdout, stderr, exitCode: Number(exitCode) } satisfies GitResult
+    })
+  )
 
 export interface GitShape {
   readonly exec: (
@@ -101,7 +103,9 @@ export const GitLive = Layer.effect(
   Effect.gen(function* () {
     const executor = yield* ChildProcessSpawner.ChildProcessSpawner
     return {
-      exec: makeGitExec(executor)
+      exec: Effect.fn("Git.exec")((args: ReadonlyArray<string>, options: GitOptions = {}) =>
+        runGitExec(executor, args, options)
+      )
     }
   })
 )

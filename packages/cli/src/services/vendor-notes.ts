@@ -101,6 +101,6 @@ export class VendorNotes extends Context.Service<VendorNotes, VendorNotesShape>(
 ) {}
 
 export const VendorNotesLive = Layer.sync(VendorNotes, () => ({
-  sync,
-  write
+  sync: Effect.fn("VendorNotes.sync")((params: SyncVendorNotesParams) => sync(params)),
+  write: Effect.fn("VendorNotes.write")((params: WriteVendorNoteParams) => write(params))
 }))

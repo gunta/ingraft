@@ -81,16 +81,18 @@ export const ToolIgnoresLive = Layer.effect(
     ] as const satisfies ReadonlyArray<ToolIgnoreCategory>
 
     return {
-      doctor: ({ cwd }: RefreshToolIgnoresParams) =>
+      doctor: Effect.fn("ToolIgnores.doctor")(({ cwd }: RefreshToolIgnoresParams) =>
         Effect.all([doctorToolCategories(toolCategories, cwd), monorepo.doctor(cwd)], {
           concurrency: 2
         }).pipe(
           Effect.map(([toolReports, monorepoReports]) => [...toolReports, ...monorepoReports])
-        ),
-      refresh: ({ cwd }: RefreshToolIgnoresParams) =>
+        )
+      ),
+      refresh: Effect.fn("ToolIgnores.refresh")(({ cwd }: RefreshToolIgnoresParams) =>
         Effect.all([refreshToolCategories(toolCategories, cwd), monorepo.refresh(cwd)], {
           concurrency: 2
         }).pipe(Effect.map(([toolPaths, monorepoPaths]) => [...toolPaths, ...monorepoPaths]))
+      )
     }
   })
 )

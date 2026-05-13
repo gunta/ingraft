@@ -35,25 +35,27 @@ const collect = <E, R>(stream: Stream.Stream<Uint8Array, E, R>) =>
     )
   )
 
-const makeGitHubCliExec =
-  (executor: ChildProcessSpawner.ChildProcessSpawner["Service"]) =>
-  (args: ReadonlyArray<string>, options: GitHubCliOptions = {}) =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        const base = ChildProcess.make("gh", Array.from(args))
-        const cmd = options.cwd ? ChildProcess.setCwd(base, options.cwd) : base
-        const proc = yield* executor.spawn(cmd)
-        const [exitCode, stdout, stderr] = yield* Effect.all(
-          [proc.exitCode, collect(proc.stdout), collect(proc.stderr)],
-          { concurrency: 3 }
-        )
-        return {
-          stdout,
-          stderr,
-          exitCode: Number(exitCode)
-        } satisfies GitHubCliResult
-      })
-    )
+const runGitHubCliExec = (
+  executor: ChildProcessSpawner.ChildProcessSpawner["Service"],
+  args: ReadonlyArray<string>,
+  options: GitHubCliOptions
+) =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const base = ChildProcess.make("gh", Array.from(args))
+      const cmd = options.cwd ? ChildProcess.setCwd(base, options.cwd) : base
+      const proc = yield* executor.spawn(cmd)
+      const [exitCode, stdout, stderr] = yield* Effect.all(
+        [proc.exitCode, collect(proc.stdout), collect(proc.stderr)],
+        { concurrency: 3 }
+      )
+      return {
+        stdout,
+        stderr,
+        exitCode: Number(exitCode)
+      } satisfies GitHubCliResult
+    })
+  )
 
 export interface GitHubCliShape {
   readonly exec: (
@@ -69,7 +71,10 @@ export const GitHubCliLive = Layer.effect(
   Effect.gen(function* () {
     const executor = yield* ChildProcessSpawner.ChildProcessSpawner
     return {
-      exec: makeGitHubCliExec(executor)
+      exec: Effect.fn("GitHubCli.exec")(
+        (args: ReadonlyArray<string>, options: GitHubCliOptions = {}) =>
+          runGitHubCliExec(executor, args, options)
+      )
     }
   })
 )

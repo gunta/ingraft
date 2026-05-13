@@ -112,7 +112,7 @@ export const ProjectFilesLive = Layer.effect(
     const toolIgnores = yield* ToolIgnores
     const vendorNotes = yield* VendorNotes
     return {
-      refresh: (params: RefreshGeneratedFilesParams) =>
+      refresh: Effect.fn("ProjectFiles.refresh")((params: RefreshGeneratedFilesParams) =>
         refreshGeneratedFilesWith(
           { editorSettings, runtime, toolIgnores, vendorNotes },
           params
@@ -123,6 +123,7 @@ export const ProjectFilesLive = Layer.effect(
           Effect.provideService(Path.Path, path),
           Effect.provideService(RuntimeConfig, runtime)
         )
+      )
     }
   })
 )

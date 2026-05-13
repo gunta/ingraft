@@ -22,25 +22,27 @@ const collect = <E, R>(stream: Stream.Stream<Uint8Array, E, R>) =>
     )
   )
 
-const makeGitLabCliExec =
-  (executor: ChildProcessSpawner.ChildProcessSpawner["Service"]) =>
-  (args: ReadonlyArray<string>, options: GitLabCliOptions = {}) =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        const base = ChildProcess.make("glab", Array.from(args))
-        const cmd = options.cwd ? ChildProcess.setCwd(base, options.cwd) : base
-        const proc = yield* executor.spawn(cmd)
-        const [exitCode, stdout, stderr] = yield* Effect.all(
-          [proc.exitCode, collect(proc.stdout), collect(proc.stderr)],
-          { concurrency: 3 }
-        )
-        return {
-          stdout,
-          stderr,
-          exitCode: Number(exitCode)
-        } satisfies GitLabCliResult
-      })
-    )
+const runGitLabCliExec = (
+  executor: ChildProcessSpawner.ChildProcessSpawner["Service"],
+  args: ReadonlyArray<string>,
+  options: GitLabCliOptions
+) =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const base = ChildProcess.make("glab", Array.from(args))
+      const cmd = options.cwd ? ChildProcess.setCwd(base, options.cwd) : base
+      const proc = yield* executor.spawn(cmd)
+      const [exitCode, stdout, stderr] = yield* Effect.all(
+        [proc.exitCode, collect(proc.stdout), collect(proc.stderr)],
+        { concurrency: 3 }
+      )
+      return {
+        stdout,
+        stderr,
+        exitCode: Number(exitCode)
+      } satisfies GitLabCliResult
+    })
+  )
 
 export interface GitLabCliShape {
   readonly exec: (
@@ -56,7 +58,10 @@ export const GitLabCliLive = Layer.effect(
   Effect.gen(function* () {
     const executor = yield* ChildProcessSpawner.ChildProcessSpawner
     return {
-      exec: makeGitLabCliExec(executor)
+      exec: Effect.fn("GitLabCli.exec")(
+        (args: ReadonlyArray<string>, options: GitLabCliOptions = {}) =>
+          runGitLabCliExec(executor, args, options)
+      )
     }
   })
 )

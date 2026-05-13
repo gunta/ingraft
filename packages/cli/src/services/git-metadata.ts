@@ -88,9 +88,15 @@ export class GitMetadata extends Context.Service<GitMetadata, GitMetadataShape>(
 ) {}
 
 export const GitMetadataLive = Layer.sync(GitMetadata, () => ({
-  findRoot,
-  isIgnored,
-  listCommits,
-  listProjectFiles,
-  pathKnownToGit
+  findRoot: Effect.fn("GitMetadata.findRoot")((cwd: string) => findRoot(cwd)),
+  isIgnored: Effect.fn("GitMetadata.isIgnored")((cwd: string, filepath: string) =>
+    isIgnored(cwd, filepath)
+  ),
+  listCommits: Effect.fn("GitMetadata.listCommits")((cwd: string) => listCommits(cwd)),
+  listProjectFiles: Effect.fn("GitMetadata.listProjectFiles")((cwd: string) =>
+    listProjectFiles(cwd)
+  ),
+  pathKnownToGit: Effect.fn("GitMetadata.pathKnownToGit")((cwd: string, filepath: string) =>
+    pathKnownToGit(cwd, filepath)
+  )
 }))

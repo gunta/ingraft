@@ -247,10 +247,18 @@ export const RepositoryHostsLive = Layer.effect(
     const github = yield* GitHubCli
     const gitlab = yield* GitLabCli
     return {
-      clone: (params: HostCloneParams) => hostClone(github.exec, gitlab.exec, params),
-      defaultBranch: (input: string) => hostDefaultBranch(github.exec, gitlab.exec, input),
-      identify: (input: string) => Effect.succeed(identifyHost(input)),
-      releaseTag: (params: HostReleaseParams) => hostReleaseTag(github.exec, gitlab.exec, params)
+      clone: Effect.fn("RepositoryHosts.clone")((params: HostCloneParams) =>
+        hostClone(github.exec, gitlab.exec, params)
+      ),
+      defaultBranch: Effect.fn("RepositoryHosts.defaultBranch")((input: string) =>
+        hostDefaultBranch(github.exec, gitlab.exec, input)
+      ),
+      identify: Effect.fn("RepositoryHosts.identify")((input: string) =>
+        Effect.succeed(identifyHost(input))
+      ),
+      releaseTag: Effect.fn("RepositoryHosts.releaseTag")((params: HostReleaseParams) =>
+        hostReleaseTag(github.exec, gitlab.exec, params)
+      )
     }
   })
 )

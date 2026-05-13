@@ -303,7 +303,9 @@ export const ProjectSurfacesLive = Layer.effect(
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
     return {
-      doctor: (params: ProjectSurfacesDoctorParams) => detectSurfacesWith(fs, path, params)
+      doctor: Effect.fn("ProjectSurfaces.doctor")((params: ProjectSurfacesDoctorParams) =>
+        detectSurfacesWith(fs, path, params)
+      )
     }
   })
 )

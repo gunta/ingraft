@@ -2350,14 +2350,23 @@ export const PackageVersionSyncLive = Layer.effect(
     const executor = yield* ChildProcessSpawner.ChildProcessSpawner
     const git = yield* Git
     return {
-      resolve: (params: PackageVersionSyncParams) =>
-        resolvePackageVersion(fs, path, executor, git, params),
-      resolvePackageSource: (params: PackageSourceResolutionParams) =>
-        resolvePackageSource(fs, path, executor, git, params),
-      listDependencies: (cwd: string) => listProjectPackageDependencies(fs, path, cwd),
-      scanDependency: (cwd: string, dependency: PackageDependency) =>
-        scanPackageDependency(fs, path, executor, cwd, dependency),
-      scan: (cwd: string) => scanPackageDependencies(fs, path, executor, cwd)
+      resolve: Effect.fn("PackageVersionSync.resolve")((params: PackageVersionSyncParams) =>
+        resolvePackageVersion(fs, path, executor, git, params)
+      ),
+      resolvePackageSource: Effect.fn("PackageVersionSync.resolvePackageSource")(
+        (params: PackageSourceResolutionParams) =>
+          resolvePackageSource(fs, path, executor, git, params)
+      ),
+      listDependencies: Effect.fn("PackageVersionSync.listDependencies")((cwd: string) =>
+        listProjectPackageDependencies(fs, path, cwd)
+      ),
+      scanDependency: Effect.fn("PackageVersionSync.scanDependency")(
+        (cwd: string, dependency: PackageDependency) =>
+          scanPackageDependency(fs, path, executor, cwd, dependency)
+      ),
+      scan: Effect.fn("PackageVersionSync.scan")((cwd: string) =>
+        scanPackageDependencies(fs, path, executor, cwd)
+      )
     }
   })
 )

@@ -37,7 +37,7 @@ export const EditorSettingsLive = Layer.effect(
     const zed = yield* ZedSettings
 
     return {
-      refresh: ({ cwd }: RefreshEditorSettingsParams) =>
+      refresh: Effect.fn("EditorSettings.refresh")(({ cwd }: RefreshEditorSettingsParams) =>
         Effect.all(
           {
             intellij: intellij.refresh(cwd),
@@ -52,6 +52,7 @@ export const EditorSettingsLive = Layer.effect(
             ...intellij
           ])
         )
+      )
     }
   })
 )

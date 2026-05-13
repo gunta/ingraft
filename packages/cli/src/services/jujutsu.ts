@@ -28,7 +28,7 @@ export const JujutsuLive = Layer.effect(
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
     return {
-      isColocated: (cwd: string) => isColocatedWith(fs, path, cwd)
+      isColocated: Effect.fn("Jujutsu.isColocated")((cwd: string) => isColocatedWith(fs, path, cwd))
     } satisfies JujutsuService
   })
 )
