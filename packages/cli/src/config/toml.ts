@@ -1,41 +1,76 @@
 import * as TOML from "@iarna/toml"
-import { Option } from "effect"
+import { Effect, Schema } from "effect"
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
+import { SchemaDecodeFailed, TomlParseFailed } from "../domain/errors.ts"
+
+type TomlRecord = Record<string, unknown>
+
+const isRecord = (value: unknown): value is TomlRecord =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
-export const parseTomlConfig = (text: string): Option.Option<Record<string, unknown>> =>
-  Option.liftThrowable((value: string) => TOML.parse(value) as unknown)(text).pipe(
-    Option.filter(isRecord)
-  )
-
-const valueAtPath = (value: Record<string, unknown>, path: ReadonlyArray<string>): unknown =>
+const valueAtPath = (value: TomlRecord, path: ReadonlyArray<string>): unknown =>
   path.reduce<unknown>((current, key) => (isRecord(current) ? current[key] : undefined), value)
 
-export const tomlHasPath = (text: string, path: ReadonlyArray<string>): boolean =>
-  Option.match(parseTomlConfig(text), {
-    onNone: () => false,
-    onSome: (value) => valueAtPath(value, path) !== undefined
+export const parseTomlText = (text: string): Effect.Effect<unknown, TomlParseFailed> =>
+  Effect.try({
+    try: () => TOML.parse(text) as unknown,
+    catch: (cause) => new TomlParseFailed({ cause })
   })
+
+export const parseTomlWith =
+  <S extends Schema.Top>(schema: S) =>
+  (text: string): Effect.Effect<S["Type"], TomlParseFailed | SchemaDecodeFailed, S["DecodingServices"]> =>
+    parseTomlText(text).pipe(
+      Effect.flatMap((value) =>
+        Schema.decodeUnknownEffect(schema)(value).pipe(
+          Effect.mapError((error) => new SchemaDecodeFailed({ source: "toml", issue: error.issue }))
+        )
+      )
+    )
+
+const parseToRecord = (text: string): Effect.Effect<TomlRecord, TomlParseFailed> =>
+  parseTomlText(text).pipe(
+    Effect.flatMap((value) =>
+      isRecord(value)
+        ? Effect.succeed(value)
+        : Effect.fail(
+            new TomlParseFailed({ cause: new Error("Top-level TOML value is not a table") })
+          )
+    )
+  )
+
+export const tomlHasPath = (
+  text: string,
+  path: ReadonlyArray<string>
+): Effect.Effect<boolean, TomlParseFailed> =>
+  parseToRecord(text).pipe(Effect.map((value) => valueAtPath(value, path) !== undefined))
 
 export const tomlPathHasArrayValue = (
   text: string,
   path: ReadonlyArray<string>,
   expected: string
-): boolean =>
-  Option.match(parseTomlConfig(text), {
-    onNone: () => false,
-    onSome: (value) => {
+): Effect.Effect<boolean, TomlParseFailed> =>
+  parseToRecord(text).pipe(
+    Effect.map((value) => {
       const current = valueAtPath(value, path)
       return (
         Array.isArray(current) &&
         current.some((item) => typeof item === "string" && item === expected)
       )
-    }
-  })
+    })
+  )
 
 export const tomlPathHasAnyArrayValue = (
   text: string,
   path: ReadonlyArray<string>,
   expected: ReadonlyArray<string>
-): boolean => expected.some((item) => tomlPathHasArrayValue(text, path, item))
+): Effect.Effect<boolean, TomlParseFailed> =>
+  parseToRecord(text).pipe(
+    Effect.map((value) => {
+      const current = valueAtPath(value, path)
+      if (!Array.isArray(current)) return false
+      return expected.some((needle) =>
+        current.some((item) => typeof item === "string" && item === needle)
+      )
+    })
+  )

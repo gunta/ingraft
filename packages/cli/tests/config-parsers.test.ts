@@ -1,12 +1,13 @@
 import { describe, expect, test } from "bun:test"
 
-import { Option } from "effect"
+import { Cause, Effect, Exit, Option } from "effect"
 
 import { jsObjectHasArrayValue } from "../src/config/javascript-source.ts"
 import { packageJsonHasDependency, packageJsonDependencySpec } from "../src/config/package-json.ts"
-import { tomlHasPath, tomlPathHasArrayValue } from "../src/config/toml.ts"
+import { parseTomlText, tomlHasPath, tomlPathHasArrayValue } from "../src/config/toml.ts"
 import { tsObjectHasArrayValue } from "../src/config/typescript-source.ts"
 import { yamlHasPath } from "../src/config/yaml.ts"
+import { TomlParseFailed } from "../src/domain/errors.ts"
 
 describe("non-destructive config parsers", () => {
   test("reads package.json dependency sections with JSONC-compatible parsing", () => {
@@ -30,8 +31,25 @@ describe("non-destructive config parsers", () => {
       exclude = ["vendor", ".venv"]
     `
 
-    expect(tomlHasPath(text, ["tool", "ruff"])).toBe(true)
-    expect(tomlPathHasArrayValue(text, ["tool", "ruff", "exclude"], "vendor")).toBe(true)
+    expect(Effect.runSync(tomlHasPath(text, ["tool", "ruff"]))).toBe(true)
+    expect(Effect.runSync(tomlPathHasArrayValue(text, ["tool", "ruff", "exclude"], "vendor"))).toBe(
+      true
+    )
+  })
+
+  test("parseTomlText surfaces TomlParseFailed on malformed input", async () => {
+    const exit = await Effect.runPromiseExit(parseTomlText("this is = not [valid"))
+    expect(Exit.isFailure(exit)).toBe(true)
+    if (Exit.isFailure(exit)) {
+      const failures = exit.cause.reasons.filter(Cause.isFailReason)
+      expect(failures.length).toBeGreaterThan(0)
+      expect(failures[0]?.error).toBeInstanceOf(TomlParseFailed)
+    }
+  })
+
+  test("tomlHasPath surfaces TomlParseFailed on malformed input", async () => {
+    const exit = await Effect.runPromiseExit(tomlHasPath("invalid = [", ["a"]))
+    expect(Exit.isFailure(exit)).toBe(true)
   })
 
   test("reads YAML documents through the document parser", () => {

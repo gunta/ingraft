@@ -1,26 +1,41 @@
-import { FileSystem, Path } from "@effect/platform"
-import { Effect, Option } from "effect"
+import { Context, Effect, FileSystem, Layer, Option, Path } from "effect"
 
 import { tomlHasPath, tomlPathHasAnyArrayValue } from "../../config/toml.ts"
-import { VENDOR_DIR, firstExisting, report, type ToolFileContext } from "../common.ts"
+import {
+  VENDOR_DIR,
+  firstExisting,
+  report,
+  type ToolFileContext,
+  type ToolIgnoreIntegration
+} from "../common.ts"
 
 const TOOL = "Ruff"
 const CONFIG_CANDIDATES = ["ruff.toml", ".ruff.toml", "pyproject.toml"] as const
 const VENDOR_PATTERNS = [VENDOR_DIR, "vendor/**"] as const
 
-const configMentionsRuff = (path: string, content: string): boolean =>
-  !path.endsWith("pyproject.toml") || tomlHasPath(content, ["tool", "ruff"])
+const configMentionsRuff = (path: string, content: string): Effect.Effect<boolean> =>
+  path.endsWith("pyproject.toml")
+    ? tomlHasPath(content, ["tool", "ruff"]).pipe(Effect.orElseSucceed(() => false))
+    : Effect.succeed(true)
 
 const ruffConfigPath = (path: string): ReadonlyArray<string> =>
   path.endsWith("pyproject.toml") ? ["tool", "ruff"] : []
 
-const ruffConfigIgnoresVendor = (path: string, content: string): boolean => {
-  const base = ruffConfigPath(path)
-  return (
-    tomlPathHasAnyArrayValue(content, [...base, "exclude"], VENDOR_PATTERNS) ||
-    tomlPathHasAnyArrayValue(content, [...base, "extend-exclude"], VENDOR_PATTERNS)
-  )
-}
+const ruffConfigIgnoresVendor = (path: string, content: string): Effect.Effect<boolean> =>
+  Effect.gen(function* () {
+    const base = ruffConfigPath(path)
+    const exclude = yield* tomlPathHasAnyArrayValue(
+      content,
+      [...base, "exclude"],
+      VENDOR_PATTERNS
+    ).pipe(Effect.orElseSucceed(() => false))
+    if (exclude) return true
+    return yield* tomlPathHasAnyArrayValue(
+      content,
+      [...base, "extend-exclude"],
+      VENDOR_PATTERNS
+    ).pipe(Effect.orElseSucceed(() => false))
+  })
 
 const doctorWith = (context: ToolFileContext, cwd: string) =>
   Effect.gen(function* () {
@@ -36,7 +51,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     }
 
     const content = yield* context.fs.readFileString(config.value)
-    if (!configMentionsRuff(config.value, content)) {
+    if (!(yield* configMentionsRuff(config.value, content))) {
       return report({
         detected: false,
         ignored: false,
@@ -46,7 +61,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
       })
     }
 
-    const ignored = ruffConfigIgnoresVendor(config.value, content)
+    const ignored = yield* ruffConfigIgnoresVendor(config.value, content)
     return report({
       configPath: config.value,
       detected: true,
@@ -59,9 +74,13 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class RuffIgnore extends Effect.Service<RuffIgnore>()("ingraft/RuffIgnore", {
-  accessors: true,
-  effect: Effect.gen(function* () {
+export class RuffIgnore extends Context.Service<RuffIgnore, ToolIgnoreIntegration>()(
+  "ingraft/RuffIgnore"
+) {}
+
+export const RuffIgnoreLive = Layer.effect(
+  RuffIgnore,
+  Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
     const context = { fs, path }
@@ -70,4 +89,4 @@ export class RuffIgnore extends Effect.Service<RuffIgnore>()("ingraft/RuffIgnore
       refresh: (_cwd: string) => Effect.succeed(Option.none<string>())
     }
   })
-}) {}
+)

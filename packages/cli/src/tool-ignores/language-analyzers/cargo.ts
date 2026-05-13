@@ -1,15 +1,31 @@
-import { FileSystem, Path } from "@effect/platform"
-import { Effect, Option } from "effect"
+import { Context, Effect, FileSystem, Layer, Option, Path } from "effect"
 
 import { tomlPathHasAnyArrayValue } from "../../config/toml.ts"
-import { VENDOR_DIR, firstExisting, report, type ToolFileContext } from "../common.ts"
+import {
+  VENDOR_DIR,
+  firstExisting,
+  report,
+  type ToolFileContext,
+  type ToolIgnoreIntegration
+} from "../common.ts"
 
 const TOOL = "Cargo/Rust"
 const VENDOR_PATTERNS = [VENDOR_DIR, "vendor/*"] as const
 
-const cargoManifestIgnoresVendor = (content: string): boolean =>
-  tomlPathHasAnyArrayValue(content, ["workspace", "exclude"], VENDOR_PATTERNS) ||
-  tomlPathHasAnyArrayValue(content, ["package", "exclude"], VENDOR_PATTERNS)
+const cargoManifestIgnoresVendor = (content: string): Effect.Effect<boolean> =>
+  Effect.gen(function* () {
+    const workspace = yield* tomlPathHasAnyArrayValue(
+      content,
+      ["workspace", "exclude"],
+      VENDOR_PATTERNS
+    ).pipe(Effect.orElseSucceed(() => false))
+    if (workspace) return true
+    return yield* tomlPathHasAnyArrayValue(
+      content,
+      ["package", "exclude"],
+      VENDOR_PATTERNS
+    ).pipe(Effect.orElseSucceed(() => false))
+  })
 
 const doctorWith = (context: ToolFileContext, cwd: string) =>
   Effect.gen(function* () {
@@ -25,7 +41,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     }
 
     const content = yield* context.fs.readFileString(config.value)
-    const ignored = cargoManifestIgnoresVendor(content)
+    const ignored = yield* cargoManifestIgnoresVendor(content)
     return report({
       configPath: config.value,
       detected: true,
@@ -38,9 +54,13 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class CargoIgnore extends Effect.Service<CargoIgnore>()("ingraft/CargoIgnore", {
-  accessors: true,
-  effect: Effect.gen(function* () {
+export class CargoIgnore extends Context.Service<CargoIgnore, ToolIgnoreIntegration>()(
+  "ingraft/CargoIgnore"
+) {}
+
+export const CargoIgnoreLive = Layer.effect(
+  CargoIgnore,
+  Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
     const context = { fs, path }
@@ -49,4 +69,4 @@ export class CargoIgnore extends Effect.Service<CargoIgnore>()("ingraft/CargoIgn
       refresh: (_cwd: string) => Effect.succeed(Option.none<string>())
     }
   })
-}) {}
+)
