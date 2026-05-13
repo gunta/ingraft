@@ -1,7 +1,7 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
 
-import { firstExisting, report, type ToolFileContext } from "./common.ts"
+import { firstExisting, report, type ToolFileContext } from "../common.ts"
 
 const TOOL = "Zig"
 

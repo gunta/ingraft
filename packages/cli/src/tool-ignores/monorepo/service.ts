@@ -1,14 +1,14 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
 
-import { buildSystemTools } from "./build-systems.ts"
+import { buildSystemTools } from "./build-systems/index.ts"
 import {
   type MonorepoToolCategory,
   type MonorepoToolDefinition,
   type ToolFileContext
 } from "./common.ts"
-import { packageManagerTools } from "./package-managers.ts"
-import { taskRunnerTools } from "./task-runners.ts"
+import { packageManagerTools } from "./package-managers/index.ts"
+import { taskRunnerTools } from "./task-runners/index.ts"
 
 const categories = [
   packageManagerTools,

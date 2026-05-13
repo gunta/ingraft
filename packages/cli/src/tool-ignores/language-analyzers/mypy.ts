@@ -1,8 +1,8 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
 
-import { tomlHasPath } from "../config/toml.ts"
-import { firstExisting, hasVendorPattern, report, type ToolFileContext } from "./common.ts"
+import { tomlHasPath } from "../../config/toml.ts"
+import { firstExisting, hasVendorPattern, report, type ToolFileContext } from "../common.ts"
 
 const TOOL = "mypy"
 const CONFIG_CANDIDATES = ["mypy.ini", ".mypy.ini", "setup.cfg", "pyproject.toml"] as const

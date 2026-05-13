@@ -1,0 +1,78 @@
+---
+import {
+  toolIntegrationById,
+  toolIntegrationCategoryById,
+  type ToolIntegration
+} from "../data/tool-integrations.ts"
+
+interface Props {
+  readonly id: string
+}
+
+const tool = toolIntegrationById[Astro.props.id]
+
+if (tool === undefined) {
+  throw new Error(`Unknown tool integration: ${Astro.props.id}`)
+}
+
+const category = toolIntegrationCategoryById[tool.categoryId]
+const logoUrl = (tool: ToolIntegration): string | undefined =>
+  tool.logoSlug === undefined ? undefined : `https://thesvg.org/icons/${tool.logoSlug}/default.svg`
+const url = logoUrl(tool)
+---
+
+<section class="tool-page" style={`--tool-accent: ${tool.accent}`}>
+  <header class="tool-page-hero">
+    <span class="tool-logo tool-page-logo" aria-hidden="true">
+      {
+        url === undefined ? (
+          <span class="tool-logo-fallback">{tool.initials}</span>
+        ) : (
+          <img src={url} alt="" loading="lazy" />
+        )
+      }
+    </span>
+    <div>
+      <p>{category.title}</p>
+      <h2>{tool.name}</h2>
+      <span>{tool.summary}</span>
+    </div>
+  </header>
+
+  <dl class="tool-facts">
+    <div>
+      <dt>Detected From</dt>
+      <dd>{tool.detects}</dd>
+    </div>
+    <div>
+      <dt>Writes</dt>
+      <dd>{tool.writes}</dd>
+    </div>
+    <div>
+      <dt>Visibility</dt>
+      <dd>{tool.keepsVisible}</dd>
+    </div>
+  </dl>
+
+  <h2>When To Use It</h2>
+  <p>{tool.useCase}</p>
+
+  <h2>Workflow</h2>
+  <p>
+    Run <code>vendor-subtree doctor</code> to inspect the current status, then run
+    <code> vendor-subtree refresh</code> after adding or updating vendored source. Refresh only
+    writes supported files when the tool is actually detected in the repository.
+  </p>
+
+  <p class="tool-doc-link">
+    {
+      tool.docsUrl === undefined ? (
+        <a href="/docs/tooling/">Back to all tool integrations</a>
+      ) : (
+        <a href={tool.docsUrl} rel="noreferrer" target="_blank">
+          Open {tool.name} documentation
+        </a>
+      )
+    }
+  </p>
+</section>

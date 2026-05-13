@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import { mergeZedSettingsText } from "../src/editors/zed.ts"
-import { mergePrettierIgnoreText } from "../src/tool-ignores/prettier.ts"
+import { mergePrettierIgnoreText } from "../src/tool-ignores/formatters/prettier.ts"
 
 describe("editor settings", () => {
   test("does not add Zed scan exclusions because that hides vendor from LSPs", () => {

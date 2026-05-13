@@ -7,7 +7,7 @@ import {
   hasVendorPattern,
   report,
   type ToolFileContext
-} from "./common.ts"
+} from "../common.ts"
 
 const TOOL = "golangci-lint"
 const CONFIG_CANDIDATES = [

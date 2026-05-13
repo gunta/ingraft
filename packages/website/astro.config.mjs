@@ -38,6 +38,7 @@ export default defineConfig({
           label: "Reference",
           items: [
             { label: "CLI Reference", slug: "docs/cli-reference" },
+            { label: "Editable Vendors", slug: "docs/editable-vendors" },
             {
               label: "Dangerous Removal",
               slug: "docs/dangerous-removal"

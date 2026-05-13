@@ -9,7 +9,7 @@ import {
   report,
   VENDOR_IGNORE_DIR,
   type ToolFileContext
-} from "./common.ts"
+} from "../common.ts"
 
 const TOOL = "Prettier"
 const BEGIN = "# vendor-subtree: prettier-ignore begin"

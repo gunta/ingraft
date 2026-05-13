@@ -7,7 +7,7 @@ import {
   initialSettingsState,
   parseSettings,
   type SettingsMergeResult
-} from "../config/jsonc-settings.ts"
+} from "../../config/jsonc-settings.ts"
 import {
   VENDOR_GLOB,
   firstExisting,
@@ -15,7 +15,7 @@ import {
   packageHasDependency,
   report,
   type ToolFileContext
-} from "./common.ts"
+} from "../common.ts"
 
 const TOOL = "CSpell"
 const CONFIG_CANDIDATES = [

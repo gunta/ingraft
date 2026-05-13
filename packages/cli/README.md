@@ -82,6 +82,18 @@ ordinary package names continue to work.
 
 When a collocated `jj` repository is detected, `add` falls back to `clone-ignore` because jj still does not model git subtree and submodule workflows as first-class operations.
 
+### Editable vendors
+
+If you expect to modify vendored source, use a fork-backed submodule. Fork the upstream repository, create a branch for your patches, and add the fork with `--strategy submodule --ref <branch>`:
+
+```sh
+vendor-subtree add your-org/effect --strategy submodule --ref vendor-patches
+```
+
+Make changes inside `vendor/<name>/`, commit and push them inside the submodule, then commit the updated submodule pointer in the parent repository. This keeps vendor patch history in the fork, makes upstream pull requests straightforward, and avoids mixing ongoing vendor development into the host repository history.
+
+Use `subtree` for editable vendors only when the patch is intentionally private to the host project and every clone must include the patched files without submodule initialization. Use `clone-ignore` only for local experiments that do not need team-visible commits.
+
 ## Dangerous History Rewrites
 
 Normal `remove` only removes the vendor from the current branch history going forward. If a committed vendor subtree made the repository too large, you can explicitly remove that vendor path from every local git ref:

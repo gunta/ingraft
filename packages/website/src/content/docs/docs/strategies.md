@@ -24,6 +24,16 @@ relationship without copying its contents into your own history.
 vendor-subtree add rust-lang/rust --strategy submodule
 ```
 
+Submodules are also the preferred strategy when the vendor is meant to be edited.
+Use a fork URL and a branch in that fork so vendor patches live as normal commits
+that can be pushed and upstreamed:
+
+```sh
+vendor-subtree add your-org/effect --strategy submodule --ref vendor-patches
+```
+
+See [Editable Vendors](./editable-vendors/) for the full workflow.
+
 ## Clone-ignore
 
 Use `clone-ignore` when source should exist locally for agents and LSPs but should
@@ -43,10 +53,21 @@ supports it:
 
 ```sh
 vendor-subtree add Effect-TS/effect \
-  --ignore "**/*.png" \
-  --ignore "docs/generated/**" \
+  --exclude "**/*.png" \
+  --exclude-dir docs/generated \
   --max-file-size 1MB
 ```
 
 This keeps non-source artifacts out of the vendor tree when they do not help the
 coding workflow.
+
+## Choosing for Ownership
+
+| Ownership model                                 | Recommended strategy |
+| ----------------------------------------------- | -------------------- |
+| Read-only reference source                      | `subtree`            |
+| Editable vendor with a fork or upstream PR path | `submodule`          |
+| Local scratch checkout                          | `clone-ignore`       |
+
+The default `subtree` path optimizes for agent visibility. The fork-backed
+`submodule` path optimizes for patch ownership.

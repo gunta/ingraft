@@ -1,8 +1,8 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
 
-import { tomlPathHasAnyArrayValue } from "../config/toml.ts"
-import { VENDOR_DIR, firstExisting, report, type ToolFileContext } from "./common.ts"
+import { tomlPathHasAnyArrayValue } from "../../config/toml.ts"
+import { VENDOR_DIR, firstExisting, report, type ToolFileContext } from "../common.ts"
 
 const TOOL = "Cargo/Rust"
 const VENDOR_PATTERNS = [VENDOR_DIR, "vendor/*"] as const

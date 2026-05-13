@@ -1,8 +1,8 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
 
-import { parseSettings } from "../config/jsonc-settings.ts"
-import { firstExisting, packageHasDependency, report, type ToolFileContext } from "./common.ts"
+import { parseSettings } from "../../config/jsonc-settings.ts"
+import { firstExisting, packageHasDependency, report, type ToolFileContext } from "../common.ts"
 
 const TOOL = "TypeScript"
 const CONFIG_CANDIDATES = ["tsconfig.json", "jsconfig.json"] as const

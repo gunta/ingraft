@@ -1,25 +1,29 @@
 import { Effect } from "effect"
 
-import { BiomeIgnore } from "./biome.ts"
-import { CargoIgnore } from "./cargo.ts"
 import {
   doctorToolCategories,
   refreshToolCategories,
   type ToolIgnoreCategory
 } from "./categories.ts"
-import { CspellIgnore } from "./cspell.ts"
-import { EslintIgnore } from "./eslint.ts"
-import { GolangciLintIgnore } from "./golangci-lint.ts"
-import { MarkdownlintIgnore } from "./markdownlint.ts"
+import { PrettierIgnore } from "./formatters/index.ts"
+import {
+  CargoIgnore,
+  MypyIgnore,
+  PyrightIgnore,
+  TypeScriptIgnore,
+  ZigIgnore
+} from "./language-analyzers/index.ts"
+import {
+  BiomeIgnore,
+  CspellIgnore,
+  EslintIgnore,
+  GolangciLintIgnore,
+  MarkdownlintIgnore,
+  OxlintIgnore,
+  RuffIgnore,
+  StylelintIgnore
+} from "./linters/index.ts"
 import { MonorepoTools } from "./monorepo.ts"
-import { MypyIgnore } from "./mypy.ts"
-import { OxlintIgnore } from "./oxlint.ts"
-import { PrettierIgnore } from "./prettier.ts"
-import { PyrightIgnore } from "./pyright.ts"
-import { RuffIgnore } from "./ruff.ts"
-import { StylelintIgnore } from "./stylelint.ts"
-import { TypeScriptIgnore } from "./typescript.ts"
-import { ZigIgnore } from "./zig.ts"
 
 export interface RefreshToolIgnoresParams {
   readonly cwd: string
@@ -45,18 +49,12 @@ export class ToolIgnores extends Effect.Service<ToolIgnores>()("vendor-subtree/T
     const zig = yield* ZigIgnore
     const toolCategories = [
       {
-        name: "linters-and-formatters",
-        tools: [
-          biome,
-          cspell,
-          eslint,
-          golangciLint,
-          markdownlint,
-          oxlint,
-          prettier,
-          ruff,
-          stylelint
-        ]
+        name: "linters",
+        tools: [biome, cspell, eslint, golangciLint, markdownlint, oxlint, ruff, stylelint]
+      },
+      {
+        name: "formatters",
+        tools: [prettier]
       },
       {
         name: "language-analyzers",

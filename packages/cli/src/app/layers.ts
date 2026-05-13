@@ -18,22 +18,26 @@ import { Jujutsu } from "../services/jujutsu.ts"
 import { Prompts } from "../services/prompts.ts"
 import { RepositoryHosts } from "../services/repository-hosts.ts"
 import { VendorNotes } from "../services/vendor-notes.ts"
-import { BiomeIgnore } from "../tool-ignores/biome.ts"
-import { CargoIgnore } from "../tool-ignores/cargo.ts"
-import { CspellIgnore } from "../tool-ignores/cspell.ts"
-import { EslintIgnore } from "../tool-ignores/eslint.ts"
-import { GolangciLintIgnore } from "../tool-ignores/golangci-lint.ts"
-import { MarkdownlintIgnore } from "../tool-ignores/markdownlint.ts"
+import { PrettierIgnore } from "../tool-ignores/formatters/index.ts"
+import {
+  CargoIgnore,
+  MypyIgnore,
+  PyrightIgnore,
+  TypeScriptIgnore,
+  ZigIgnore
+} from "../tool-ignores/language-analyzers/index.ts"
+import {
+  BiomeIgnore,
+  CspellIgnore,
+  EslintIgnore,
+  GolangciLintIgnore,
+  MarkdownlintIgnore,
+  OxlintIgnore,
+  RuffIgnore,
+  StylelintIgnore
+} from "../tool-ignores/linters/index.ts"
 import { MonorepoTools } from "../tool-ignores/monorepo.ts"
-import { MypyIgnore } from "../tool-ignores/mypy.ts"
-import { OxlintIgnore } from "../tool-ignores/oxlint.ts"
-import { PrettierIgnore } from "../tool-ignores/prettier.ts"
-import { PyrightIgnore } from "../tool-ignores/pyright.ts"
-import { RuffIgnore } from "../tool-ignores/ruff.ts"
 import { ToolIgnores } from "../tool-ignores/service.ts"
-import { StylelintIgnore } from "../tool-ignores/stylelint.ts"
-import { TypeScriptIgnore } from "../tool-ignores/typescript.ts"
-import { ZigIgnore } from "../tool-ignores/zig.ts"
 import { RuntimeConfig } from "./runtime.ts"
 
 const PlatformLive = Layer.mergeAll(NodeContext.layer, RuntimeConfig.Default)

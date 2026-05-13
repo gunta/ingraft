@@ -3,42 +3,33 @@ import { Effect, Option } from "effect"
 
 import {
   completeMerge,
-  ensureArrayItemsAtPath,
+  ensureArrayItem,
   initialSettingsState,
   parseSettings,
   type SettingsMergeResult
-} from "../config/jsonc-settings.ts"
+} from "../../config/jsonc-settings.ts"
 import {
   firstExisting,
   hasVendorPattern,
   packageHasDependency,
   report,
-  VENDOR_NEGATED_GLOB,
+  VENDOR_GLOB,
   type ToolFileContext
-} from "./common.ts"
+} from "../common.ts"
 
-const TOOL = "Biome"
-const CONFIG_CANDIDATES = ["biome.jsonc", "biome.json"] as const
+const TOOL = "Stylelint"
+const CONFIG_CANDIDATES = [".stylelintrc.json", "stylelint.config.json"] as const
 
-export const mergeBiomeConfigText = (text = "{}\n"): SettingsMergeResult => {
-  const parsed = parseSettings({ objectName: "Biome config", text })
+export const mergeStylelintConfigText = (text = "{}\n"): SettingsMergeResult => {
+  const parsed = parseSettings({ objectName: "Stylelint config", text })
   if (parsed._tag === "Invalid") {
     return { _tag: "Invalid", message: parsed.message }
   }
 
-  const existingIncludes = parsed.value.files
-  const fallback =
-    typeof existingIncludes === "object" &&
-    existingIncludes !== null &&
-    Array.isArray((existingIncludes as Record<string, unknown>).includes)
-      ? []
-      : ["**"]
-
   return completeMerge(
-    ensureArrayItemsAtPath({
-      fallback,
-      items: [VENDOR_NEGATED_GLOB],
-      path: ["files", "includes"],
+    ensureArrayItem({
+      item: VENDOR_GLOB,
+      key: "ignoreFiles",
       state: initialSettingsState(parsed.source, parsed.value)
     })
   )
@@ -51,8 +42,7 @@ const refreshWith = (context: ToolFileContext, cwd: string) =>
   Effect.gen(function* () {
     const target = yield* configPath(context, cwd)
     if (Option.isNone(target)) return Option.none<string>()
-    const current = yield* context.fs.readFileString(target.value)
-    const merged = mergeBiomeConfigText(current)
+    const merged = mergeStylelintConfigText(yield* context.fs.readFileString(target.value))
     if (merged._tag !== "Updated") return Option.none<string>()
     yield* context.fs.writeFileString(
       target.value,
@@ -64,7 +54,7 @@ const refreshWith = (context: ToolFileContext, cwd: string) =>
 const doctorWith = (context: ToolFileContext, cwd: string) =>
   Effect.gen(function* () {
     const target = yield* configPath(context, cwd)
-    const dependency = yield* packageHasDependency(context, cwd, ["@biomejs/biome", "biome"])
+    const dependency = yield* packageHasDependency(context, cwd, ["stylelint"])
     if (Option.isNone(target) && !dependency) {
       return report({
         detected: false,
@@ -78,33 +68,35 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
       return report({
         detected: true,
         ignored: false,
-        message: "detected in package.json but no biome.json/biome.jsonc found",
+        message: "detected in package.json but no JSON config found",
         status: "unsupported",
         tool: TOOL
       })
     }
 
-    const content = yield* context.fs.readFileString(target.value)
-    const ignored = hasVendorPattern(content, [VENDOR_NEGATED_GLOB])
+    const ignored = hasVendorPattern(yield* context.fs.readFileString(target.value))
     return report({
       configPath: target.value,
       detected: true,
       ignored,
-      message: ignored ? "vendor ignored by files.includes" : "vendor not ignored",
+      message: ignored ? "vendor ignored by ignoreFiles" : "vendor not ignored",
       status: ignored ? "configured" : "missing",
       tool: TOOL
     })
   })
 
-export class BiomeIgnore extends Effect.Service<BiomeIgnore>()("vendor-subtree/BiomeIgnore", {
-  accessors: true,
-  effect: Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    const path = yield* Path.Path
-    const context = { fs, path }
-    return {
-      doctor: (cwd: string) => doctorWith(context, cwd),
-      refresh: (cwd: string) => refreshWith(context, cwd)
-    }
-  })
-}) {}
+export class StylelintIgnore extends Effect.Service<StylelintIgnore>()(
+  "vendor-subtree/StylelintIgnore",
+  {
+    accessors: true,
+    effect: Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
+      const context = { fs, path }
+      return {
+        doctor: (cwd: string) => doctorWith(context, cwd),
+        refresh: (cwd: string) => refreshWith(context, cwd)
+      }
+    })
+  }
+) {}

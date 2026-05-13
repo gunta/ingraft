@@ -1,15 +1,15 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
 
-import { jsObjectHasArrayValue } from "../config/javascript-source.ts"
+import { jsObjectHasArrayValue } from "../../config/javascript-source.ts"
 import {
   completeMerge,
   ensureArrayItem,
   initialSettingsState,
   parseSettings,
   type SettingsMergeResult
-} from "../config/jsonc-settings.ts"
-import { tsObjectHasArrayValue } from "../config/typescript-source.ts"
+} from "../../config/jsonc-settings.ts"
+import { tsObjectHasArrayValue } from "../../config/typescript-source.ts"
 import {
   firstExisting,
   hasVendorPattern,
@@ -17,7 +17,7 @@ import {
   report,
   VENDOR_GLOB,
   type ToolFileContext
-} from "./common.ts"
+} from "../common.ts"
 
 const TOOL = "Oxlint"
 const JSON_CONFIG = ".oxlintrc.json"

@@ -1,8 +1,8 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
 
-import { tomlHasPath, tomlPathHasAnyArrayValue } from "../config/toml.ts"
-import { VENDOR_DIR, firstExisting, report, type ToolFileContext } from "./common.ts"
+import { tomlHasPath, tomlPathHasAnyArrayValue } from "../../config/toml.ts"
+import { VENDOR_DIR, firstExisting, report, type ToolFileContext } from "../common.ts"
 
 const TOOL = "Ruff"
 const CONFIG_CANDIDATES = ["ruff.toml", ".ruff.toml", "pyproject.toml"] as const

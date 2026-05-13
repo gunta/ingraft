@@ -1,9 +1,12 @@
 import { describe, expect, test } from "bun:test"
 
-import { mergeBiomeConfigText } from "../src/tool-ignores/biome.ts"
-import { mergeCspellConfigText } from "../src/tool-ignores/cspell.ts"
-import { mergeEslintConfigText, mergeEslintIgnoreText } from "../src/tool-ignores/eslint.ts"
-import { mergeMarkdownlintIgnoreText } from "../src/tool-ignores/markdownlint.ts"
+import { mergePyrightConfigText } from "../src/tool-ignores/language-analyzers/pyright.ts"
+import { mergeBiomeConfigText } from "../src/tool-ignores/linters/biome.ts"
+import { mergeCspellConfigText } from "../src/tool-ignores/linters/cspell.ts"
+import { mergeEslintConfigText, mergeEslintIgnoreText } from "../src/tool-ignores/linters/eslint.ts"
+import { mergeMarkdownlintIgnoreText } from "../src/tool-ignores/linters/markdownlint.ts"
+import { mergeOxlintConfigText } from "../src/tool-ignores/linters/oxlint.ts"
+import { mergeStylelintConfigText } from "../src/tool-ignores/linters/stylelint.ts"
 import {
   buildSystemTools,
   mergeBazelIgnoreText,
@@ -14,9 +17,6 @@ import {
   packageManagerTools,
   taskRunnerTools
 } from "../src/tool-ignores/monorepo.ts"
-import { mergeOxlintConfigText } from "../src/tool-ignores/oxlint.ts"
-import { mergePyrightConfigText } from "../src/tool-ignores/pyright.ts"
-import { mergeStylelintConfigText } from "../src/tool-ignores/stylelint.ts"
 
 describe("tool ignore config mergers", () => {
   test("groups monorepo integrations into tool categories", () => {

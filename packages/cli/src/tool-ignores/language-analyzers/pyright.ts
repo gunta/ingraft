@@ -7,42 +7,41 @@ import {
   initialSettingsState,
   parseSettings,
   type SettingsMergeResult
-} from "../config/jsonc-settings.ts"
+} from "../../config/jsonc-settings.ts"
 import {
   firstExisting,
   hasVendorPattern,
   packageHasDependency,
   report,
-  VENDOR_GLOB,
+  VENDOR_DIR,
   type ToolFileContext
-} from "./common.ts"
+} from "../common.ts"
 
-const TOOL = "Stylelint"
-const CONFIG_CANDIDATES = [".stylelintrc.json", "stylelint.config.json"] as const
+const TOOL = "Pyright"
+const CONFIG = "pyrightconfig.json"
 
-export const mergeStylelintConfigText = (text = "{}\n"): SettingsMergeResult => {
-  const parsed = parseSettings({ objectName: "Stylelint config", text })
+export const mergePyrightConfigText = (text = "{}\n"): SettingsMergeResult => {
+  const parsed = parseSettings({ objectName: CONFIG, text })
   if (parsed._tag === "Invalid") {
     return { _tag: "Invalid", message: parsed.message }
   }
 
   return completeMerge(
     ensureArrayItem({
-      item: VENDOR_GLOB,
-      key: "ignoreFiles",
+      item: VENDOR_DIR,
+      key: "exclude",
       state: initialSettingsState(parsed.source, parsed.value)
     })
   )
 }
 
-const configPath = (context: ToolFileContext, cwd: string) =>
-  firstExisting(context, cwd, CONFIG_CANDIDATES)
+const configPath = (context: ToolFileContext, cwd: string) => firstExisting(context, cwd, [CONFIG])
 
 const refreshWith = (context: ToolFileContext, cwd: string) =>
   Effect.gen(function* () {
     const target = yield* configPath(context, cwd)
     if (Option.isNone(target)) return Option.none<string>()
-    const merged = mergeStylelintConfigText(yield* context.fs.readFileString(target.value))
+    const merged = mergePyrightConfigText(yield* context.fs.readFileString(target.value))
     if (merged._tag !== "Updated") return Option.none<string>()
     yield* context.fs.writeFileString(
       target.value,
@@ -54,7 +53,7 @@ const refreshWith = (context: ToolFileContext, cwd: string) =>
 const doctorWith = (context: ToolFileContext, cwd: string) =>
   Effect.gen(function* () {
     const target = yield* configPath(context, cwd)
-    const dependency = yield* packageHasDependency(context, cwd, ["stylelint"])
+    const dependency = yield* packageHasDependency(context, cwd, ["pyright"])
     if (Option.isNone(target) && !dependency) {
       return report({
         detected: false,
@@ -68,35 +67,32 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
       return report({
         detected: true,
         ignored: false,
-        message: "detected in package.json but no JSON config found",
+        message: "detected in package.json but no pyrightconfig.json found",
         status: "unsupported",
         tool: TOOL
       })
     }
 
-    const ignored = hasVendorPattern(yield* context.fs.readFileString(target.value))
+    const ignored = hasVendorPattern(yield* context.fs.readFileString(target.value), [VENDOR_DIR])
     return report({
       configPath: target.value,
       detected: true,
       ignored,
-      message: ignored ? "vendor ignored by ignoreFiles" : "vendor not ignored",
+      message: ignored ? "vendor ignored by exclude" : "vendor not ignored",
       status: ignored ? "configured" : "missing",
       tool: TOOL
     })
   })
 
-export class StylelintIgnore extends Effect.Service<StylelintIgnore>()(
-  "vendor-subtree/StylelintIgnore",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      const context = { fs, path }
-      return {
-        doctor: (cwd: string) => doctorWith(context, cwd),
-        refresh: (cwd: string) => refreshWith(context, cwd)
-      }
-    })
-  }
-) {}
+export class PyrightIgnore extends Effect.Service<PyrightIgnore>()("vendor-subtree/PyrightIgnore", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const context = { fs, path }
+    return {
+      doctor: (cwd: string) => doctorWith(context, cwd),
+      refresh: (cwd: string) => refreshWith(context, cwd)
+    }
+  })
+}) {}

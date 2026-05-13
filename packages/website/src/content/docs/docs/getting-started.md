@@ -41,6 +41,16 @@ vendor-subtree list
 vendor-subtree doctor
 ```
 
+If you expect to edit the vendored source, choose the strategy up front. A
+fork-backed submodule is the recommended workflow for durable vendor patches:
+
+```sh
+vendor-subtree add your-org/effect --strategy submodule --ref vendor-patches
+```
+
+Use `subtree` for normal read-only reference source and `clone-ignore` for local
+experiments that should not be committed.
+
 ## Where source goes
 
 By default, vendored repositories live under `vendor/`. The tool also updates the

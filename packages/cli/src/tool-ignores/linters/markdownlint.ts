@@ -1,7 +1,7 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
 
-import { packageJsonDependencySpec } from "../config/package-json.ts"
+import { packageJsonDependencySpec } from "../../config/package-json.ts"
 import {
   VENDOR_IGNORE_DIR,
   firstExisting,
@@ -9,7 +9,7 @@ import {
   mergeManagedIgnoreSection,
   report,
   type ToolFileContext
-} from "./common.ts"
+} from "../common.ts"
 
 const TOOL = "markdownlint"
 const BEGIN = "# vendor-subtree: markdownlint-ignore begin"

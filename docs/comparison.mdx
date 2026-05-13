@@ -248,7 +248,7 @@ git submodule update --init --recursive
 |                                       | Detached-HEAD failures common                                 |
 |                                       | CI needs `--recurse-submodules`                               |
 
-**Best for**: When you actively develop within the external repo. **Not recommended** for agent-driven workflows — initialization failures are a reliability killer. Effect, vendor-subtree, and Vendir all recommend subtree instead.
+**Best for**: Fork-backed editable vendors, where the team needs to patch the external repo and possibly send those commits upstream. **Not recommended as the default read-only agent context path** because initialization failures are a reliability risk. Use subtree for read-only source; use a fork-backed submodule when ownership of vendor patches matters more than zero-step checkout.
 
 ---
 
@@ -782,7 +782,7 @@ flowchart LR
   style R2 fill:#5f1e1e,color:#fff
 ```
 
-### Why subtree, not submodule
+### Why subtree, not submodule by default
 
 | Factor           | Submodule (rejected)             | Subtree (recommended)               |
 | ---------------- | -------------------------------- | ----------------------------------- |
@@ -790,6 +790,10 @@ flowchart LR
 | Indirection      | Adds a layer                     | Behaves like regular folders        |
 | Metadata         | Requires `.gitmodules`           | No extra metadata                   |
 | Agent visibility | Extra steps for agent            | Indistinguishable from project code |
+
+Submodules become the better choice when the vendor itself is meant to be edited.
+In that case, point the submodule at a fork branch so the vendor patch history
+lives in the fork and the parent repository only records the gitlink pointer.
 
 ### Effect's key arguments
 
@@ -818,7 +822,7 @@ flowchart LR
 
 4. **Static snapshots are good for chat, weaker for agents.** Repomix and BTCA shine for one-shot context — but for ongoing agentic development, a navigable workspace beats a flattened artifact.
 
-5. **Submodules remain a trap for agent workflows.** The initialization step is a reliability killer. Effect, vendor-subtree, and Vendir all reach the same conclusion: use subtree.
+5. **Submodules are not the default, but they have one strong job.** For read-only agent context, the initialization step is a reliability killer, so use subtree. For durable vendor patches, use a fork-backed submodule so changes live in the fork and can be upstreamed cleanly.
 
 6. **Retrieval-based tools trade depth for convenience.** Watch for failure modes: Context7's hallucination rate on bleeding-edge features (~63%) and ContextCrush incident; Repobase's early-stage maturity; mgrep's cloud-upload privacy posture; BTCA's AI-mediation latency.
 
