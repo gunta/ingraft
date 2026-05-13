@@ -87,7 +87,7 @@ const FilesLive = ProjectFilesLive.pipe(
 const SurfacesLive = ProjectSurfacesLive.pipe(Layer.provide(PlatformLive))
 const HostsLive = RepositoryHostsLive.pipe(Layer.provide(Layer.mergeAll(GhLive, GlabLive)))
 const PkgSyncLive = PackageVersionSyncLive.pipe(
-  Layer.provide(Layer.mergeAll(PlatformLive, GitLayerLive))
+  Layer.provide(Layer.mergeAll(PlatformLive, GitLayerLive, FetchHttpClient.layer))
 )
 const PrmptsLive = PromptsLive
 

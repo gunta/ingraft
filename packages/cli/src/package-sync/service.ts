@@ -1366,12 +1366,12 @@ const npmLatestMetadata = (
   )
 
 const hexPackageMetadata = (
+  client: HttpClient.HttpClient,
   _cwd: string,
   packageName: string
-): Effect.Effect<Option.Option<HexPackageMetadata>, never, HttpClient.HttpClient> => {
+): Effect.Effect<Option.Option<HexPackageMetadata>> => {
   const url = `https://hex.pm/api/packages/${encodeURIComponent(packageName)}`
   return Effect.gen(function* () {
-    const client = yield* HttpClient.HttpClient
     const request = HttpClientRequest.get(url).pipe(HttpClientRequest.accept("application/json"))
     const response = yield* client
       .execute(request)
@@ -1421,8 +1421,9 @@ const parseMavenLatestVersion = (text: string): Option.Option<string> =>
   )
 
 const mavenLatestVersion = (
+  client: HttpClient.HttpClient,
   packageName: string
-): Effect.Effect<Option.Option<string>, never, HttpClient.HttpClient> =>
+): Effect.Effect<Option.Option<string>> =>
   Option.match(mavenPackageParts(packageName), {
     onNone: () => Effect.succeed(Option.none<string>()),
     onSome: ({ artifact, group }) => {
@@ -1433,7 +1434,6 @@ const mavenLatestVersion = (
       })
       const url = `${MAVEN_CENTRAL_SEARCH_URL}?${params.toString()}`
       return Effect.gen(function* () {
-        const client = yield* HttpClient.HttpClient
         const request = HttpClientRequest.get(url).pipe(
           HttpClientRequest.accept("application/json")
         )
@@ -1458,30 +1458,31 @@ const mavenLatestVersion = (
   })
 
 const mavenMetadataVersion = (
+  client: HttpClient.HttpClient,
   packageName: string,
   version: string
-): Effect.Effect<Option.Option<string>, never, HttpClient.HttpClient> => {
+): Effect.Effect<Option.Option<string>> => {
   const exactVersion = nonEmptyVersion(version)
   return Option.isSome(exactVersion)
     ? Effect.succeed(exactVersion)
-    : mavenLatestVersion(packageName)
+    : mavenLatestVersion(client, packageName)
 }
 
 const mavenPackageMetadata = (
+  client: HttpClient.HttpClient,
   packageName: string,
   version: string
-): Effect.Effect<Option.Option<MavenPackageMetadata>, never, HttpClient.HttpClient> =>
+): Effect.Effect<Option.Option<MavenPackageMetadata>> =>
   Option.match(mavenPackageParts(packageName), {
     onNone: () => Effect.succeed(Option.none<MavenPackageMetadata>()),
     onSome: (parts) =>
-      mavenMetadataVersion(packageName, version).pipe(
+      mavenMetadataVersion(client, packageName, version).pipe(
         Effect.flatMap((exactVersion) =>
           Option.match(exactVersion, {
             onNone: () => Effect.succeed(Option.none<MavenPackageMetadata>()),
             onSome: (resolvedVersion) => {
               const url = mavenPomUrl({ ...parts, version: resolvedVersion })
               return Effect.gen(function* () {
-                const client = yield* HttpClient.HttpClient
                 const request = HttpClientRequest.get(url).pipe(
                   HttpClientRequest.accept("application/xml,text/xml")
                 )
@@ -1613,6 +1614,7 @@ const hexVersionFromMetadata = (
 ): string => Option.getOrElse(detected.version, () => metadata.latestStableVersion)
 
 const resolveHexPackageVersion = (
+  client: HttpClient.HttpClient,
   fs: FileSystem.FileSystem,
   path: Path.Path,
   git: GitShape,
@@ -1629,7 +1631,7 @@ const resolveHexPackageVersion = (
       onSome: Effect.succeed
     })
     const detected = yield* detectProjectPackageVersionWith(fs, path, params.cwd, dependency)
-    const metadata = yield* Option.match(yield* hexPackageMetadata(params.cwd, identity.name), {
+    const metadata = yield* Option.match(yield* hexPackageMetadata(client, params.cwd, identity.name), {
       onNone: () =>
         Effect.fail(failedSync(params, "Hex metadata did not include a usable version.")),
       onSome: Effect.succeed
@@ -1660,6 +1662,7 @@ const resolveHexPackageVersion = (
   })
 
 const resolveHexPackageSource = (
+  client: HttpClient.HttpClient,
   fs: FileSystem.FileSystem,
   path: Path.Path,
   git: GitShape,
@@ -1676,7 +1679,7 @@ const resolveHexPackageSource = (
       spec: "latest"
     }))
     const detected = yield* detectProjectPackageVersionWith(fs, path, params.cwd, dependency)
-    const metadata = yield* Option.match(yield* hexPackageMetadata(params.cwd, identity.name), {
+    const metadata = yield* Option.match(yield* hexPackageMetadata(client, params.cwd, identity.name), {
       onNone: () =>
         Effect.fail(failedPackageSource(params, "Hex metadata did not include a usable version.")),
       onSome: Effect.succeed
@@ -1860,6 +1863,7 @@ const resolveMavenRef = (
   })
 
 const resolveAndroidPackageVersion = (
+  client: HttpClient.HttpClient,
   fs: FileSystem.FileSystem,
   path: Path.Path,
   git: GitShape,
@@ -1878,6 +1882,7 @@ const resolveAndroidPackageVersion = (
     const detected = yield* detectProjectPackageVersionWith(fs, path, params.cwd, dependency)
     const metadata = yield* Option.match(
       yield* mavenPackageMetadata(
+        client,
         identity.name,
         Option.getOrElse(detected.version, () => dependency.spec)
       ),
@@ -1914,6 +1919,7 @@ const resolveAndroidPackageVersion = (
   })
 
 const resolveAndroidPackageSource = (
+  client: HttpClient.HttpClient,
   fs: FileSystem.FileSystem,
   path: Path.Path,
   git: GitShape,
@@ -1932,6 +1938,7 @@ const resolveAndroidPackageSource = (
     const detected = yield* detectProjectPackageVersionWith(fs, path, params.cwd, dependency)
     const metadata = yield* Option.match(
       yield* mavenPackageMetadata(
+        client,
         identity.name,
         Option.getOrElse(detected.version, () => dependency.spec)
       ),
@@ -1976,6 +1983,7 @@ const resolveAndroidPackageSource = (
   })
 
 const resolvePackageVersion = (
+  client: HttpClient.HttpClient,
   fs: FileSystem.FileSystem,
   path: Path.Path,
   executor: ChildProcessSpawner.ChildProcessSpawner["Service"],
@@ -1985,13 +1993,13 @@ const resolvePackageVersion = (
   Effect.gen(function* () {
     const identity = packageIdentityFromInput(params.packageName)
     if (identity.ecosystem === "hex") {
-      return yield* resolveHexPackageVersion(fs, path, git, params, identity)
+      return yield* resolveHexPackageVersion(client, fs, path, git, params, identity)
     }
     if (identity.ecosystem === "swift") {
       return yield* resolveSwiftPackageVersion(fs, path, git, params, identity)
     }
     if (identity.ecosystem === "android") {
-      return yield* resolveAndroidPackageVersion(fs, path, git, params, identity)
+      return yield* resolveAndroidPackageVersion(client, fs, path, git, params, identity)
     }
     if (!isNpmBackedPackageEcosystem(identity.ecosystem)) {
       return yield* Effect.fail(
@@ -2070,6 +2078,7 @@ const resolvePackageVersion = (
   })
 
 const resolvePackageSource = (
+  client: HttpClient.HttpClient,
   fs: FileSystem.FileSystem,
   path: Path.Path,
   executor: ChildProcessSpawner.ChildProcessSpawner["Service"],
@@ -2079,13 +2088,13 @@ const resolvePackageSource = (
   Effect.gen(function* () {
     const identity = packageIdentityFromInput(params.packageName)
     if (identity.ecosystem === "hex") {
-      return yield* resolveHexPackageSource(fs, path, git, params, identity)
+      return yield* resolveHexPackageSource(client, fs, path, git, params, identity)
     }
     if (identity.ecosystem === "swift") {
       return yield* resolveSwiftPackageSource(fs, path, git, params, identity)
     }
     if (identity.ecosystem === "android") {
-      return yield* resolveAndroidPackageSource(fs, path, git, params, identity)
+      return yield* resolveAndroidPackageSource(client, fs, path, git, params, identity)
     }
     if (!isNpmBackedPackageEcosystem(identity.ecosystem)) {
       return yield* Effect.fail(
@@ -2184,6 +2193,7 @@ const unavailableCandidate = (
 })
 
 const scanPackageDependency = (
+  client: HttpClient.HttpClient,
   fs: FileSystem.FileSystem,
   path: Path.Path,
   executor: ChildProcessSpawner.ChildProcessSpawner["Service"],
@@ -2194,7 +2204,7 @@ const scanPackageDependency = (
     const detected = yield* detectProjectPackageVersionWith(fs, path, cwd, dependency)
 
     if (dependency.ecosystem === "hex") {
-      return yield* hexPackageMetadata(cwd, dependency.name).pipe(
+      return yield* hexPackageMetadata(client, cwd, dependency.name).pipe(
         Effect.map((metadata) =>
           Option.match(metadata, {
             onNone: () => ({
@@ -2228,6 +2238,7 @@ const scanPackageDependency = (
 
     if (dependency.ecosystem === "android") {
       return yield* mavenPackageMetadata(
+        client,
         dependency.name,
         Option.getOrElse(detected.version, () => dependency.spec)
       ).pipe(
@@ -2332,6 +2343,7 @@ const listProjectPackageDependencies = (fs: FileSystem.FileSystem, path: Path.Pa
   )
 
 const scanPackageDependencies = (
+  client: HttpClient.HttpClient,
   fs: FileSystem.FileSystem,
   path: Path.Path,
   executor: ChildProcessSpawner.ChildProcessSpawner["Service"],
@@ -2341,7 +2353,7 @@ const scanPackageDependencies = (
     Effect.flatMap((dependencies) =>
       Effect.forEach(
         dependencies,
-        (dependency) => scanPackageDependency(fs, path, executor, cwd, dependency),
+        (dependency) => scanPackageDependency(client, fs, path, executor, cwd, dependency),
         { concurrency: 6 }
       )
     )
@@ -2378,23 +2390,24 @@ export const PackageVersionSyncLive = Layer.effect(
     const path = yield* Path.Path
     const executor = yield* ChildProcessSpawner.ChildProcessSpawner
     const git = yield* Git
+    const client = yield* HttpClient.HttpClient
     return {
       resolve: Effect.fn("PackageVersionSync.resolve")((params: PackageVersionSyncParams) =>
-        resolvePackageVersion(fs, path, executor, git, params)
+        resolvePackageVersion(client, fs, path, executor, git, params)
       ),
       resolvePackageSource: Effect.fn("PackageVersionSync.resolvePackageSource")(
         (params: PackageSourceResolutionParams) =>
-          resolvePackageSource(fs, path, executor, git, params)
+          resolvePackageSource(client, fs, path, executor, git, params)
       ),
       listDependencies: Effect.fn("PackageVersionSync.listDependencies")((cwd: string) =>
         listProjectPackageDependencies(fs, path, cwd)
       ),
       scanDependency: Effect.fn("PackageVersionSync.scanDependency")(
         (cwd: string, dependency: PackageDependency) =>
-          scanPackageDependency(fs, path, executor, cwd, dependency)
+          scanPackageDependency(client, fs, path, executor, cwd, dependency)
       ),
       scan: Effect.fn("PackageVersionSync.scan")((cwd: string) =>
-        scanPackageDependencies(fs, path, executor, cwd)
+        scanPackageDependencies(client, fs, path, executor, cwd)
       )
     }
   })
