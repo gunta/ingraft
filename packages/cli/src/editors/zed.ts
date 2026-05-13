@@ -6,7 +6,7 @@ export const mergeZedSettingsText = (_text = "{}\n"): SettingsMergeResult => ({
   _tag: "Unchanged"
 })
 
-export class ZedSettings extends Effect.Service<ZedSettings>()("vendor-subtree/ZedSettings", {
+export class ZedSettings extends Effect.Service<ZedSettings>()("ingraft/ZedSettings", {
   accessors: true,
   sync: () => ({
     refresh: (_cwd: string) => Effect.succeed(Option.none<string>())

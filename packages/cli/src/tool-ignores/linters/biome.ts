@@ -96,7 +96,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class BiomeIgnore extends Effect.Service<BiomeIgnore>()("vendor-subtree/BiomeIgnore", {
+export class BiomeIgnore extends Effect.Service<BiomeIgnore>()("ingraft/BiomeIgnore", {
   accessors: true,
   effect: Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem

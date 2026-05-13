@@ -29,7 +29,7 @@ export interface RefreshToolIgnoresParams {
   readonly cwd: string
 }
 
-export class ToolIgnores extends Effect.Service<ToolIgnores>()("vendor-subtree/ToolIgnores", {
+export class ToolIgnores extends Effect.Service<ToolIgnores>()("ingraft/ToolIgnores", {
   accessors: true,
   effect: Effect.gen(function* () {
     const biome = yield* BiomeIgnore

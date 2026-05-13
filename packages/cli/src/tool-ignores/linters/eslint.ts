@@ -20,8 +20,8 @@ import {
 } from "../common.ts"
 
 const TOOL = "ESLint"
-const BEGIN = "# vendor-subtree: eslint-ignore begin"
-const END = "# vendor-subtree: eslint-ignore end"
+const BEGIN = "# ingraft: eslint-ignore begin"
+const END = "# ingraft: eslint-ignore end"
 const IGNORE_FILE = ".eslintignore"
 const JSON_CONFIG_CANDIDATES = [".eslintrc.json", ".eslintrc"] as const
 const SOURCE_CONFIG_CANDIDATES = [
@@ -163,7 +163,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class EslintIgnore extends Effect.Service<EslintIgnore>()("vendor-subtree/EslintIgnore", {
+export class EslintIgnore extends Effect.Service<EslintIgnore>()("ingraft/EslintIgnore", {
   accessors: true,
   effect: Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem

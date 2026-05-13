@@ -1,7 +1,5 @@
 import { Data } from "effect"
 
-import type { StyleOptions } from "../app/styles.ts"
-import { renderNotice, renderSection } from "../app/ui.ts"
 import type { VendorStrategy } from "./vendor-strategy.ts"
 
 export interface ErrorPresentation {
@@ -240,8 +238,7 @@ export const errorPresentation = (error: VendorError): ErrorPresentation => {
     case "NotGitRepository":
       return {
         title: "Not inside a git repository",
-        detail:
-          "The vendor-subtree command must run from a project that already has a git repository.",
+        detail: "The ingraft command must run from a project that already has a git repository.",
         hint: "Run this from your project root, or run `git init` first.",
         code: 5
       }
@@ -396,16 +393,3 @@ export const errorPresentation = (error: VendorError): ErrorPresentation => {
 }
 
 export const exitCodeOf = (error: VendorError): number => errorPresentation(error).code
-
-export const formatVendorError = (error: VendorError, options: StyleOptions = {}): string => {
-  const presentation = errorPresentation(error)
-  return [
-    renderNotice({ kind: "error", title: presentation.title, options }),
-    presentation.detail
-      ? renderSection({ title: "Details", content: presentation.detail, options })
-      : "",
-    presentation.hint ? renderSection({ title: "Hint", content: presentation.hint, options }) : ""
-  ]
-    .filter((block) => block.length > 0)
-    .join("\n\n")
-}

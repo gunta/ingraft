@@ -39,7 +39,7 @@ const makeGitLabCliExec =
       })
     )
 
-export class GitLabCli extends Effect.Service<GitLabCli>()("vendor-subtree/GitLabCli", {
+export class GitLabCli extends Effect.Service<GitLabCli>()("ingraft/GitLabCli", {
   accessors: true,
   effect: Effect.gen(function* () {
     const executor = yield* CommandExecutor.CommandExecutor

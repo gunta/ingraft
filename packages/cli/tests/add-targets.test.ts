@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { classifyAddTarget } from "../src/commands/add.ts"
+import { classifyAddTarget } from "../src/commands/add.tsx"
 
 describe("add target parsing", () => {
   test("treats hosted repository inputs as repository targets", () => {

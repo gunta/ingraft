@@ -53,7 +53,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class MypyIgnore extends Effect.Service<MypyIgnore>()("vendor-subtree/MypyIgnore", {
+export class MypyIgnore extends Effect.Service<MypyIgnore>()("ingraft/MypyIgnore", {
   accessors: true,
   effect: Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem

@@ -59,10 +59,10 @@ describe("project surface detection", () => {
       writeFileSync(
         join(cwd, ".gitattributes"),
         [
-          "# vendor-subtree: github-diff begin",
+          "# ingraft: github-diff begin",
           "# Hide committed vendored subtree source in GitHub PR diffs by default.",
           "/vendor/effect/** linguist-vendored linguist-generated",
-          "# vendor-subtree: github-diff end",
+          "# ingraft: github-diff end",
           ""
         ].join("\n")
       )

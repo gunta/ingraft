@@ -11,7 +11,7 @@ know the project needs to modify the vendor, use a different workflow on purpose
 Use a fork-backed `submodule` for durable vendor modifications.
 
 ```sh
-vendor-subtree add your-org/effect --strategy submodule --ref vendor-patches
+ingraft add your-org/effect --strategy submodule --ref vendor-patches
 ```
 
 This keeps the parent repository small while making the vendor changes real git

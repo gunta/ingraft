@@ -1,0 +1,19 @@
+---
+import { landingNav } from "../../data/landing.ts"
+---
+
+<header class="landing-header" aria-label="Primary">
+  <a class="brand" href="/">
+    <span class="brand-mark" aria-hidden="true">v</span>
+    <span>ingraft</span>
+  </a>
+  <nav class="landing-nav">
+    {
+      landingNav.map((link) => (
+        <a class:list={[link.variant === "secondary" && "cta cta-secondary"]} href={link.href}>
+          {link.label}
+        </a>
+      ))
+    }
+  </nav>
+</header>

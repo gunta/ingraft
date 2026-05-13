@@ -12,7 +12,7 @@ Use `subtree` when the source is small enough to commit and you want every clone
 of your project to include it.
 
 ```sh
-vendor-subtree add effect --strategy subtree
+ingraft add effect --strategy subtree
 ```
 
 ## Submodule
@@ -21,7 +21,7 @@ Use `submodule` when the upstream repository is large or you want a pinned git
 relationship without copying its contents into your own history.
 
 ```sh
-vendor-subtree add rust-lang/rust --strategy submodule
+ingraft add rust-lang/rust --strategy submodule
 ```
 
 Submodules are also the preferred strategy when the vendor is meant to be edited.
@@ -29,7 +29,7 @@ Use a fork URL and a branch in that fork so vendor patches live as normal commit
 that can be pushed and upstreamed:
 
 ```sh
-vendor-subtree add your-org/effect --strategy submodule --ref vendor-patches
+ingraft add your-org/effect --strategy submodule --ref vendor-patches
 ```
 
 See [Editable Vendors](./editable-vendors/) for the full workflow.
@@ -40,7 +40,7 @@ Use `clone-ignore` when source should exist locally for agents and LSPs but shou
 not be committed.
 
 ```sh
-vendor-subtree add Effect-TS/effect --strategy clone-ignore
+ingraft add Effect-TS/effect --strategy clone-ignore
 ```
 
 If the project has a colocated `jj` repository, the CLI falls back to clone-ignore
@@ -52,7 +52,7 @@ Large or irrelevant files can be filtered during vendoring when the strategy
 supports it:
 
 ```sh
-vendor-subtree add Effect-TS/effect \
+ingraft add Effect-TS/effect \
   --exclude "**/*.png" \
   --exclude-dir docs/generated \
   --max-file-size 1MB

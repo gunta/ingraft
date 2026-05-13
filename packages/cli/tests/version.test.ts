@@ -10,7 +10,6 @@ import { RepositoryHosts } from "../src/services/repository-hosts.ts"
 describe("version selectors", () => {
   const runtime = RuntimeConfig.make({
     argv: ["bun", "vendor.ts"],
-    colors: false,
     cwd: "/workspace",
     exit: (code) => Effect.dieMessage(`exit ${code}`)
   })

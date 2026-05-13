@@ -22,7 +22,7 @@ flowchart TB
   subgraph Embed["Embed in workspace (offline, native tools)"]
     direction TB
     E1["git subtree (raw)"]
-    E2["vendor-subtree (this project)"]
+    E2["ingraft (this project)"]
     E3["Vendir"]
     E4["git submodule"]
     E5["git clone"]
@@ -100,18 +100,18 @@ flowchart LR
 
 ## Approach Categories
 
-| Category                       | Approaches                                    | Key Trait                                  |
-| ------------------------------ | --------------------------------------------- | ------------------------------------------ |
-| **Git-native (raw)**           | Subtree, Submodule, Clone                     | Source in workspace, no extra tooling      |
-| **Git-subtree wrappers**       | **vendor-subtree** (this project), **Vendir** | Ergonomic CLI over `git subtree` + hygiene |
-| **Context packaging**          | Repomix                                       | Pack repo into single AI file (+ MCP mode) |
-| **On-demand source fetch**     | OpenSrc                                       | Lazy clone of npm/PyPI/crates source       |
-| **Local semantic search**      | Repobase                                      | Local vector index via MCP                 |
-| **Cloud semantic grep**        | mgrep                                         | Cloud-indexed semantic search CLI          |
-| **Doc retrieval**              | Context7                                      | Hosted MCP for 33K+ library docs           |
-| **AI-mediated Q&A**            | BTCA / BTCA-3                                 | Clone + LLM-grounded answers               |
-| **Org architecture discovery** | RepoSwarm                                     | Multi-repo `.arch.md` via Temporal         |
-| **Agent instructions**         | Skills                                        | Curated guidance, progressive disclosure   |
+| Category                       | Approaches                             | Key Trait                                  |
+| ------------------------------ | -------------------------------------- | ------------------------------------------ |
+| **Git-native (raw)**           | Subtree, Submodule, Clone              | Source in workspace, no extra tooling      |
+| **Git-subtree wrappers**       | **ingraft** (this project), **Vendir** | Ergonomic CLI over `git subtree` + hygiene |
+| **Context packaging**          | Repomix                                | Pack repo into single AI file (+ MCP mode) |
+| **On-demand source fetch**     | OpenSrc                                | Lazy clone of npm/PyPI/crates source       |
+| **Local semantic search**      | Repobase                               | Local vector index via MCP                 |
+| **Cloud semantic grep**        | mgrep                                  | Cloud-indexed semantic search CLI          |
+| **Doc retrieval**              | Context7                               | Hosted MCP for 33K+ library docs           |
+| **AI-mediated Q&A**            | BTCA / BTCA-3                          | Clone + LLM-grounded answers               |
+| **Org architecture discovery** | RepoSwarm                              | Multi-repo `.arch.md` via Temporal         |
+| **Agent instructions**         | Skills                                 | Curated guidance, progressive disclosure   |
 
 ---
 
@@ -141,34 +141,38 @@ In Maxwell Brown's blog post, the Effect team argued (qualitatively) that agents
 
 ---
 
-### 2. vendor-subtree (this project)
+### 2. ingraft (this project)
 
-**npm**: [`vendor-subtree`](https://www.npmjs.com/package/vendor-subtree) · **Skill**: `vendor-subtree` (Claude Code)
+**npm**: [`ingraft`](https://www.npmjs.com/package/ingraft) · **Skill**: `ingraft` (Claude Code)
 
 Opinionated, multi-strategy CLI that wraps git subtree (and submodule / clone-ignore as fallbacks). Distributed both as a standalone npm package and as a Claude Code skill. Built on Effect-TS.
 
 ```bash
-bunx vendor-subtree@latest                          # scan package.json, ask what to vendor
-bunx vendor-subtree@latest init                     # set up vendoring
-bunx vendor-subtree@latest add effect               # alias → Effect-TS/effect
-bunx vendor-subtree@latest add effect --tag v3.21.2 # pin to a tag
-bunx vendor-subtree@latest add effect --sync-package effect      # follow npm version
-bunx vendor-subtree@latest add effect --strategy submodule       # alt strategy
-bunx vendor-subtree@latest add effect --strategy clone-ignore    # alt strategy
-bunx vendor-subtree@latest add effect --exclude-dir docs --max-file-size 1MB
-bunx vendor-subtree@latest update --all
-bunx vendor-subtree@latest doctor                   # diagnose hygiene
-bunx vendor-subtree@latest refresh                  # regenerate agent docs, ignores
+bunx ingraft@latest                          # scan package.json, ask what to vendor
+bunx ingraft@latest init                     # set up vendoring
+bunx ingraft@latest add effect               # alias → Effect-TS/effect
+bunx ingraft@latest add effect --tag v3.21.2 # pin to a tag
+bunx ingraft@latest add effect --sync-package effect      # follow npm version
+bunx ingraft@latest add effect --strategy submodule       # alt strategy
+bunx ingraft@latest add effect --strategy clone-ignore    # alt strategy
+bunx ingraft@latest add effect --exclude-dir docs --max-file-size 1MB
+bunx ingraft@latest update --all
+bunx ingraft@latest doctor                   # diagnose hygiene
+bunx ingraft@latest doctor --fix             # repair generated hygiene files
+bunx ingraft@latest refresh                  # regenerate agent docs, ignores
+bunx ingraft@latest context                  # detect curated optional context tools
+bunx ingraft@latest context pack --compress  # wrap Repomix for a vendor snapshot
+bunx ingraft@latest context source zod       # wrap OpenSrc for long-tail source
 ```
 
 ```mermaid
 flowchart TB
-  User["User intent<br/>(natural language)"] --> Skill["vendor-subtree<br/>(Claude Code)"]
+  User["User intent<br/>(natural language)"] --> Skill["ingraft<br/>(Claude Code)"]
   Skill --> Router{Intent}
-  Router -->|"vendor X"| Add["vendor-subtree add"]
-  Router -->|"scan deps"| Deps["vendor-subtree deps"]
-  Router -->|"update all"| Update["vendor-subtree update --all"]
-  Router -->|"check hygiene"| Doctor["vendor-subtree doctor"]
+  Router -->|"vendor X"| Add["ingraft add"]
+  Router -->|"scan deps"| Deps["ingraft deps"]
+  Router -->|"update all"| Update["ingraft update --all"]
+  Router -->|"check hygiene"| Doctor["ingraft doctor"]
 
   Add --> Strategy{Strategy}
   Strategy -->|default| Subtree["git subtree<br/>(committed)"]
@@ -192,6 +196,7 @@ flowchart TB
 | **Monorepo support**: Turbo, Nx, Lerna, pnpm, moon, Bazel, Rush, Lage, Pants, Buck2, Gradle, Maven, Please |                                      |
 | **Agent skill distribution** — natural-language routing                                                    |                                      |
 | Hygiene automation (`.gitattributes`, IDE excludes, tool ignores)                                          |                                      |
+| Optional context-tool routing for Repomix / OpenSrc / Repobase                                             |                                      |
 | Destructive history rewrite option for full removal                                                        |                                      |
 
 **Best for**: Teams that want git subtree's benefits without rough edges — especially in monorepos or when vendoring npm packages with version-sync.
@@ -308,9 +313,9 @@ flowchart LR
 | Version-controlled with the repo                | Static per session                      |
 | No git complexity                               | Only as good as the author              |
 
-**Best for**: Wrapping CLIs / codifying conventions. **Best paired with a source-level approach** (subtree, vendor-subtree, OpenSrc). Strongest setups use both.
+**Best for**: Wrapping CLIs / codifying conventions. **Best paired with a source-level approach** (subtree, ingraft, OpenSrc). Strongest setups use both.
 
-Examples: Anthropic's official `claude-api` skill, this repo's `vendor-subtree`, BTCA's `btca-cli` skill.
+Examples: Anthropic's official `claude-api` skill, this repo's `ingraft`, BTCA's `btca-cli` skill.
 
 ---
 
@@ -605,7 +610,7 @@ The MCP server's **codemode pattern**: agents write JavaScript that runs server-
 | Global cache shared across projects              |                                                |
 | Apache-2.0                                       |                                                |
 
-**Best for**: Letting agents drill into dependency internals without committing them. **Strong complement** to vendor-subtree / Vendir — vendor for repos you constantly touch, OpenSrc for "what does this random npm package do?" exploration.
+**Best for**: Letting agents drill into dependency internals without committing them. **Strong complement** to ingraft / Vendir — vendor for repos you constantly touch, OpenSrc for "what does this random npm package do?" exploration.
 
 ---
 
@@ -613,7 +618,7 @@ The MCP server's **codemode pattern**: agents write JavaScript that runs server-
 
 Three projects wrap `git subtree` for agent vendoring. All inspired by the Effect post; all created within weeks of each other in 2026.
 
-| Feature                             | Raw `git subtree` | **vendor-subtree** (this project)     | **Vendir**        |
+| Feature                             | Raw `git subtree` | **ingraft** (this project)            | **Vendir**        |
 | ----------------------------------- | ----------------- | ------------------------------------- | ----------------- |
 | **Strategies**                      | Subtree only      | Subtree + submodule + clone-ignore    | Subtree only      |
 | **Config file**                     | None              | Inferred from git + targets           | `vendir.toml`     |
@@ -624,8 +629,10 @@ Three projects wrap `git subtree` for agent vendoring. All inspired by the Effec
 | **Ref / tag / release pinning**     | Manual            | ✅ — `--ref` / `--tag` / `--release`  | Branch only       |
 | **`.gitattributes` linguist mgmt**  | ❌                | ✅                                    | ✅                |
 | **IDE excludes (VS Code / Cursor)** | ❌                | ✅                                    | ✅ (VS Code)      |
+| **Repair command**                  | ❌                | `doctor --fix`                        | `doctor --fix`    |
 | **Monorepo support**                | ❌                | ✅ — 13 build systems                 | ❌                |
-| **Agent skill distribution**        | ❌                | ✅ — `vendor-subtree`                 | ❌                |
+| **Optional context-tool routing**   | ❌                | ✅ — Repomix / OpenSrc / Repobase     | ❌                |
+| **Agent skill distribution**        | ❌                | ✅ — `ingraft`                        | ❌                |
 | **History-rewrite removal**         | Manual            | `--dangerously-rewrite-history`       | ❌                |
 | **Cloudflare artifact**             | ❌                | ✅                                    | ❌                |
 | **Language / runtime**              | Git               | TypeScript + Effect-TS (Node)         | TypeScript (Node) |
@@ -635,30 +642,30 @@ Three projects wrap `git subtree` for agent vendoring. All inspired by the Effec
 **TL;DR**:
 
 - **Raw `git subtree`** — fine if you know exactly what to vendor and don't care about hygiene
-- **vendor-subtree** — full-featured: multi-strategy, manifest scanning, monorepo-aware, ships as agent skill
+- **ingraft** — full-featured: multi-strategy, manifest scanning, monorepo-aware, ships as agent skill
 - **Vendir** — minimal and focused: ergonomic subtree-only wrapper with TOML config
 
 ---
 
 ## Full Comparison Matrix
 
-| Feature                        | Raw Subtree | vendor-subtree | Vendir | Submodule | Clone | Skills   | Repomix   | Repobase   | mgrep        | Context7                      | RepoSwarm  | BTCA/3         | OpenSrc     |
-| ------------------------------ | ----------- | -------------- | ------ | --------- | ----- | -------- | --------- | ---------- | ------------ | ----------------------------- | ---------- | -------------- | ----------- |
-| **Source available**           | Full        | Full           | Full   | Full\*    | Full  | ❌       | Flattened | File reads | Snippets     | ❌ (docs)                     | Summaries  | Clones         | Full        |
-| **Native file tools**          | ✅          | ✅             | ✅     | ✅\*      | ✅    | N/A      | ❌        | via MCP    | via plugin   | ❌                            | ❌         | via AI         | ✅          |
-| **Cross-file imports**         | ✅          | ✅             | ✅     | ✅\*      | ✅    | ❌       | Partial   | via MCP    | ❌           | ❌                            | ❌         | via AI         | ✅          |
-| **Works offline**              | ✅          | ✅             | ✅     | ✅\*      | ✅    | ✅       | ✅        | ✅         | ❌           | ❌                            | ❌         | Partial        | After fetch |
-| **Committed to host**          | ✅          | ✅             | ✅     | Pointer   | ❌    | ✅       | Optional  | ❌         | ❌           | ❌                            | Docs repo  | ❌             | ❌          |
-| **Repo size impact**           | High        | High           | High   | Low       | None  | None     | Low       | None       | None         | None                          | None       | None           | None        |
-| **Multi-strategy**             | ❌          | ✅ (3)         | ❌     | —         | —     | —        | —         | —          | —            | —                             | —          | —              | —           |
-| **Manifest scan**              | ❌          | ✅             | ❌     | ❌        | ❌    | ❌       | ❌        | ❌         | ❌           | ❌                            | Org repos  | ❌             | ❌          |
-| **Setup complexity**           | Low         | Low            | Low    | Medium    | Low   | Low      | Low       | Medium     | Low (+ auth) | Low                           | **High**   | Medium         | Low         |
-| **Works with any agent**       | ✅          | ✅             | ✅     | Partial   | ✅    | Standard | ✅        | MCP        | Plugins      | MCP                           | Custom     | Multi          | CLI / MCP   |
-| **Network at runtime**         | ❌          | ❌             | ❌     | ❌        | ❌    | ❌       | ❌        | ❌         | ✅           | ✅                            | ✅         | ✅             | At fetch    |
-| **Privacy** (code stays local) | ✅          | ✅             | ✅     | ✅        | ✅    | ✅       | Optional  | ✅         | **❌**       | ✅                            | depends    | depends        | ✅          |
-| **Skill-distributed**          | ❌          | ✅             | ❌     | ❌        | ❌    | Self     | Generator | ❌         | Plugins      | ❌                            | ❌         | ✅             | ❌          |
-| **Open source**                | Git         | MIT            | MIT    | Git       | Git   | Standard | MIT       | MIT        | Apache-2.0   | Apache-2.0 / proprietary core | Apache-2.0 | MIT            | Apache-2.0  |
-| **Cost**                       | Free        | Free           | Free   | Free      | Free  | Free     | Free      | Free       | Freemium     | Free + paid                   | Free + LLM | Freemium + LLM | Free        |
+| Feature                        | Raw Subtree | ingraft | Vendir | Submodule | Clone | Skills   | Repomix   | Repobase   | mgrep        | Context7                      | RepoSwarm  | BTCA/3         | OpenSrc     |
+| ------------------------------ | ----------- | ------- | ------ | --------- | ----- | -------- | --------- | ---------- | ------------ | ----------------------------- | ---------- | -------------- | ----------- |
+| **Source available**           | Full        | Full    | Full   | Full\*    | Full  | ❌       | Flattened | File reads | Snippets     | ❌ (docs)                     | Summaries  | Clones         | Full        |
+| **Native file tools**          | ✅          | ✅      | ✅     | ✅\*      | ✅    | N/A      | ❌        | via MCP    | via plugin   | ❌                            | ❌         | via AI         | ✅          |
+| **Cross-file imports**         | ✅          | ✅      | ✅     | ✅\*      | ✅    | ❌       | Partial   | via MCP    | ❌           | ❌                            | ❌         | via AI         | ✅          |
+| **Works offline**              | ✅          | ✅      | ✅     | ✅\*      | ✅    | ✅       | ✅        | ✅         | ❌           | ❌                            | ❌         | Partial        | After fetch |
+| **Committed to host**          | ✅          | ✅      | ✅     | Pointer   | ❌    | ✅       | Optional  | ❌         | ❌           | ❌                            | Docs repo  | ❌             | ❌          |
+| **Repo size impact**           | High        | High    | High   | Low       | None  | None     | Low       | None       | None         | None                          | None       | None           | None        |
+| **Multi-strategy**             | ❌          | ✅ (3)  | ❌     | —         | —     | —        | —         | —          | —            | —                             | —          | —              | —           |
+| **Manifest scan**              | ❌          | ✅      | ❌     | ❌        | ❌    | ❌       | ❌        | ❌         | ❌           | ❌                            | Org repos  | ❌             | ❌          |
+| **Setup complexity**           | Low         | Low     | Low    | Medium    | Low   | Low      | Low       | Medium     | Low (+ auth) | Low                           | **High**   | Medium         | Low         |
+| **Works with any agent**       | ✅          | ✅      | ✅     | Partial   | ✅    | Standard | ✅        | MCP        | Plugins      | MCP                           | Custom     | Multi          | CLI / MCP   |
+| **Network at runtime**         | ❌          | ❌      | ❌     | ❌        | ❌    | ❌       | ❌        | ❌         | ✅           | ✅                            | ✅         | ✅             | At fetch    |
+| **Privacy** (code stays local) | ✅          | ✅      | ✅     | ✅        | ✅    | ✅       | Optional  | ✅         | **❌**       | ✅                            | depends    | depends        | ✅          |
+| **Skill-distributed**          | ❌          | ✅      | ❌     | ❌        | ❌    | Self     | Generator | ❌         | Plugins      | ❌                            | ❌         | ✅             | ❌          |
+| **Open source**                | Git         | MIT     | MIT    | Git       | Git   | Standard | MIT       | MIT        | Apache-2.0   | Apache-2.0 / proprietary core | Apache-2.0 | MIT            | Apache-2.0  |
+| **Cost**                       | Free        | Free    | Free   | Free      | Free  | Free     | Free      | Free       | Freemium     | Free + paid                   | Free + LLM | Freemium + LLM | Free        |
 
 _\* Only if submodule is properly initialized — many agents fail at this step._
 
@@ -675,7 +682,7 @@ flowchart TB
   Q1 -->|"Org-wide architecture<br/>across many repos"| Org["Multi-repo overview"]
 
   Deep --> D1{"How many repos<br/>and how often updated?"}
-  D1 -->|"Few core libs,<br/>used daily"| Vendor["✅ Vendor source<br/>(vendor-subtree / Vendir / raw subtree)"]
+  D1 -->|"Few core libs,<br/>used daily"| Vendor["✅ Vendor source<br/>(ingraft / Vendir / raw subtree)"]
   D1 -->|"Long tail of deps,<br/>ad-hoc"| OnDemand["✅ OpenSrc<br/>(lazy fetch by version)"]
   D1 -->|"Many private repos<br/>need search"| Search["✅ Repobase (local)<br/>or mgrep (cloud, semantic)"]
 
@@ -687,7 +694,7 @@ flowchart TB
   Org --> RS["✅ RepoSwarm<br/>(.arch.md per repo)"]
 
   Vendor --> Skills{"Want intent routing<br/>from natural language?"}
-  Skills -->|"yes"| VS["+ vendor-subtree<br/>(Claude Code)"]
+  Skills -->|"yes"| VS["+ ingraft<br/>(Claude Code)"]
   Skills -->|"no"| Done["Done"]
 
   Vendor -.->|"complement"| Ctx7
@@ -705,19 +712,19 @@ flowchart TB
 
 ### Quick reference
 
-| Your situation                                                             | Use                                            |
-| -------------------------------------------------------------------------- | ---------------------------------------------- |
-| Daily coding with one or a few key libraries                               | **vendor-subtree** (or Vendir, or raw subtree) |
-| Want the agent to invoke the right vendoring command from natural language | **vendor-subtree** + Claude Code               |
-| Need latest API docs across many libraries                                 | **Context7** (complement, not replace)         |
-| Quick one-shot question / chat-based AI                                    | **Repomix**                                    |
-| Search across many private repos, offline                                  | **Repobase**                                   |
-| Fast semantic "where is X?" across a codebase                              | **mgrep** (if cloud upload is OK)              |
-| Inspect a random npm/PyPI/crates package                                   | **OpenSrc**                                    |
-| Ad-hoc Q&A research over a specific repo                                   | **BTCA**                                       |
-| Org-wide architecture context across N repos                               | **RepoSwarm**                                  |
-| Team needs shared, reproducible context                                    | Subtree wrapper (committed)                    |
-| Just need to tell the agent conventions                                    | **Skills** (with one of the above)             |
+| Your situation                                                             | Use                                     |
+| -------------------------------------------------------------------------- | --------------------------------------- |
+| Daily coding with one or a few key libraries                               | **ingraft** (or Vendir, or raw subtree) |
+| Want the agent to invoke the right vendoring command from natural language | **ingraft** + Claude Code               |
+| Need latest API docs across many libraries                                 | **Context7** (complement, not replace)  |
+| Quick one-shot question / chat-based AI                                    | **Repomix**                             |
+| Search across many private repos, offline                                  | **Repobase**                            |
+| Fast semantic "where is X?" across a codebase                              | **mgrep** (if cloud upload is OK)       |
+| Inspect a random npm/PyPI/crates package                                   | **OpenSrc**                             |
+| Ad-hoc Q&A research over a specific repo                                   | **BTCA**                                |
+| Org-wide architecture context across N repos                               | **RepoSwarm**                           |
+| Team needs shared, reproducible context                                    | Subtree wrapper (committed)             |
+| Just need to tell the agent conventions                                    | **Skills** (with one of the above)      |
 
 ---
 
@@ -727,7 +734,7 @@ flowchart TB
 flowchart TB
   subgraph Layer1["Layer 1 — Source depth (always available)"]
     direction LR
-    L1A["vendor-subtree / Vendir<br/>for core libraries"]
+    L1A["ingraft / Vendir<br/>for core libraries"]
     L1B["OpenSrc<br/>for long-tail deps"]
   end
 
@@ -814,9 +821,9 @@ lives in the fork and the parent repository only records the gitlink pointer.
 
 ## Key Takeaways
 
-1. **For serious agent-driven development, vendored source is the gold standard.** The Effect team's argument — agents read code better than docs — is architecturally sound. Whether you use raw `git subtree`, **vendor-subtree**, or **Vendir**, the underlying win is the same: navigable source in the workspace.
+1. **For serious agent-driven development, vendored source is the gold standard.** The Effect team's argument — agents read code better than docs — is architecturally sound. Whether you use raw `git subtree`, **ingraft**, or **Vendir**, the underlying win is the same: navigable source in the workspace.
 
-2. **The wrapper choice matters less than the wrapping choice.** Both vendor-subtree and Vendir are inspired by the Effect post. Pick vendor-subtree for multi-strategy + manifest scanning + monorepo support + skill integration. Pick Vendir for a minimal subtree-only wrapper with TOML config. Both beat running raw commands.
+2. **The wrapper choice matters less than the wrapping choice.** Both ingraft and Vendir are inspired by the Effect post. Pick ingraft for multi-strategy + manifest scanning + monorepo support + skill integration. Pick Vendir for a minimal subtree-only wrapper with TOML config. Both beat running raw commands.
 
 3. **No single approach covers everything.** Combine layers: subtree for depth, OpenSrc for the long tail, Context7 / mgrep for on-demand breadth, Skills for intent routing.
 
@@ -826,14 +833,14 @@ lives in the fork and the parent repository only records the gitlink pointer.
 
 6. **Retrieval-based tools trade depth for convenience.** Watch for failure modes: Context7's hallucination rate on bleeding-edge features (~63%) and ContextCrush incident; Repobase's early-stage maturity; mgrep's cloud-upload privacy posture; BTCA's AI-mediation latency.
 
-7. **The landscape is moving fast.** vendor-subtree, Vendir, mgrep, BTCA-3, and OpenSrc are all young or recently rebuilt. Expect more tooling. The fundamental insight — **agents work best with navigable source code in their workspace** — is unlikely to change.
+7. **The landscape is moving fast.** ingraft, Vendir, mgrep, BTCA-3, and OpenSrc are all young or recently rebuilt. Expect more tooling. The fundamental insight — **agents work best with navigable source code in their workspace** — is unlikely to change.
 
 ---
 
 ## References
 
 - [Effect blog: The One Weird Git Trick That Makes Coding Agents More Effect-ive](https://effect.website/blog/the-one-weird-git-trick-that-makes-coding-agents-more-effect-ive/) — Maxwell Brown, May 2026
-- [vendor-subtree](https://www.npmjs.com/package/vendor-subtree) (this project)
+- [ingraft](https://www.npmjs.com/package/ingraft) (this project)
 - [Vendir](https://github.com/grovemotorco/vendir)
 - [Repomix](https://repomix.com/) · [GitHub](https://github.com/yamadashy/repomix)
 - [Repobase](https://github.com/fernandoabolafio/repobase)

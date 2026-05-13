@@ -1,0 +1,18 @@
+---
+import { workflowItems } from "../../data/landing.ts"
+import TerminalDemo from "./TerminalDemo.astro"
+---
+
+<section class="section">
+  <p class="section-kicker">Workflow</p>
+  <h2>Discovery, vendoring, editor hygiene, and status in one loop.</h2>
+  <div class="workflow-grid">
+    <TerminalDemo />
+    <article class="tile">
+      <h3>Made for real repositories</h3>
+      <ul class="check-list">
+        {workflowItems.map((item) => <li>{item}</li>)}
+      </ul>
+    </article>
+  </div>
+</section>

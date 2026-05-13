@@ -54,7 +54,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
   })
 
 export class TypeScriptIgnore extends Effect.Service<TypeScriptIgnore>()(
-  "vendor-subtree/TypeScriptIgnore",
+  "ingraft/TypeScriptIgnore",
   {
     accessors: true,
     effect: Effect.gen(function* () {

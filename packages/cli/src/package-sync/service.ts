@@ -947,7 +947,7 @@ const scanPackageDependencies = (
   )
 
 export class PackageVersionSync extends Effect.Service<PackageVersionSync>()(
-  "vendor-subtree/PackageVersionSync",
+  "ingraft/PackageVersionSync",
   {
     accessors: true,
     effect: Effect.gen(function* () {

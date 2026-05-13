@@ -1,0 +1,53 @@
+---
+import {
+  toolIntegrationCategories,
+  toolsForCategory,
+  type ToolIntegration
+} from "../../data/tool-integrations.ts"
+
+const logoUrl = (tool: ToolIntegration): string | undefined =>
+  tool.logoSlug === undefined ? undefined : `https://thesvg.org/icons/${tool.logoSlug}/default.svg`
+---
+
+<section class="tool-index">
+  <p class="tool-index-source">
+    Brand marks use theSVG where a tool has a stable public logo. Letter marks are used for
+    config-only surfaces without a canonical logo.
+  </p>
+  {
+    toolIntegrationCategories.map((category) => {
+      const tools = toolsForCategory(category.id)
+      return (
+        <section class="tool-category-section" aria-labelledby={`tool-category-${category.slug}`}>
+          <div class="tool-category-heading">
+            <p>{tools.length} integrations</p>
+            <h2 id={`tool-category-${category.slug}`}>{category.title}</h2>
+            <span>{category.description}</span>
+          </div>
+          <div class="tool-grid">
+            {tools.map((tool) => {
+              const url = logoUrl(tool)
+              return (
+                <a
+                  class="tool-card"
+                  href={`/docs/tooling/${category.slug}/${tool.id}/`}
+                  style={`--tool-accent: ${tool.accent}`}
+                >
+                  <span class="tool-logo" aria-hidden="true">
+                    {url === undefined ? (
+                      <span class="tool-logo-fallback">{tool.initials}</span>
+                    ) : (
+                      <img src={url} alt="" loading="lazy" />
+                    )}
+                  </span>
+                  <strong>{tool.name}</strong>
+                  <span>{tool.summary}</span>
+                </a>
+              )
+            })}
+          </div>
+        </section>
+      )
+    })
+  }
+</section>

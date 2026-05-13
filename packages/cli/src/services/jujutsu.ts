@@ -21,7 +21,7 @@ const isColocatedWith = (fs: FileSystem.FileSystem, path: Path.Path, cwd: string
     return target.trim().includes(".git")
   })
 
-export class Jujutsu extends Effect.Service<Jujutsu>()("vendor-subtree/Jujutsu", {
+export class Jujutsu extends Effect.Service<Jujutsu>()("ingraft/Jujutsu", {
   accessors: true,
   effect: Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem

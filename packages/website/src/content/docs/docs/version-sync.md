@@ -3,11 +3,13 @@ title: Synced Versions
 description: Resolve vendor versions from dependency manifests and lockfiles.
 ---
 
+![Exploded orthographic engraving of pruning shears beside a dial gauge labelled sync, the needle at twelve o'clock.](/visuals/section-version-sync.png)
+
 The default version mode tracks the upstream default branch. For dependencies
 already installed in the current project, `synced` mode is usually better:
 
 ```sh
-vendor-subtree add effect --version synced
+ingraft add effect --version synced
 ```
 
 Synced mode reads the project dependency graph, resolves the installed package
@@ -23,6 +25,6 @@ The selected version is stored with vendor metadata so future refreshes can tell
 whether local source still matches the dependency version.
 
 ```sh
-vendor-subtree refresh
-vendor-subtree doctor
+ingraft refresh
+ingraft doctor
 ```

@@ -187,7 +187,7 @@ const importRepo = (params: CloudflareArtifactsImportParams) =>
   })
 
 export class CloudflareArtifacts extends Effect.Service<CloudflareArtifacts>()(
-  "vendor-subtree/CloudflareArtifacts",
+  "ingraft/CloudflareArtifacts",
   {
     accessors: true,
     sync: () => ({

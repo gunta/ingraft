@@ -10,18 +10,16 @@ describe("agent docs", () => {
     })
 
     expect(injectSection({ content: "# Project\n", section })).toContain("# Project\n\n")
-    expect(injectSection({ content: "# Project\n", section })).toContain(
-      "<!-- vendor-subtree:begin -->"
-    )
+    expect(injectSection({ content: "# Project\n", section })).toContain("<!-- ingraft:begin -->")
   })
 
   test("replaces an existing managed section", () => {
     const first = [
       "# Project",
       "",
-      "<!-- vendor-subtree:begin -->",
+      "<!-- ingraft:begin -->",
       "old",
-      "<!-- vendor-subtree:end -->",
+      "<!-- ingraft:end -->",
       ""
     ].join("\n")
     const next = renderVendorSection({
@@ -44,7 +42,7 @@ describe("agent docs", () => {
 
     expect(result).not.toContain("old")
     expect(result).toContain("bun tools/vendor.ts list")
-    expect(renderVendorSection({ repos: [] })).toContain("bunx vendor-subtree@latest list")
+    expect(renderVendorSection({ repos: [] })).toContain("bunx ingraft@latest list")
     expect(result).toContain("vendor/effect")
   })
 })

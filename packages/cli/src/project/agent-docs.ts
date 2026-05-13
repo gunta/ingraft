@@ -66,7 +66,7 @@ export const renderVendorSection = ({
   repos,
   scriptRel
 }: RenderVendorSectionParams): string => {
-  const invocation = command ?? (scriptRel ? `bun ${scriptRel}` : "bunx vendor-subtree@latest")
+  const invocation = command ?? (scriptRel ? `bun ${scriptRel}` : "bunx ingraft@latest")
   return [
     SECTION_BEGIN,
     "## Vendored Repositories",

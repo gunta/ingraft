@@ -38,7 +38,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class CargoIgnore extends Effect.Service<CargoIgnore>()("vendor-subtree/CargoIgnore", {
+export class CargoIgnore extends Effect.Service<CargoIgnore>()("ingraft/CargoIgnore", {
   accessors: true,
   effect: Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem

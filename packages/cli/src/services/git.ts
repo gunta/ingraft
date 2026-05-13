@@ -74,7 +74,7 @@ const makeGitExec =
       })
     )
 
-export class Git extends Effect.Service<Git>()("vendor-subtree/Git", {
+export class Git extends Effect.Service<Git>()("ingraft/Git", {
   accessors: true,
   effect: Effect.gen(function* () {
     const executor = yield* CommandExecutor.CommandExecutor

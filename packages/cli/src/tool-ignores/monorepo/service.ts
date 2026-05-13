@@ -49,7 +49,7 @@ const refreshWith = (context: ToolFileContext, cwd: string) => {
   )
 }
 
-export class MonorepoTools extends Effect.Service<MonorepoTools>()("vendor-subtree/MonorepoTools", {
+export class MonorepoTools extends Effect.Service<MonorepoTools>()("ingraft/MonorepoTools", {
   accessors: true,
   effect: Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem

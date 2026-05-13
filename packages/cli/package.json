@@ -1,10 +1,10 @@
 {
-  "name": "vendor-subtree",
+  "name": "ingraft",
   "version": "0.3.0",
   "description": "Vendor external git repositories into a project for coding agents.",
   "license": "MIT",
   "bin": {
-    "vendor-subtree": "./dist/bin/vendor-subtree.js"
+    "ingraft": "./dist/bin/ingraft.js"
   },
   "files": [
     "dist",
@@ -22,7 +22,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && mkdir -p dist/src/aliases && cp src/aliases/repository-aliases.json dist/src/aliases/repository-aliases.json && chmod +x dist/bin/vendor-subtree.js",
+    "build": "tsc -p tsconfig.build.json && mkdir -p dist/src/aliases && cp src/aliases/repository-aliases.json dist/src/aliases/repository-aliases.json && chmod +x dist/bin/ingraft.js",
     "check": "bun run lint && bun run format:check && bun run typecheck && bun run test",
     "dev": "bun scripts/vendor.ts",
     "format": "oxfmt . --write",
@@ -37,13 +37,19 @@
     "@effect/platform": "^0.96.1",
     "@effect/platform-node": "^0.106.0",
     "@iarna/toml": "2.2.5",
+    "@opentui/core": "^0.2.8",
     "@xmldom/xmldom": "0.9.10",
     "effect": "^3.21.2",
+    "ink": "^7.0.2",
     "isomorphic-git": "^1.37.6",
     "jscodeshift": "17.3.0",
     "jsonc-parser": "^3.3.1",
+    "react": "^19.2.6",
     "ts-morph": "28.0.0",
     "yaml": "2.9.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14"
   },
   "engines": {
     "node": ">=20.11"

@@ -130,7 +130,7 @@ const loadBundledAliasEntries = (fs: FileSystem.FileSystem) =>
   )
 
 export class RepositoryAliases extends Effect.Service<RepositoryAliases>()(
-  "vendor-subtree/RepositoryAliases",
+  "ingraft/RepositoryAliases",
   {
     accessors: true,
     effect: Effect.gen(function* () {

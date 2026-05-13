@@ -1,5 +1,5 @@
 {
-  "name": "vendor-subtree-website",
+  "name": "ingraft-website",
   "version": "0.3.0",
   "private": true,
   "type": "module",
@@ -12,10 +12,12 @@
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
     "preview": "astro preview",
+    "deploy": "bun alchemy.run.ts",
     "typecheck": "astro check"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.39.2",
+    "alchemy": "^0.93.7",
     "astro": "^6.3.1",
     "sharp": "^0.34.5"
   },

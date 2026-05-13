@@ -8,3 +8,9 @@ packages/*/dist/
 *.log
 .DS_Store
 evals/results/
+
+.projects/cache
+.projects/vault
+.alchemy/
+.env
+.env.local

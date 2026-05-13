@@ -1,7 +1,7 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Effect, Option } from "effect"
 
-import { formatStatus } from "../app/log.ts"
+import { warn } from "../app/log.tsx"
 import { RuntimeConfig, type RuntimeConfigShape } from "../app/runtime.ts"
 import {
   completeMerge,
@@ -59,8 +59,7 @@ const DEFAULT_LANGUAGE_USAGE = {
   typescript: true
 } as const satisfies VscodeLanguageUsage
 
-const warnWithRuntime = (runtime: RuntimeConfigShape, message: string) =>
-  Effect.logWarning(formatStatus("warn", message, { colors: runtime.colors }))
+const warnWithRuntime = (_runtime: RuntimeConfigShape, message: string) => warn(message)
 
 const selectedArrayKeys = (languages: VscodeLanguageUsage): ReadonlyArray<ArrayExclusionKey> =>
   (Object.keys(ARRAY_KEYS_BY_LANGUAGE) as ReadonlyArray<VscodeProjectLanguage>)
@@ -179,25 +178,22 @@ const updateVscodeSettingsWith = ({
     }
   })
 
-export class VscodeSettings extends Effect.Service<VscodeSettings>()(
-  "vendor-subtree/VscodeSettings",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const gitMetadata = yield* GitMetadata
-      const path = yield* Path.Path
-      const runtime = yield* RuntimeConfig
-      return {
-        refresh: (cwd: string) =>
-          updateVscodeSettingsWith({
-            cwd,
-            fs,
-            listProjectFiles: gitProjectFiles(gitMetadata),
-            path,
-            runtime
-          })
-      }
-    })
-  }
-) {}
+export class VscodeSettings extends Effect.Service<VscodeSettings>()("ingraft/VscodeSettings", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const gitMetadata = yield* GitMetadata
+    const path = yield* Path.Path
+    const runtime = yield* RuntimeConfig
+    return {
+      refresh: (cwd: string) =>
+        updateVscodeSettingsWith({
+          cwd,
+          fs,
+          listProjectFiles: gitProjectFiles(gitMetadata),
+          path,
+          runtime
+        })
+    }
+  })
+}) {}

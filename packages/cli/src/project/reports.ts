@@ -1,6 +1,6 @@
 import { Effect, Option } from "effect"
 
-import { ok } from "../app/log.ts"
+import { ok } from "../app/log.tsx"
 
 export interface RelativePathParams {
   readonly root: string

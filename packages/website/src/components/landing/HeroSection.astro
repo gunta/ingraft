@@ -1,0 +1,17 @@
+---
+import { heroActions } from "../../data/landing.ts"
+import LandingActions from "./LandingActions.astro"
+---
+
+<section class="hero">
+  <div class="hero-inner">
+    <p class="eyebrow">Source vendoring for coding-agent repositories</p>
+    <h1>ingraft</h1>
+    <p class="hero-copy">
+      Put the exact upstream source your agents need inside the repo, keep it aligned with your
+      dependency versions, and stop vendor code from drowning your editor, linters, diffs, and
+      history.
+    </p>
+    <LandingActions links={heroActions} />
+  </div>
+</section>

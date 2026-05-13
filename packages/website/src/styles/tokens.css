@@ -1,0 +1,31 @@
+:root {
+  --vst-ink: #11110f;
+  --vst-paper: #f7f5ef;
+  --vst-panel: #ffffff;
+  --vst-muted: #645f57;
+  --vst-line: #ded8cd;
+  --vst-accent: #d85a3a;
+  --vst-green: #2f8f69;
+  --sl-color-accent-low: #f6d8cc;
+  --sl-color-accent: #d85a3a;
+  --sl-color-accent-high: #5b1f14;
+  --sl-font: Inter, ui-sans-serif, system-ui, sans-serif;
+  --sl-font-mono: "SF Mono", "Roboto Mono", ui-monospace, monospace;
+}
+
+:root[data-theme="dark"] {
+  --sl-color-accent-low: #4a2017;
+  --sl-color-accent: #f07855;
+  --sl-color-accent-high: #ffd2c4;
+}
+
+html {
+  color: var(--vst-ink);
+  background: var(--vst-paper);
+  font-family: var(--sl-font);
+  letter-spacing: 0;
+}
+
+body {
+  margin: 0;
+}

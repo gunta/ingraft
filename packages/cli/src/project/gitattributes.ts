@@ -1,8 +1,8 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Array as Arr, Effect, Option } from "effect"
 
-export const GITATTRIBUTES_VENDOR_BEGIN = "# vendor-subtree: github-diff begin"
-export const GITATTRIBUTES_VENDOR_END = "# vendor-subtree: github-diff end"
+export const GITATTRIBUTES_VENDOR_BEGIN = "# ingraft: github-diff begin"
+export const GITATTRIBUTES_VENDOR_END = "# ingraft: github-diff end"
 
 export interface MergeGitattributesTextParams {
   readonly content: string

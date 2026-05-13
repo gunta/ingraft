@@ -1,0 +1,25 @@
+---
+import type { LandingLink } from "../../data/landing.ts"
+
+interface Props {
+  readonly links: ReadonlyArray<LandingLink>
+}
+
+const { links } = Astro.props
+---
+
+<div class="hero-actions">
+  {
+    links.map((link) => (
+      <a
+        class:list={[
+          "cta",
+          link.variant === "primary" ? "cta-primary" : "cta-secondary"
+        ]}
+        href={link.href}
+      >
+        {link.label}
+      </a>
+    ))
+  }
+</div>

@@ -85,18 +85,15 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class StylelintIgnore extends Effect.Service<StylelintIgnore>()(
-  "vendor-subtree/StylelintIgnore",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      const context = { fs, path }
-      return {
-        doctor: (cwd: string) => doctorWith(context, cwd),
-        refresh: (cwd: string) => refreshWith(context, cwd)
-      }
-    })
-  }
-) {}
+export class StylelintIgnore extends Effect.Service<StylelintIgnore>()("ingraft/StylelintIgnore", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const context = { fs, path }
+    return {
+      doctor: (cwd: string) => doctorWith(context, cwd),
+      refresh: (cwd: string) => refreshWith(context, cwd)
+    }
+  })
+}) {}

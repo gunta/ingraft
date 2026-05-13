@@ -13,12 +13,12 @@ describe("script invocation", () => {
     expect(commandInvocation(params)).toBe("bun packages/cli/scripts/vendor.ts")
   })
 
-  test("uses bunx vendor-subtree@latest when argv does not point into the repo", () => {
+  test("uses bunx ingraft@latest when argv does not point into the repo", () => {
     expect(
       commandInvocation({
         cwd: "/repo",
-        argv: ["vendor-subtree", "/usr/local/bin/vendor-subtree"]
+        argv: ["ingraft", "/usr/local/bin/ingraft"]
       })
-    ).toBe("bunx vendor-subtree@latest")
+    ).toBe("bunx ingraft@latest")
   })
 })

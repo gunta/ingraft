@@ -9,7 +9,7 @@ describe("subtree gitattributes section", () => {
       prefixes: ["vendor/effect"]
     })
 
-    expect(result).toContain("# vendor-subtree: github-diff begin")
+    expect(result).toContain("# ingraft: github-diff begin")
     expect(result).toContain("/vendor/effect/** linguist-vendored linguist-generated")
     expect(result).toContain("*.png binary")
   })
@@ -33,10 +33,10 @@ describe("subtree gitattributes section", () => {
       content: [
         "*.png binary",
         "",
-        "# vendor-subtree: github-diff begin",
+        "# ingraft: github-diff begin",
         "# Hide committed vendored subtree source in GitHub PR diffs by default.",
         "/vendor/effect/** linguist-vendored linguist-generated",
-        "# vendor-subtree: github-diff end",
+        "# ingraft: github-diff end",
         ""
       ].join("\n"),
       prefixes: []

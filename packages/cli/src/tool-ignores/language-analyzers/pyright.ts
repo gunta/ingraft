@@ -84,7 +84,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class PyrightIgnore extends Effect.Service<PyrightIgnore>()("vendor-subtree/PyrightIgnore", {
+export class PyrightIgnore extends Effect.Service<PyrightIgnore>()("ingraft/PyrightIgnore", {
   accessors: true,
   effect: Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem

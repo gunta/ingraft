@@ -52,7 +52,7 @@ const makeGitHubCliExec =
       })
     )
 
-export class GitHubCli extends Effect.Service<GitHubCli>()("vendor-subtree/GitHubCli", {
+export class GitHubCli extends Effect.Service<GitHubCli>()("ingraft/GitHubCli", {
   accessors: true,
   effect: Effect.gen(function* () {
     const executor = yield* CommandExecutor.CommandExecutor

@@ -1,0 +1,111 @@
+{
+  "$schema": "https://uhd.sh/schemas/text-to-image/batch.json",
+  "$comment": "Batch manifest for `uhd-text-to-image batch image-batch.json -c 4`. Set UHD_API_KEY first. Each prompt is prefixed with the brand-wide style preamble from image-prompts.md §0. Generate at 4K for hero/OG/logomark, 2K for the rest, then run pngquant + exiftool per the post-processing checklist.",
+  "style_preamble": "Two-color letterpress engraving on warm cream paper, with a single rust-orange accent. Fuses nineteenth-century botanical illustration (Ernst Haeckel, Redoute) with NASA Apollo-era technical drafting and contemporary minimalist information design after Vignelli and Tufte. Paper ground uncoated cream #f6f1e8 with faint cold-press texture. Line-work ink #11110f at 0.5-1.5 pt strokes, never pure black. Single terracotta accent #d85a3a reserved exclusively for the graft union where scion meets rootstock. No gradients, no glow, no drop shadows, no chrome, no glass, no neon, no holographic effects, no glowing screens, no laptops, no hooded figures, no robots, no human faces or hands, no stock-illustration vector look, no emoji, no 3D render, no AI-art tropes. Humanist sans-serif at weight 500 when letterforms appear. Centered, breathing composition. Frontispiece of a Penguin Classics edition crossed with an O'Reilly animal cover crossed with a SpaceX press-kit diagram.",
+  "jobs": [
+    {
+      "id": "hero-graft",
+      "model": "banana",
+      "resolution": "4K",
+      "aspect": "16:9",
+      "filename": "hero-graft.png",
+      "prompt": "Subject: a horticultural cleft graft shown in cross-section as a botanical-technical plate. Left rootstock: a stout host trunk rising from below, its trunk drawn as a cluster of vertical strata that on closer inspection are tightly-stacked rows of monospaced source code rendered as parallel hatching. Right scion: a slender upstream branch with three to five lobed leaves drawn like an Audubon plate, xylem visible as bundled fibers. The two meet at the center in a clean diagonal cleft graft bound by three turns of fine raffia. Composition: wide landscape plate, centered union, ample cream margins; trunk extends below the bottom edge as if continuing into earth, scion's top leaves brush the upper third. Eight delicate measurement callouts radiate from the union with hairlines and small serif labels in invented latin-binomial style: \"Cambium sutura\", \"Strata textus\", \"Nodum vendoris\". Pen-and-ink engraving with fine crosshatching; line weights 0.4 pt hairlines to 1.2 pt principal contours. Cream #f6f1e8 ground, ink #11110f line-work, terracotta #d85a3a only on the cambium seam (no thicker than 4 px). Flat plate lighting, no cast shadows. Negative: no people, no tools held by hands, no computers, no circuit-board roots, no rainbow palette, no watercolor bleed, no photoreal bark."
+    },
+    {
+      "id": "hero-graft-dark",
+      "model": "banana",
+      "resolution": "4K",
+      "aspect": "16:9",
+      "filename": "hero-graft-dark.png",
+      "prompt": "Same composition as hero-graft.png, but invert the substrate: ink #11110f ground, cream #f6f1e8 line-work. Keep the terracotta #d85a3a cambium seam unchanged. All other constraints identical."
+    },
+    {
+      "id": "og-default",
+      "model": "banana",
+      "resolution": "2K",
+      "aspect": "1200:630",
+      "filename": "og-default.png",
+      "prompt": "Subject: a horizontal social-share card. Left two-thirds: a tightly-cropped graft union with diagonal cleft, three raffia bindings, terracotta cambium, drawn as a small botanical plate centered in its own quiet rectangle. Right one-third: the wordmark \"ingraft\" set in a humanist sans-serif, weight 500, all lowercase, ink #11110f, optical size 88 pt; directly beneath it the tagline \"Vendor source for agents.\" set at 32 pt weight 400 in the same ink, tracked +20 units; below the tagline a thin 1 pt terracotta #d85a3a rule, 96 px wide. Composition: twelve-column grid, generous outer margin 96 px, vertical centerline divides illustration from type; a single hairline 0.5 pt frames the entire card 48 px inside the bleed. Letterpress engraving for the graft, clean digital typography for the wordmark. Cream #f6f1e8 ground. Flat lighting. The card contains exactly two pieces of text: \"ingraft\" and \"Vendor source for agents.\" render both precisely; do not invent additional copy. Negative: no drop shadows behind type, no gradients on the rule, no decorative flourishes, no website URL, no social-platform icons, no emoji."
+    },
+    {
+      "id": "strategy-subtree",
+      "model": "banana",
+      "resolution": "2K",
+      "aspect": "1:1",
+      "filename": "strategy-subtree.png",
+      "prompt": "Subject: a botanical cross-section plate of a fully healed cleft graft. The scion has knitted seamlessly into the rootstock so the diagonal cambium line reads as a single, continuous, scar-like seam in terracotta #d85a3a. Three raffia ties have been removed; their imprint is visible as fine annular bruises. A small Latin label below reads \"Inoculum subtrahere\". Composition: square plate; trunk vertical, centered; union at the optical center, scion length above equals rootstock length below; six measurement callouts radiate. Cream #f6f1e8 ground, ink #11110f line-work, terracotta only on the continuous unbroken seam. Mood: permanence, integration. Negative: no visible ties, no gap at the union, no halo around the seam."
+    },
+    {
+      "id": "strategy-submodule",
+      "model": "banana",
+      "resolution": "2K",
+      "aspect": "1:1",
+      "filename": "strategy-submodule.png",
+      "prompt": "Subject: a botanical cross-section plate of a graft held in place by an explicit fixed pin. The scion meets the rootstock with a small but visible air-gap across the union, bridged by a single horticultural staple drawn as a precise orthographic detail; a top-view inset in the upper right shows the staple's profile with dimensions \"6 mm\" and \"2 mm\". The cambium seam glows terracotta #d85a3a but is interrupted at the staple. A Latin label reads \"Inoculum substringere\". Composition: square plate, same trunk position as the subtree plate; inset detail in the upper-right quadrant with its own hairline frame. Cream ground, ink line-work; the staple rendered in ink with fine highlight hatching (no chrome). Mood: pinned, deliberate, separable. Negative: no metallic shading, no shiny reflections, no second color besides terracotta."
+    },
+    {
+      "id": "strategy-clone-ignore",
+      "model": "banana",
+      "resolution": "2K",
+      "aspect": "1:1",
+      "filename": "strategy-clone-ignore.png",
+      "prompt": "Subject: a botanical plate showing two saplings planted side by side in the same bed but not joined. On the left, the rootstock trunk with strata-of-code grain (the project); on the right, a freestanding scion-sapling of the same height, leaning slightly toward the rootstock but separated by a 24 px gap. The earth line at the bottom is a dashed ink rule labelled in small caps \".GITIGNORE\". The two plants share a single root-zone wash of pale stippling. A Latin label reads \"Inoculum seponere\". Composition: square plate, both plants centered as a pair; gap visible between trunks; dashed ground line crosses the lower fifth. Cream ground, ink line-work; the dashed ground line in terracotta #d85a3a; no cambium accent on either plant since no union exists. Mood: adjacent, local, untracked. Negative: no fence, no wall."
+    },
+    {
+      "id": "section-getting-started",
+      "model": "banana2",
+      "resolution": "2K",
+      "aspect": "1:1",
+      "filename": "section-getting-started.png",
+      "prompt": "Subject: a single grafting knife laid diagonally across the plate, blade pointing upper-right, handle of turned cherry wood, blade of fine carbon steel rendered in ink hatching. Beside the blade, a fresh scion-cutting with two buds. A faint hand-drawn ruler runs along the bottom edge marked \"0\" \"5\" \"10\" cm. Cream #f6f1e8 ground, ink #11110f line-work; the two buds tipped terracotta #d85a3a. Composition: diagonal lay, generous negative space top-left. Mood: a tool laid out before work begins. Negative: no hands, no workbench."
+    },
+    {
+      "id": "section-doctor",
+      "model": "banana2",
+      "resolution": "2K",
+      "aspect": "1:1",
+      "filename": "section-doctor.png",
+      "prompt": "Subject: a nineteenth-century field-stethoscope (a Laennec-style wooden monaural tube) leaning against a tree trunk, the open bell pressed to the bark. Three concentric annotation arcs radiate from the contact point with small hairline labels reading \"strata\", \"ritmus\", \"sanitas\". Cream ground, ink line-work; the contact point dotted in terracotta #d85a3a. Composition: centered, vertical trunk fragment, stethoscope at 15 degree lean. Mood: diagnostic, calm."
+    },
+    {
+      "id": "section-version-sync",
+      "model": "banana2",
+      "resolution": "2K",
+      "aspect": "1:1",
+      "filename": "section-version-sync.png",
+      "prompt": "Subject: a pair of pruning shears drawn in an exploded orthographic projection: the two blades separated by a small gap, connected by a single pivot pin, the two handles parallel below. To the right, a small dial-gauge labelled \"sync\" with its needle pointing at the 12-o'clock tick. Cream ground, ink line-work; gauge needle and pivot pin in terracotta #d85a3a. Composition: shears on the left two-thirds, gauge on the right third. Mood: mechanical precision in service of horticulture."
+    },
+    {
+      "id": "section-tooling",
+      "model": "banana2",
+      "resolution": "2K",
+      "aspect": "1:1",
+      "filename": "section-tooling.png",
+      "prompt": "Subject: a flat-lay of six small implements arranged in a 3x2 grid on the plate, each with a hairline frame and a tiny serif caption beneath: a grafting knife (\"cultellus\"), a pair of secateurs (\"forfex\"), a roll of raffia (\"vinculum\"), a wax pot (\"cera\"), a brass rule (\"regula\"), a tag with twine (\"signum\"). Cream ground, ink line-work; the wax pot's interior alone filled with terracotta #d85a3a. Composition: strict 3x2 grid, equal spacing, captions baseline-aligned. Mood: a neatly laid toolkit, ready."
+    },
+    {
+      "id": "section-cli-reference",
+      "model": "banana2",
+      "resolution": "2K",
+      "aspect": "1:1",
+      "filename": "section-cli-reference.png",
+      "prompt": "Subject: a botanical-style plate of a single tag-on-twine specimen-label of the kind tied to plants in a herbarium, hanging at a slight angle from a twig that crosses the plate diagonally. On the tag, hand-set in a humanist sans-serif, the single string \"ingraft --help\". The twig bears two small leaves and one bud. Cream ground, ink line-work and type; the bud and the knot of the twine in terracotta #d85a3a. Composition: twig from upper-left to lower-right, tag dangling near the center. Mood: a reference card you tie to the thing it documents. Text rendering: render \"ingraft --help\" precisely on the tag; no other text."
+    },
+    {
+      "id": "texture-blueprint",
+      "model": "banana2",
+      "resolution": "2K",
+      "aspect": "1:1",
+      "filename": "texture-blueprint.png",
+      "prompt": "Subject: a nearly-blank botanical-blueprint plate texture. A very low-contrast grid of 24 px squares in faint ink, overlaid with three ghosted botanical specimens drawn in 8% opacity ink: a leaf cross-section, a stamen study, and a root-tip, scattered with deliberate asymmetry so the texture reads as a margin doodle rather than a focal subject. Occasional 6% terracotta dots mark grid intersections at irregular intervals, no more than twelve dots across the whole image. Composition: edge-matched so the left edge tiles seamlessly against the right and the top against the bottom. Cream #f6f1e8 ground; everything else extremely faint. Mood: almost invisible paper substrate. Negative: must not compete with foreground content; no watermarks, no logos, no dense pattern."
+    },
+    {
+      "id": "logomark",
+      "model": "banana",
+      "resolution": "2K",
+      "aspect": "1:1",
+      "filename": "logomark.png",
+      "prompt": "Subject: a single rounded-square mark, 1024 x 1024, ink #11110f ground, fully bleeding to the edges. Centered within: a stylized capital letter form constructed from two elements: a vertical ink stem at left, and a terracotta #d85a3a vertical bar of equal height set flush against its right side, separated by a 6 px ink hairline. Below the pair, a horizontal ink baseline 1.5 pt thick spans the full width of the letterform. The composition reads simultaneously as the letter \"I\" and as a diagrammatic cross-section of a cleft graft. Ink ground; cream #f6f1e8 for the principal stem; terracotta for the second bar; ink baseline. Composition: mark inscribed in an 80%-of-canvas central square, equal margins. Negative: no bevel, no inner glow, no 3D effect, no text characters anywhere on the canvas."
+    }
+  ]
+}

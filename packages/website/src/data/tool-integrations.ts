@@ -77,7 +77,8 @@ export const toolIntegrations = [
     detects: ".vscode/settings.json.",
     writes:
       "files.exclude, files.watcherExclude, search.exclude, Material Icon Theme folder association, and JavaScript or TypeScript auto-import exclude patterns when those languages are detected.",
-    keepsVisible: "The files remain on disk and available to agents, TypeScript, and normal git operations.",
+    keepsVisible:
+      "The files remain on disk and available to agents, TypeScript, and normal git operations.",
     useCase:
       "Use this when VS Code is the main workspace editor and vendored code should not dominate search, file watching, or auto-import suggestions.",
     docsUrl: "https://code.visualstudio.com/docs"
@@ -92,7 +93,8 @@ export const toolIntegrations = [
     summary: "Detects Zed settings while intentionally avoiding scan exclusions.",
     detects: ".zed/settings.json.",
     writes: "Nothing today. Zed vendor source stays visible to language servers.",
-    keepsVisible: "Zed integration is report-only because scan exclusions can hide useful source context.",
+    keepsVisible:
+      "Zed integration is report-only because scan exclusions can hide useful source context.",
     useCase:
       "Use this to confirm Zed is present in doctor output without changing how Zed indexes the repo.",
     docsUrl: "https://zed.dev/docs"
@@ -104,7 +106,8 @@ export const toolIntegrations = [
     logoSlug: "jetbrains",
     initials: "JB",
     accent: "#ff318c",
-    summary: "Adds a shared vendor scope and file color for IntelliJ, WebStorm, PyCharm, and other JetBrains IDEs.",
+    summary:
+      "Adds a shared vendor scope and file color for IntelliJ, WebStorm, PyCharm, and other JetBrains IDEs.",
     detects: ".idea, .idea/scopes/Vendor.xml, and .idea/fileColors.xml.",
     writes: ".idea/scopes/Vendor.xml and .idea/fileColors.xml through XML parsing.",
     keepsVisible:
@@ -120,7 +123,8 @@ export const toolIntegrations = [
     logoSlug: "neovim",
     initials: "NV",
     accent: "#57a143",
-    summary: "Reports Vim and Coc settings so the doctor can show editor surfaces in terminal-heavy projects.",
+    summary:
+      "Reports Vim and Coc settings so the doctor can show editor surfaces in terminal-heavy projects.",
     detects: ".vimrc and .vim/coc-settings.json.",
     writes: "Nothing today.",
     keepsVisible:
@@ -136,11 +140,13 @@ export const toolIntegrations = [
     logoSlug: "biome",
     initials: "BI",
     accent: "#60a5fa",
-    summary: "Adds a vendor exclusion to Biome file includes while preserving existing JSONC comments.",
+    summary:
+      "Adds a vendor exclusion to Biome file includes while preserving existing JSONC comments.",
     detects: "biome.json, biome.jsonc, or a @biomejs/biome dependency.",
     writes: "files.includes with !vendor/** when a Biome config file exists.",
     keepsVisible: "Only Biome's lint and format scan is narrowed; source remains readable.",
-    useCase: "Use this when Biome should lint first-party code but ignore committed upstream snapshots.",
+    useCase:
+      "Use this when Biome should lint first-party code but ignore committed upstream snapshots.",
     docsUrl: "https://biomejs.dev/reference/configuration/"
   },
   {
@@ -181,8 +187,10 @@ export const toolIntegrations = [
     summary: "Reports Go linter configuration and vendor visibility.",
     detects: ".golangci.yml, .golangci.yaml, .golangci.toml, or .golangci.json.",
     writes: "Nothing today; doctor reports whether vendor is already ignored.",
-    keepsVisible: "Go source remains present for agents and tooling unless the existing config excludes it.",
-    useCase: "Use this when Go projects vendor external source for context but lint only local modules.",
+    keepsVisible:
+      "Go source remains present for agents and tooling unless the existing config excludes it.",
+    useCase:
+      "Use this when Go projects vendor external source for context but lint only local modules.",
     docsUrl: "https://golangci-lint.run/usage/configuration/"
   },
   {
@@ -196,7 +204,8 @@ export const toolIntegrations = [
     detects: ".markdownlintignore, .markdownlint.*, or a markdownlint dependency.",
     writes: ".markdownlintignore with a managed vendor/ entry.",
     keepsVisible: "Vendored Markdown remains readable but stops generating style diagnostics.",
-    useCase: "Use this when upstream README files and generated docs should not control local doc style.",
+    useCase:
+      "Use this when upstream README files and generated docs should not control local doc style.",
     docsUrl: "https://github.com/DavidAnson/markdownlint"
   },
   {
@@ -223,7 +232,8 @@ export const toolIntegrations = [
     summary: "Detects Ruff configuration and reports whether vendor is excluded.",
     detects: "ruff.toml, .ruff.toml, or pyproject.toml with a [tool.ruff] section.",
     writes: "Nothing today; TOML state is reported but not rewritten automatically.",
-    keepsVisible: "Python vendored source stays available while doctor explains the current Ruff state.",
+    keepsVisible:
+      "Python vendored source stays available while doctor explains the current Ruff state.",
     useCase: "Use this when Python linting should avoid upstream snapshots.",
     docsUrl: "https://docs.astral.sh/ruff/configuration/"
   },
@@ -235,9 +245,11 @@ export const toolIntegrations = [
     initials: "SL",
     accent: "#263238",
     summary: "Adds vendor ignore files to Stylelint JSON-style configs.",
-    detects: ".stylelintrc, .stylelintrc.json, stylelint.config.* files, or a stylelint dependency.",
+    detects:
+      ".stylelintrc, .stylelintrc.json, stylelint.config.* files, or a stylelint dependency.",
     writes: "ignoreFiles entries with vendor/** for supported JSON configs.",
-    keepsVisible: "CSS and design assets remain in the repo but stop producing local style diagnostics.",
+    keepsVisible:
+      "CSS and design assets remain in the repo but stop producing local style diagnostics.",
     useCase: "Use this when vendored CSS should be inspected by agents but not restyled locally.",
     docsUrl: "https://stylelint.io/user-guide/configure/"
   },
@@ -251,7 +263,8 @@ export const toolIntegrations = [
     summary: "Adds a managed .prettierignore section for vendored source.",
     detects: ".prettierrc* files, prettier.config.* files, or a prettier dependency.",
     writes: ".prettierignore with a managed vendor/ entry.",
-    keepsVisible: "Prettier skips upstream snapshots without hiding them from agents or language servers.",
+    keepsVisible:
+      "Prettier skips upstream snapshots without hiding them from agents or language servers.",
     useCase: "Use this when committed vendor code should preserve upstream formatting.",
     docsUrl: "https://prettier.io/docs/ignore"
   },
@@ -281,7 +294,8 @@ export const toolIntegrations = [
     detects: "mypy.ini, .mypy.ini, setup.cfg, or pyproject.toml.",
     writes: "Nothing today.",
     keepsVisible: "Type-checking behavior is not changed until the user configures mypy.",
-    useCase: "Use this when Python projects need visibility into whether vendored code enters mypy.",
+    useCase:
+      "Use this when Python projects need visibility into whether vendored code enters mypy.",
     docsUrl: "https://mypy.readthedocs.io/en/stable/config_file.html"
   },
   {
@@ -294,7 +308,8 @@ export const toolIntegrations = [
     summary: "Adds vendor to Pyright excludes while preserving existing JSON settings.",
     detects: "pyrightconfig.json.",
     writes: "exclude entries containing vendor.",
-    keepsVisible: "The source remains available for agents and editors outside Pyright's analysis set.",
+    keepsVisible:
+      "The source remains available for agents and editors outside Pyright's analysis set.",
     useCase: "Use this when Python vendor snapshots should not affect type-checking.",
     docsUrl: "https://microsoft.github.io/pyright/#/configuration"
   },
@@ -305,7 +320,8 @@ export const toolIntegrations = [
     logoSlug: "typescript",
     initials: "TS",
     accent: "#3178c6",
-    summary: "Reports TypeScript and JavaScript config validity without hiding vendor from tsserver.",
+    summary:
+      "Reports TypeScript and JavaScript config validity without hiding vendor from tsserver.",
     detects: "tsconfig.json, jsconfig.json, or a typescript dependency.",
     writes: "Nothing today.",
     keepsVisible:
@@ -352,7 +368,8 @@ export const toolIntegrations = [
     summary: "Reports root package.json workspaces that already exclude vendor.",
     detects: "package.json workspaces arrays or workspaces.packages.",
     writes: "Nothing today.",
-    keepsVisible: "Vendor remains visible; the doctor reports whether workspace patterns already avoid it.",
+    keepsVisible:
+      "Vendor remains visible; the doctor reports whether workspace patterns already avoid it.",
     useCase: "Use this when npm, Yarn, Bun, or generic package.json workspaces are in play.",
     docsUrl: "https://docs.npmjs.com/cli/configuring-npm/package-json#workspaces"
   },
@@ -366,7 +383,8 @@ export const toolIntegrations = [
     detects: "rush.json.",
     writes: "Nothing today.",
     keepsVisible: "Rush configuration is reported without rewriting project inventory.",
-    useCase: "Use this when a Rush repo may contain vendored packages outside its managed projects.",
+    useCase:
+      "Use this when a Rush repo may contain vendored packages outside its managed projects.",
     docsUrl: "https://rushjs.io/pages/maintainer/setup_new_repo/"
   },
   {
@@ -421,7 +439,8 @@ export const toolIntegrations = [
     summary: "Detects Lerna configuration and reports vendor status.",
     detects: "lerna.json.",
     writes: "Nothing today.",
-    keepsVisible: "Vendor source stays available while the doctor reports whether the repo uses Lerna.",
+    keepsVisible:
+      "Vendor source stays available while the doctor reports whether the repo uses Lerna.",
     useCase: "Use this when legacy or modern Lerna workspaces coexist with vendored source.",
     docsUrl: "https://lerna.js.org/docs/api-reference/configuration"
   },

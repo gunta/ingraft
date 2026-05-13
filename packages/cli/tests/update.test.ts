@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 
 import { Effect, Option } from "effect"
 
-import { selectUpdateTargets } from "../src/commands/update.ts"
+import { selectUpdateTargets } from "../src/commands/update.tsx"
 import { EMPTY_VENDOR_FILTER } from "../src/domain/vendor-filter.ts"
 import type { VendoredRepo } from "../src/domain/vendor-state.ts"
 

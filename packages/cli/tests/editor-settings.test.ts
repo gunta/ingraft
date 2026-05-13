@@ -27,7 +27,7 @@ describe("editor settings", () => {
   test("adds a managed Prettier ignore section for formatting only", () => {
     const result = mergePrettierIgnoreText("dist/\n")
 
-    expect(result).toContain("# vendor-subtree: prettier-ignore begin")
+    expect(result).toContain("# ingraft: prettier-ignore begin")
     expect(result).toContain("vendor/")
     expect(result).toContain("dist/")
   })

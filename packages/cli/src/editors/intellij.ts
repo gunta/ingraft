@@ -8,7 +8,7 @@ import {
 } from "@xmldom/xmldom"
 import { Effect } from "effect"
 
-import { formatStatus } from "../app/log.ts"
+import { warn } from "../app/log.tsx"
 import { RuntimeConfig, type RuntimeConfigShape } from "../app/runtime.ts"
 import type { SettingsMergeResult } from "../config/jsonc-settings.ts"
 import { VENDOR_DIR } from "../domain/constants.ts"
@@ -62,8 +62,7 @@ type ParsedXml =
       readonly message: string
     }
 
-const warnWithRuntime = (runtime: RuntimeConfigShape, message: string) =>
-  Effect.logWarning(formatStatus("warn", message, { colors: runtime.colors }))
+const warnWithRuntime = (_runtime: RuntimeConfigShape, message: string) => warn(message)
 
 const parseXml = ({
   invalidRootMessage,
@@ -311,7 +310,7 @@ const refreshIntellijSettingsWith = ({
   })
 
 export class IntellijSettings extends Effect.Service<IntellijSettings>()(
-  "vendor-subtree/IntellijSettings",
+  "ingraft/IntellijSettings",
   {
     accessors: true,
     effect: Effect.gen(function* () {

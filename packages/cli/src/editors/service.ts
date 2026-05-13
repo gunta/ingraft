@@ -14,32 +14,29 @@ const optionToArray = <A>(option: Option.Option<A>): ReadonlyArray<A> =>
     onSome: (value) => [value]
   })
 
-export class EditorSettings extends Effect.Service<EditorSettings>()(
-  "vendor-subtree/EditorSettings",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const intellij = yield* IntellijSettings
-      const vscode = yield* VscodeSettings
-      const zed = yield* ZedSettings
+export class EditorSettings extends Effect.Service<EditorSettings>()("ingraft/EditorSettings", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const intellij = yield* IntellijSettings
+    const vscode = yield* VscodeSettings
+    const zed = yield* ZedSettings
 
-      return {
-        refresh: ({ cwd }: RefreshEditorSettingsParams) =>
-          Effect.all(
-            {
-              intellij: intellij.refresh(cwd),
-              vscode: vscode.refresh(cwd),
-              zed: zed.refresh(cwd)
-            },
-            { concurrency: 3 }
-          ).pipe(
-            Effect.map(({ intellij, vscode, zed }) => [
-              ...optionToArray(vscode),
-              ...optionToArray(zed),
-              ...intellij
-            ])
-          )
-      }
-    })
-  }
-) {}
+    return {
+      refresh: ({ cwd }: RefreshEditorSettingsParams) =>
+        Effect.all(
+          {
+            intellij: intellij.refresh(cwd),
+            vscode: vscode.refresh(cwd),
+            zed: zed.refresh(cwd)
+          },
+          { concurrency: 3 }
+        ).pipe(
+          Effect.map(({ intellij, vscode, zed }) => [
+            ...optionToArray(vscode),
+            ...optionToArray(zed),
+            ...intellij
+          ])
+        )
+    }
+  })
+}) {}

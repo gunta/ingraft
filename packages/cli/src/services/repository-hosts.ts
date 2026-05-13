@@ -228,19 +228,16 @@ const hostReleaseTag = (
 const identifyHost = (input: string): Option.Option<RepositoryHostInfo> =>
   Option.fromNullable(hostedRepoFromInput(input)).pipe(Option.map(hostInfo))
 
-export class RepositoryHosts extends Effect.Service<RepositoryHosts>()(
-  "vendor-subtree/RepositoryHosts",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const github = yield* GitHubCli
-      const gitlab = yield* GitLabCli
-      return {
-        clone: (params: HostCloneParams) => hostClone(github.exec, gitlab.exec, params),
-        defaultBranch: (input: string) => hostDefaultBranch(github.exec, gitlab.exec, input),
-        identify: (input: string) => Effect.succeed(identifyHost(input)),
-        releaseTag: (params: HostReleaseParams) => hostReleaseTag(github.exec, gitlab.exec, params)
-      }
-    })
-  }
-) {}
+export class RepositoryHosts extends Effect.Service<RepositoryHosts>()("ingraft/RepositoryHosts", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const github = yield* GitHubCli
+    const gitlab = yield* GitLabCli
+    return {
+      clone: (params: HostCloneParams) => hostClone(github.exec, gitlab.exec, params),
+      defaultBranch: (input: string) => hostDefaultBranch(github.exec, gitlab.exec, input),
+      identify: (input: string) => Effect.succeed(identifyHost(input)),
+      releaseTag: (params: HostReleaseParams) => hostReleaseTag(github.exec, gitlab.exec, params)
+    }
+  })
+}) {}

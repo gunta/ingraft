@@ -1,8 +1,8 @@
 import { FileSystem, Path } from "@effect/platform"
 import { Array as Arr, Effect, Option } from "effect"
 
-export const GITIGNORE_CLONE_BEGIN = "# vendor-subtree: clone-ignore begin"
-export const GITIGNORE_CLONE_END = "# vendor-subtree: clone-ignore end"
+export const GITIGNORE_CLONE_BEGIN = "# ingraft: clone-ignore begin"
+export const GITIGNORE_CLONE_END = "# ingraft: clone-ignore end"
 
 export interface MergeGitignoreTextParams {
   readonly content: string

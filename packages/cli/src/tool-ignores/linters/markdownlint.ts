@@ -12,8 +12,8 @@ import {
 } from "../common.ts"
 
 const TOOL = "markdownlint"
-const BEGIN = "# vendor-subtree: markdownlint-ignore begin"
-const END = "# vendor-subtree: markdownlint-ignore end"
+const BEGIN = "# ingraft: markdownlint-ignore begin"
+const END = "# ingraft: markdownlint-ignore end"
 const IGNORE_FILE = ".markdownlintignore"
 const CONFIG_CANDIDATES = [
   ".markdownlint.json",
@@ -145,7 +145,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
   })
 
 export class MarkdownlintIgnore extends Effect.Service<MarkdownlintIgnore>()(
-  "vendor-subtree/MarkdownlintIgnore",
+  "ingraft/MarkdownlintIgnore",
   {
     accessors: true,
     effect: Effect.gen(function* () {

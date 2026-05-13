@@ -147,6 +147,6 @@ describe("tool ignore config mergers", () => {
 
     expect(result).toContain("bazel-out")
     expect(result).toContain("vendor")
-    expect(result).toContain("vendor-subtree begin")
+    expect(result).toContain("ingraft begin")
   })
 })

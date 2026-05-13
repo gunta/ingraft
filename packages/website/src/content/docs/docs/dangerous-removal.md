@@ -6,14 +6,14 @@ description: Remove a vendored tree from every commit in repository history.
 Normal removal deletes the current vendor entry:
 
 ```sh
-vendor-subtree remove effect
+ingraft remove effect
 ```
 
 History removal is different. It rewrites the repository so the vendored path is
 removed from past commits too.
 
 ```sh
-vendor-subtree remove effect --history --confirm-history-rewrite
+ingraft remove effect --history --confirm-history-rewrite
 ```
 
 Use history removal only when the vendor tree made the repository too heavy or

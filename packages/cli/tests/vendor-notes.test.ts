@@ -35,7 +35,7 @@ describe("vendor git notes", () => {
     )
 
     expect(payload).toMatchObject({
-      schema: "vendor-subtree/v1",
+      schema: "ingraft/v1",
       source: "git-notes",
       vendor: {
         name: "effect",

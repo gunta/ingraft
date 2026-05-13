@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { parseSelectionInput } from "../src/services/prompts.ts"
+import { parseSelectionInput } from "../src/services/prompts.tsx"
 
 describe("selection prompts", () => {
   test("parses comma separated indexes and ranges", () => {

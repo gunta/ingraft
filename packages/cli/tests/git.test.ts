@@ -10,7 +10,6 @@ describe("git service", () => {
   test("detects a default branch through an injectable Git service", async () => {
     const runtime = RuntimeConfig.make({
       argv: ["bun", "vendor.ts"],
-      colors: false,
       cwd: "/workspace",
       exit: (code) => Effect.dieMessage(`exit ${code}`)
     })
@@ -54,7 +53,6 @@ describe("git service", () => {
   test("uses repository host default branch before git fallback", async () => {
     const runtime = RuntimeConfig.make({
       argv: ["bun", "vendor.ts"],
-      colors: false,
       cwd: "/workspace",
       exit: (code) => Effect.dieMessage(`exit ${code}`)
     })

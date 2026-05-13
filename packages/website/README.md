@@ -1,6 +1,6 @@
-# vendor-subtree website
+# ingraft website
 
-Astro and Starlight package for the public `vendor-subtree` landing page and docs.
+Astro and Starlight package for the public `ingraft` landing page and docs.
 
 ```sh
 bun run --cwd packages/website dev

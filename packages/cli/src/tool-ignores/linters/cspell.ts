@@ -105,7 +105,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class CspellIgnore extends Effect.Service<CspellIgnore>()("vendor-subtree/CspellIgnore", {
+export class CspellIgnore extends Effect.Service<CspellIgnore>()("ingraft/CspellIgnore", {
   accessors: true,
   effect: Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem

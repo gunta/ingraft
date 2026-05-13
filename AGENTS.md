@@ -1,4 +1,4 @@
-<!-- vendor-subtree:begin -->
+<!-- ingraft:begin -->
 
 ## Vendored Repositories
 
@@ -14,11 +14,11 @@ Treat these as **read-only reference material**, not as part of the application 
 - Committed subtree sources are marked in `.gitattributes` as vendored/generated so GitHub PR diffs stay focused on project code.
 - Strategies: `subtree` is committed source, `submodule` is a gitlink, and `clone-ignore` is a local ignored clone.
 - Some repos may be filtered to omit media, generated directories, archives, fixtures, or oversized files.
-- Use `bunx vendor-subtree@latest list` to see what is vendored.
-- To add or update vendored repos, run `bunx vendor-subtree@latest add <repo>` or `update <name>`.
+- Use `bunx ingraft@latest list` to see what is vendored.
+- To add or update vendored repos, run `bunx ingraft@latest add <repo>` or `update <name>`.
 
 **Vendored repositories:**
 
 - **`vendor/effect`** — subtree — `https://github.com/Effect-TS/effect.git` @ `main`
 
-<!-- vendor-subtree:end -->
+<!-- ingraft:end -->

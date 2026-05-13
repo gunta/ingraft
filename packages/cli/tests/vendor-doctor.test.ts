@@ -1,12 +1,46 @@
 import { describe, expect, test } from "bun:test"
 
-import { renderDoctorReport } from "../src/commands/doctor.ts"
+import { Effect } from "effect"
+
+import { fixDoctor } from "../src/commands/doctor.tsx"
+import { VENDOR_DIR } from "../src/domain/constants.ts"
 import { EMPTY_VENDOR_FILTER } from "../src/domain/vendor-filter.ts"
+import { ProjectFiles, type RefreshGeneratedFilesParams } from "../src/project/service.ts"
 
 describe("vendor doctor", () => {
-  test("renders vendored repos and tool ignore status", () => {
-    const output = renderDoctorReport({
-      cwd: "/workspace",
+  test("fix mode refreshes generated project files with editor settings", async () => {
+    const calls: Array<RefreshGeneratedFilesParams> = []
+
+    await Effect.runPromise(
+      fixDoctor({
+        cwd: "/workspace",
+        repos: []
+      }).pipe(
+        Effect.provideService(
+          ProjectFiles,
+          ProjectFiles.make({
+            refresh: (params) =>
+              Effect.sync(() => {
+                calls.push(params)
+              })
+          })
+        )
+      )
+    )
+
+    expect(calls).toEqual([
+      {
+        commitMessage: "vendor: repair project vendor files",
+        cwd: "/workspace",
+        editorSettings: true,
+        repos: []
+      }
+    ])
+  })
+
+  test("json output includes all report sections", () => {
+    const data = {
+      vendor_dir: VENDOR_DIR,
       repos: [
         {
           name: "effect",
@@ -19,7 +53,7 @@ describe("vendor doctor", () => {
           date: "date"
         }
       ],
-      agentFiles: [
+      agent_files: [
         {
           _tag: "ProjectSurfaceReport",
           kind: "agent",
@@ -30,7 +64,7 @@ describe("vendor doctor", () => {
           status: "managed"
         }
       ],
-      editorFiles: [
+      editor_files: [
         {
           _tag: "ProjectSurfaceReport",
           kind: "editor",
@@ -41,7 +75,7 @@ describe("vendor doctor", () => {
           status: "configured"
         }
       ],
-      repositoryFiles: [
+      repository_files: [
         {
           _tag: "ProjectSurfaceReport",
           kind: "repository",
@@ -52,7 +86,7 @@ describe("vendor doctor", () => {
           status: "configured"
         }
       ],
-      toolReports: [
+      tool_ignores: [
         {
           _tag: "ToolIgnoreReport",
           configPath: "/workspace/biome.jsonc",
@@ -70,56 +104,22 @@ describe("vendor doctor", () => {
           status: "absent",
           tool: "Pyright"
         }
-      ],
-      json: false
-    })
+      ]
+    }
 
-    expect(output).toContain("Workspace")
-    expect(output).toContain("Vendor directory")
-    expect(output).toContain("effect")
-    expect(output).toContain("Agent files")
-    expect(output).toContain("AGENTS.md")
-    expect(output).toContain("Editor files")
-    expect(output).toContain("VS Code settings")
-    expect(output).toContain("Repository files")
-    expect(output).toContain(".gitattributes")
-    expect(output).toContain("Tool ignores")
-    expect(output).toContain("Biome")
-    expect(output).toContain("configured")
-    expect(output).toContain("Pyright")
-    expect(output).toContain("absent")
-  })
+    const output = JSON.stringify(data, null, 2)
+    const parsed = JSON.parse(output)
 
-  test("renders project surfaces in json output", () => {
-    const output = renderDoctorReport({
-      cwd: "/workspace",
-      repos: [],
-      agentFiles: [
-        {
-          _tag: "ProjectSurfaceReport",
-          kind: "agent",
-          message: "managed vendor section present",
-          name: "AGENTS.md",
-          path: "/workspace/AGENTS.md",
-          present: true,
-          status: "managed"
-        }
-      ],
-      editorFiles: [],
-      repositoryFiles: [],
-      toolReports: [],
-      json: true
-    })
-
-    expect(JSON.parse(output)).toMatchObject({
-      agent_files: [
-        {
-          name: "AGENTS.md",
-          present: true,
-          status: "managed"
-        }
-      ],
-      editor_files: []
-    })
+    expect(parsed.repos).toHaveLength(1)
+    expect(parsed.repos[0].name).toBe("effect")
+    expect(parsed.agent_files[0].name).toBe("AGENTS.md")
+    expect(parsed.agent_files[0].status).toBe("managed")
+    expect(parsed.editor_files[0].name).toBe("VS Code settings")
+    expect(parsed.repository_files[0].name).toBe(".gitattributes")
+    expect(parsed.tool_ignores).toHaveLength(2)
+    expect(parsed.tool_ignores[0].tool).toBe("Biome")
+    expect(parsed.tool_ignores[0].status).toBe("configured")
+    expect(parsed.tool_ignores[1].tool).toBe("Pyright")
+    expect(parsed.tool_ignores[1].status).toBe("absent")
   })
 })

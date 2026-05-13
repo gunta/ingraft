@@ -25,9 +25,9 @@ const MARKERS = [
 
 export const mergeBazelIgnoreText = (content: string): string =>
   mergeManagedIgnoreSection({
-    begin: "# vendor-subtree begin",
+    begin: "# ingraft begin",
     content,
-    end: "# vendor-subtree end",
+    end: "# ingraft end",
     lines: [VENDOR_DIR]
   })
 

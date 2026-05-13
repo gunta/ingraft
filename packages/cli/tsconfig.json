@@ -3,7 +3,16 @@
   "compilerOptions": {
     "composite": true,
     "noEmit": true,
+    "jsx": "react-jsx",
     "types": ["bun-types", "node"]
   },
-  "include": ["bin/**/*.ts", "scripts/**/*.ts", "src/**/*.ts", "tests/**/*.ts"]
+  "include": [
+    "bin/**/*.ts",
+    "bin/**/*.tsx",
+    "scripts/**/*.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx"
+  ]
 }

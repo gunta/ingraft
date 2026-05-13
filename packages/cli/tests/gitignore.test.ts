@@ -9,7 +9,7 @@ describe("clone-ignore gitignore section", () => {
       prefixes: ["vendor/effect"]
     })
 
-    expect(result).toContain("# vendor-subtree: clone-ignore begin")
+    expect(result).toContain("# ingraft: clone-ignore begin")
     expect(result).toContain("/vendor/effect/")
     expect(result).toContain("node_modules/")
   })
@@ -19,9 +19,9 @@ describe("clone-ignore gitignore section", () => {
       content: [
         "node_modules/",
         "",
-        "# vendor-subtree: clone-ignore begin",
+        "# ingraft: clone-ignore begin",
         "/vendor/effect/",
-        "# vendor-subtree: clone-ignore end",
+        "# ingraft: clone-ignore end",
         ""
       ].join("\n"),
       prefixes: []

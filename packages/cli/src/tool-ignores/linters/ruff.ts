@@ -59,7 +59,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class RuffIgnore extends Effect.Service<RuffIgnore>()("vendor-subtree/RuffIgnore", {
+export class RuffIgnore extends Effect.Service<RuffIgnore>()("ingraft/RuffIgnore", {
   accessors: true,
   effect: Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem

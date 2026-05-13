@@ -28,7 +28,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class ZigIgnore extends Effect.Service<ZigIgnore>()("vendor-subtree/ZigIgnore", {
+export class ZigIgnore extends Effect.Service<ZigIgnore>()("ingraft/ZigIgnore", {
   accessors: true,
   effect: Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem

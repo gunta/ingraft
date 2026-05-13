@@ -3,28 +3,36 @@ title: Getting Started
 description: Install the CLI, scan a project, and add your first vendored source.
 ---
 
+![Engraving of a grafting knife laid diagonally beside a fresh scion-cutting.](/visuals/section-getting-started.png)
+
 Run the CLI from the root of the project that should receive source:
 
 ```sh
-bunx vendor-subtree
+bunx ingraft
+```
+
+The zero-argument command opens the interactive dashboard. For a plain
+non-interactive dependency scan, run:
+
+```sh
+ingraft deps
 ```
 
 You can also pass targets directly:
 
 ```sh
-vendor-subtree effect zod Effect-TS/effect
+ingraft effect zod Effect-TS/effect
 ```
 
-With no targets, the CLI scans dependency manifests and asks which packages should
-be vendored. With targets, each argument can be an alias, a package name, an
-owner/repo shortcut, or a git URL.
+With targets, each argument can be an alias, a package name, an owner/repo
+shortcut, or a git URL.
 
 Popular aliases are built in:
 
 ```sh
-vendor-subtree add effect
-vendor-subtree add effect-smol
-vendor-subtree add convex
+ingraft add effect
+ingraft add effect-smol
+ingraft add convex
 ```
 
 `effect` expands to `Effect-TS/effect`. `effect-smol` expands to
@@ -34,18 +42,18 @@ vendor-subtree add convex
 ## First commands
 
 ```sh
-vendor-subtree deps
-vendor-subtree deps --json
-vendor-subtree add effect --strategy subtree --sync-package effect
-vendor-subtree list
-vendor-subtree doctor
+ingraft deps
+ingraft deps --json
+ingraft add effect --strategy subtree --sync-package effect
+ingraft list
+ingraft doctor
 ```
 
 If you expect to edit the vendored source, choose the strategy up front. A
 fork-backed submodule is the recommended workflow for durable vendor patches:
 
 ```sh
-vendor-subtree add your-org/effect --strategy submodule --ref vendor-patches
+ingraft add your-org/effect --strategy submodule --ref vendor-patches
 ```
 
 Use `subtree` for normal read-only reference source and `clone-ignore` for local

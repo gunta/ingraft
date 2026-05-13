@@ -70,7 +70,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
   })
 
 export class GolangciLintIgnore extends Effect.Service<GolangciLintIgnore>()(
-  "vendor-subtree/GolangciLintIgnore",
+  "ingraft/GolangciLintIgnore",
   {
     accessors: true,
     effect: Effect.gen(function* () {

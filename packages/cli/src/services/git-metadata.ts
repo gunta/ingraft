@@ -56,7 +56,7 @@ const isIgnored = (cwd: string, filepath: string): Effect.Effect<boolean, unknow
     catch: (error) => error
   })
 
-export class GitMetadata extends Effect.Service<GitMetadata>()("vendor-subtree/GitMetadata", {
+export class GitMetadata extends Effect.Service<GitMetadata>()("ingraft/GitMetadata", {
   accessors: true,
   sync: () => ({
     findRoot,

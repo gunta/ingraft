@@ -1,50 +1,41 @@
 import { describe, expect, test } from "bun:test"
 
-import { formatStatus } from "../src/app/log.ts"
 import {
-  formatVendorError,
+  errorPresentation,
   GitCommandFailed,
   PackageVersionSyncFailed
 } from "../src/domain/errors.ts"
 
-describe("CLI presentation", () => {
-  test("formats tagged domain errors with detail and hint", () => {
-    const message = formatVendorError(
+describe("CLI error presentation", () => {
+  test("produces presentation with detail and hint for git failures", () => {
+    const presentation = errorPresentation(
       new GitCommandFailed({
         args: ["subtree", "pull"],
         cwd: "/repo",
         exitCode: 1,
         output: "merge conflict"
-      }),
-      { colors: false }
+      })
     )
 
-    expect(message).toContain("[error] Git command failed")
-    expect(message).toContain("git subtree pull exited with 1")
-    expect(message).toContain("merge conflict")
-    expect(message).toContain("Hint")
+    expect(presentation.title).toBe("Git command failed")
+    expect(presentation.detail).toContain("git subtree pull exited with 1")
+    expect(presentation.detail).toContain("merge conflict")
+    expect(presentation.hint).toBeDefined()
+    expect(presentation.code).toBe(3)
   })
 
-  test("can colorize status messages for interactive output", () => {
-    expect(formatStatus("ok", "Updated AGENTS.md", { colors: true })).toContain("\x1b[32m")
-    expect(formatStatus("warn", "Skipped settings", { colors: true })).toContain("\x1b[33m")
-    expect(formatStatus("ok", "Updated AGENTS.md", { colors: false })).toBe(
-      "[ok] Updated AGENTS.md"
-    )
-  })
-
-  test("formats package sync failures with the package and reason", () => {
-    const message = formatVendorError(
+  test("produces presentation for package sync failures", () => {
+    const presentation = errorPresentation(
       new PackageVersionSyncFailed({
         packageName: "effect",
         reason: "effect is not present in root package.json",
         url: "https://github.com/Effect-TS/effect.git"
-      }),
-      { colors: false }
+      })
     )
 
-    expect(message).toContain("Could not sync package 'effect'")
-    expect(message).toContain("effect is not present in root package.json")
-    expect(message).toContain("Repository: https://github.com/Effect-TS/effect.git")
+    expect(presentation.title).toContain("Could not sync package 'effect'")
+    expect(presentation.detail).toContain("effect is not present in root package.json")
+    expect(presentation.detail).toContain("Repository: https://github.com/Effect-TS/effect.git")
+    expect(presentation.code).toBe(2)
   })
 })

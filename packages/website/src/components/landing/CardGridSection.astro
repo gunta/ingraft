@@ -1,0 +1,38 @@
+---
+import type { LandingSection } from "../../data/landing.ts"
+
+interface Props {
+  readonly gridClass: "problem-grid" | "strategy-grid"
+  readonly section: LandingSection
+  readonly tileClass?: string
+}
+
+const { gridClass, section, tileClass } = Astro.props
+---
+
+<section class="section">
+  <p class="section-kicker">{section.kicker}</p>
+  <h2>{section.title}</h2>
+  {section.intro && <p class="section-intro">{section.intro}</p>}
+  <div class={gridClass}>
+    {
+      section.cards.map((card) => (
+        <article class:list={["tile", tileClass]}>
+          {card.image && (
+            <img
+              class="tile-image"
+              src={card.image.src}
+              alt={card.image.alt}
+              loading="lazy"
+              decoding="async"
+              width="1200"
+              height="1200"
+            />
+          )}
+          <h3>{card.title}</h3>
+          <p>{card.body}</p>
+        </article>
+      ))
+    }
+  </div>
+</section>

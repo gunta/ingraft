@@ -7,6 +7,7 @@ import { NodeContext } from "@effect/platform-node"
 import { Effect, Option } from "effect"
 
 import {
+  detectVendoredPackageVersion,
   detectProjectPackageVersion,
   dependencyCandidateFromMetadata,
   packageJsonDependencies,
@@ -289,6 +290,30 @@ describe("package version sync", () => {
       expect(detected.source).toBe("node_modules")
       expect(Option.getOrUndefined(detected.version)).toBe("3.21.2")
       expect(detected.packageSpec).toBe("^3.0.0")
+    })
+  })
+
+  test("reads a vendored package version from the matching package manifest", async () => {
+    await withTempWorkspace(async (cwd) => {
+      mkdirSync(join(cwd, "vendor/effect/packages/effect"), { recursive: true })
+      writeFileSync(join(cwd, "vendor/effect/package.json"), JSON.stringify({ private: true }))
+      writeFileSync(
+        join(cwd, "vendor/effect/packages/effect/package.json"),
+        JSON.stringify({ name: "effect", version: "3.21.2" })
+      )
+
+      const detected = await Effect.runPromise(
+        detectVendoredPackageVersion({
+          cwd,
+          packageName: "effect",
+          prefix: "vendor/effect"
+        }).pipe(Effect.provide(NodeContext.layer))
+      )
+
+      expect(Option.getOrUndefined(detected)).toEqual({
+        manifestPath: "vendor/effect/packages/effect/package.json",
+        version: "3.21.2"
+      })
     })
   })
 })

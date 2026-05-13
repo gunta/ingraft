@@ -20,5 +20,5 @@ export const bunInvocation = (params: ScriptInvocationParams): string =>
 export const commandInvocation = ({ cwd, argv }: ScriptInvocationParams): string => {
   const raw = argv[1]
   const root = cwd.endsWith("/") ? cwd : `${cwd}/`
-  return raw && raw.startsWith(root) ? bunInvocation({ cwd, argv }) : "bunx vendor-subtree@latest"
+  return raw && raw.startsWith(root) ? bunInvocation({ cwd, argv }) : "bunx ingraft@latest"
 }

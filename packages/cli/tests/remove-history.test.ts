@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test"
 
-import { gitFilterRepoRemovePathArgs, normalizeHistoryRewritePath } from "../src/commands/remove.ts"
+import {
+  gitFilterRepoRemovePathArgs,
+  normalizeHistoryRewritePath
+} from "../src/commands/remove.tsx"
 
 describe("dangerous history rewrite remove", () => {
   test("normalizes vendored paths as directory filters", () => {

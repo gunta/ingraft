@@ -16,9 +16,10 @@ The package release workflow uses npm Trusted Publishing through GitHub OIDC. Co
 
 Packages:
 
-- `vendor-subtree`
-- `vendor-subtree-tui`
-- `@vendor-subtree/skill`
+- `ingraft`
+- `@ingraft/skill`
+
+The OpenTUI dashboard ships inside `ingraft`; `packages/tui` is only an internal workspace wrapper.
 
 Do not add an `NPM_TOKEN` secret for the default path. Trusted Publishing uses short-lived OIDC credentials from GitHub Actions.
 
@@ -26,4 +27,4 @@ Do not add an `NPM_TOKEN` secret for the default path. Trusted Publishing uses s
 
 In the repository settings, set Pages to deploy from GitHub Actions. The workflow uses the `github-pages` environment and publishes the Astro build output.
 
-If the production domain is `vendor-subtree.dev`, keep the domain configured in the Pages settings and DNS provider.
+If the production domain is `ingraft.dev`, keep the domain configured in the Pages settings and DNS provider.

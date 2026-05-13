@@ -5,7 +5,7 @@ import * as git from "isomorphic-git"
 
 import type { VendoredRepo } from "../domain/vendor-state.ts"
 
-export const VENDOR_NOTES_REF = "refs/notes/vendor-subtree"
+export const VENDOR_NOTES_REF = "refs/notes/ingraft"
 
 export interface WriteVendorNoteParams {
   readonly cwd: string
@@ -21,7 +21,7 @@ export interface SyncVendorNotesParams {
 export const vendorNotePayload = (repo: VendoredRepo): string =>
   JSON.stringify(
     {
-      schema: "vendor-subtree/v1",
+      schema: "ingraft/v1",
       source: "git-notes",
       vendor: {
         date: repo.date,
@@ -69,8 +69,8 @@ const write = ({ cwd, note, oid }: WriteVendorNoteParams) =>
                 note,
                 force: true,
                 author: {
-                  name: "vendor-subtree",
-                  email: "vendor-subtree@example.invalid"
+                  name: "ingraft",
+                  email: "ingraft@example.invalid"
                 }
               }),
             catch: (error) => error
@@ -90,7 +90,7 @@ const sync = ({ cwd, repos }: SyncVendorNotesParams) =>
     { discard: true }
   )
 
-export class VendorNotes extends Effect.Service<VendorNotes>()("vendor-subtree/VendorNotes", {
+export class VendorNotes extends Effect.Service<VendorNotes>()("ingraft/VendorNotes", {
   accessors: true,
   sync: () => ({
     sync,

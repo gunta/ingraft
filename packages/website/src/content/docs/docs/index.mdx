@@ -3,7 +3,7 @@ title: Overview
 description: A source vendoring workflow for coding agents, LSPs, and humans.
 ---
 
-`vendor-subtree` brings upstream source into your repository in a controlled way.
+`ingraft` brings upstream source into your repository in a controlled way.
 The goal is not to vendor everything forever. The goal is to make the source that
 matters available to coding agents and language tooling while keeping project
 history, diffs, editors, and linters quiet.
@@ -20,11 +20,12 @@ history, diffs, editors, and linters quiet.
 ## Core loop
 
 ```sh
-vendor-subtree
-vendor-subtree deps
-vendor-subtree add effect --version synced
-vendor-subtree doctor
-vendor-subtree update effect
+ingraft
+ingraft tui
+ingraft deps
+ingraft add effect --version synced
+ingraft doctor
+ingraft update effect
 ```
 
 The CLI is written in Effect and uses service layers so git providers, prompts,

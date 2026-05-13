@@ -290,16 +290,13 @@ const detectSurfacesWith = (
     return { agentFiles, editorFiles, repositoryFiles } satisfies ProjectSurfacesReport
   })
 
-export class ProjectSurfaces extends Effect.Service<ProjectSurfaces>()(
-  "vendor-subtree/ProjectSurfaces",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      return {
-        doctor: (params: ProjectSurfacesDoctorParams) => detectSurfacesWith(fs, path, params)
-      }
-    })
-  }
-) {}
+export class ProjectSurfaces extends Effect.Service<ProjectSurfaces>()("ingraft/ProjectSurfaces", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    return {
+      doctor: (params: ProjectSurfacesDoctorParams) => detectSurfacesWith(fs, path, params)
+    }
+  })
+}) {}

@@ -11,6 +11,6 @@
     "types": ["node"],
     "rewriteRelativeImportExtensions": true
   },
-  "include": ["bin/**/*.ts", "src/**/*.ts"],
+  "include": ["bin/**/*.ts", "bin/**/*.tsx", "src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["dist", "scripts", "tests"]
 }

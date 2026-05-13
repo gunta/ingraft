@@ -29,7 +29,7 @@ export interface MaterializeFilteredRepoParams {
 
 const sparseCheckoutText = (paths: ReadonlyArray<string>): string =>
   paths.length === 0
-    ? "# vendor-subtree: filter selected no files\n"
+    ? "# ingraft: filter selected no files\n"
     : `${paths.map((path) => `/${path}`).join("\n")}\n`
 
 const targetPath = (cwd: string, target: string, path: Path.Path): string =>
@@ -115,7 +115,7 @@ export const materializeFilteredRepo = ({
       const fs = yield* FileSystem.FileSystem
       const path = yield* Path.Path
       const tmp = yield* fs.makeTempDirectoryScoped({
-        prefix: "vendor-subtree-filter-"
+        prefix: "ingraft-filter-"
       })
       const checkout = path.resolve(tmp, "repo")
       const target = path.resolve(cwd, prefix)
@@ -131,7 +131,7 @@ export const materializeFilteredRepo = ({
       if (materializedFiles.length === 0) {
         yield* fs.writeFileString(
           path.resolve(checkout, ".vendor-filter-empty"),
-          "vendor-subtree: filter selected no upstream files\n"
+          "ingraft: filter selected no upstream files\n"
         )
       }
       yield* fs.remove(target, { force: true, recursive: true })

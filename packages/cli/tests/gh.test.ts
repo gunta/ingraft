@@ -7,7 +7,6 @@ import { GitHubCli, ghRepoCloneFromInput } from "../src/services/gh.ts"
 
 const runtime = RuntimeConfig.make({
   argv: ["bun", "vendor.ts"],
-  colors: false,
   cwd: "/workspace",
   exit: (code) => Effect.dieMessage(`exit ${code}`)
 })

@@ -3,24 +3,35 @@ title: CLI Reference
 description: Common commands for scanning, adding, updating, listing, and removing vendors.
 ---
 
+![Engraving of a herbarium specimen tag tied to a twig, the tag reading "ingraft --help".](/visuals/section-cli-reference.png)
+
+## Open the dashboard
+
+```sh
+ingraft
+ingraft tui
+```
+
+The zero-argument command opens the interactive OpenTUI dashboard. Use `deps`
+when you want the non-interactive dependency scanner.
+
 ## Scan dependencies
 
 ```sh
-vendor-subtree
-vendor-subtree deps
-vendor-subtree deps --json
-vendor-subtree deps --yes
+ingraft deps
+ingraft deps --json
+ingraft deps --yes
 ```
 
 ## Add targets
 
 ```sh
-vendor-subtree add effect
-vendor-subtree add effect-smol
-vendor-subtree add convex
-vendor-subtree add Effect-TS/effect
-vendor-subtree add https://github.com/Effect-TS/effect.git
-vendor-subtree effect zod Effect-TS/effect
+ingraft add effect
+ingraft add effect-smol
+ingraft add convex
+ingraft add Effect-TS/effect
+ingraft add https://github.com/Effect-TS/effect.git
+ingraft effect zod Effect-TS/effect
 ```
 
 Alias targets expand before package-name resolution. For example, `effect`
@@ -44,16 +55,27 @@ Useful options:
 ## Maintain vendors
 
 ```sh
-vendor-subtree list
-vendor-subtree update effect
-vendor-subtree refresh
-vendor-subtree doctor
+ingraft list
+ingraft update effect
+ingraft refresh
+ingraft doctor
+ingraft doctor --fix
+```
+
+## Use optional context tools
+
+```sh
+ingraft context
+ingraft context tools --json
+ingraft context pack
+ingraft context pack vendor/effect --compress
+ingraft context source zod
 ```
 
 ## Remove vendors
 
 ```sh
-vendor-subtree remove effect
+ingraft remove effect
 ```
 
 For history rewriting removal, see [Dangerous Removal](/docs/dangerous-removal/).

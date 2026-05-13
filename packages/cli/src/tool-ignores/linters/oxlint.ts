@@ -136,7 +136,7 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class OxlintIgnore extends Effect.Service<OxlintIgnore>()("vendor-subtree/OxlintIgnore", {
+export class OxlintIgnore extends Effect.Service<OxlintIgnore>()("ingraft/OxlintIgnore", {
   accessors: true,
   effect: Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem

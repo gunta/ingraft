@@ -1,14 +1,14 @@
-# vendor-subtree-tui
+# @ingraft/tui-workspace
 
-Interactive OpenTUI dashboard for `vendor-subtree`.
+Internal development wrapper for the `ingraft` OpenTUI dashboard.
 
-OpenTUI is currently Bun-only, so this package intentionally stays separate from the Node-compatible `vendor-subtree` CLI package.
+The dashboard ships inside the single published `ingraft` package. Running `ingraft` with no arguments opens it, and `ingraft tui` opens it explicitly.
 
 ```sh
-bunx vendor-subtree-tui
+bun run tui
 ```
 
-The dashboard reads `vendor-subtree deps --json`, lets you inspect matched package repositories, select add/update tasks, preview the exact CLI commands, and run them after an explicit confirmation.
+The dashboard reads `ingraft deps --json`, lets you inspect matched package repositories, select add/update tasks, preview the exact CLI commands, and run them after an explicit confirmation.
 
 Keys:
 

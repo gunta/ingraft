@@ -80,7 +80,7 @@ const refreshGeneratedFilesWith = (
     yield* commitConfigChanges({ cwd, message: commitMessage })
   })
 
-export class ProjectFiles extends Effect.Service<ProjectFiles>()("vendor-subtree/ProjectFiles", {
+export class ProjectFiles extends Effect.Service<ProjectFiles>()("ingraft/ProjectFiles", {
   accessors: true,
   effect: Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem

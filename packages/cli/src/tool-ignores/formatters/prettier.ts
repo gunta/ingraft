@@ -12,8 +12,8 @@ import {
 } from "../common.ts"
 
 const TOOL = "Prettier"
-const BEGIN = "# vendor-subtree: prettier-ignore begin"
-const END = "# vendor-subtree: prettier-ignore end"
+const BEGIN = "# ingraft: prettier-ignore begin"
+const END = "# ingraft: prettier-ignore end"
 const CONFIG_CANDIDATES = [
   ".prettierrc",
   ".prettierrc.json",
@@ -82,18 +82,15 @@ const doctorWith = (context: ToolFileContext, cwd: string) =>
     })
   })
 
-export class PrettierIgnore extends Effect.Service<PrettierIgnore>()(
-  "vendor-subtree/PrettierIgnore",
-  {
-    accessors: true,
-    effect: Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
-      const context = { fs, path }
-      return {
-        doctor: (cwd: string) => doctorWith(context, cwd),
-        refresh: (cwd: string) => refreshWith(context, cwd)
-      }
-    })
-  }
-) {}
+export class PrettierIgnore extends Effect.Service<PrettierIgnore>()("ingraft/PrettierIgnore", {
+  accessors: true,
+  effect: Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const context = { fs, path }
+    return {
+      doctor: (cwd: string) => doctorWith(context, cwd),
+      refresh: (cwd: string) => refreshWith(context, cwd)
+    }
+  })
+}) {}
