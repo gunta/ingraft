@@ -2,12 +2,16 @@ import { Command as Cli, Options } from "@effect/cli"
 import { Console, Effect, Option } from "effect"
 import { Box } from "ink"
 
-import { Header, KeyValues, Section } from "../app/ink/components.tsx"
+import { Header, KeyValues, Section, Table } from "../app/ink/components.tsx"
 import { renderInkOnce } from "../app/ink/render.tsx"
 import { info, ok, warn, withCommandTelemetry } from "../app/log.tsx"
 import { type VendoredRepo, listVendored } from "../domain/vendor-state.ts"
 import { DEFAULT_VENDOR_STRATEGY, type VendorStrategy } from "../domain/vendor-strategy.ts"
-import { PackageVersionSync, type DependencyVendorCandidate } from "../package-sync/service.ts"
+import {
+  detectVendoredPackageVersion,
+  PackageVersionSync,
+  type DependencyVendorCandidate
+} from "../package-sync/service.ts"
 import { repoRoot } from "../services/git.ts"
 import { Prompts, type SelectionChoice } from "../services/prompts.tsx"
 import { addImpl } from "./add.tsx"
@@ -27,7 +31,25 @@ export interface DependencyVendorTask {
   readonly primaryPackageName: string
   readonly repositoryUrl: string
   readonly suggestedName?: string
+  readonly versions: DependencyVendorTaskVersions
 }
+
+export type DependencyVersionDriftStatus =
+  | "local-vendor-drift"
+  | "not-vendored"
+  | "remote-drift"
+  | "synced"
+  | "unknown"
+
+export interface DependencyVendorTaskVersions {
+  readonly local: string
+  readonly remote: string
+  readonly status: DependencyVersionDriftStatus
+  readonly vendor: string
+}
+
+export type VendoredPackageVersionMap = ReadonlyMap<string, string>
+type VendoredPackageVersionEntry = readonly [string, string]
 
 const depsJsonOption = Options.boolean("json").pipe(
   Options.withDescription("Print dependency vendoring candidates as JSON.")
@@ -78,9 +100,109 @@ const findExistingRepo = (
     )
   )
 
-export const dependencyVendorTasks = (
+export const vendoredPackageVersionKey = (repoName: string, packageName: string): string =>
+  `${repoName}\u0000${packageName}`
+
+const packageVersionLabel = (
+  packageName: string,
+  version: string | undefined,
+  source: string
+): string => `${packageName}@${version ?? "unknown"} (${source})`
+
+const dependencyVersionStatus = ({
+  hasVendor,
+  localVersion,
+  remoteVersion,
+  vendorVersion
+}: {
+  readonly hasVendor: boolean
+  readonly localVersion: string | undefined
+  readonly remoteVersion: string | undefined
+  readonly vendorVersion: string | undefined
+}): DependencyVersionDriftStatus => {
+  if (!hasVendor) return "not-vendored"
+  if (localVersion === undefined || vendorVersion === undefined) return "unknown"
+  if (localVersion !== vendorVersion) return "local-vendor-drift"
+  if (remoteVersion !== undefined && remoteVersion !== localVersion) return "remote-drift"
+  return "synced"
+}
+
+const dependencyVersions = ({
+  candidate,
+  existing,
+  vendoredPackageVersions
+}: {
+  readonly candidate: DependencyVendorCandidate
+  readonly existing: Option.Option<VendoredRepo>
+  readonly vendoredPackageVersions: VendoredPackageVersionMap
+}): DependencyVendorTaskVersions => {
+  const repo = Option.getOrUndefined(existing)
+  const localSource =
+    candidate.versionSource === undefined || candidate.versionSource === "package-json"
+      ? "package.json range"
+      : candidate.versionSource
+  const vendorVersion =
+    repo === undefined
+      ? undefined
+      : vendoredPackageVersions.get(vendoredPackageVersionKey(repo.name, candidate.packageName))
+  return {
+    local: packageVersionLabel(candidate.packageName, candidate.version, localSource),
+    remote: packageVersionLabel(candidate.packageName, candidate.remoteVersion, "npm latest"),
+    status: dependencyVersionStatus({
+      hasVendor: repo !== undefined,
+      localVersion: candidate.version,
+      remoteVersion: candidate.remoteVersion,
+      vendorVersion
+    }),
+    vendor:
+      repo === undefined
+        ? "not vendored"
+        : vendorVersion === undefined
+          ? `unknown (ref ${repo.ref})`
+          : packageVersionLabel(candidate.packageName, vendorVersion, "vendored source")
+  }
+}
+
+const detectVendoredPackageVersions = (
+  cwd: string,
   candidates: ReadonlyArray<DependencyVendorCandidate>,
   repos: ReadonlyArray<VendoredRepo>
+) =>
+  Effect.gen(function* () {
+    const entries = yield* Effect.forEach(
+      matchedCandidates(candidates),
+      (candidate) => {
+        const existing = findExistingRepo(candidate, repos)
+        if (Option.isNone(existing)) {
+          return Effect.succeed([] as ReadonlyArray<VendoredPackageVersionEntry>)
+        }
+        return detectVendoredPackageVersion({
+          cwd,
+          packageName: candidate.packageName,
+          prefix: existing.value.prefix
+        }).pipe(
+          Effect.map((version) =>
+            Option.isSome(version)
+              ? ([
+                  [
+                    vendoredPackageVersionKey(existing.value.name, candidate.packageName),
+                    version.value.version
+                  ]
+                ] as const)
+              : ([] as ReadonlyArray<VendoredPackageVersionEntry>)
+          ),
+          Effect.catchAll(() => Effect.succeed([] as ReadonlyArray<VendoredPackageVersionEntry>))
+        )
+      },
+      { concurrency: 4 }
+    )
+    return new Map(entries.flat())
+  })
+
+export const dependencyVendorTasks = (
+  candidates: ReadonlyArray<DependencyVendorCandidate>,
+  repos: ReadonlyArray<VendoredRepo>,
+  vendoredPackageVersions: VendoredPackageVersionMap = new Map()
 ): ReadonlyArray<DependencyVendorTask> => {
   const tasks = new Map<string, DependencyVendorTask>()
   for (const candidate of matchedCandidates(candidates)) {
@@ -101,7 +223,12 @@ export const dependencyVendorTasks = (
       existingName: Option.map(existing, (repo) => repo.name),
       packageNames: [candidate.packageName],
       primaryPackageName: candidate.packageName,
-      repositoryUrl
+      repositoryUrl,
+      versions: dependencyVersions({
+        candidate,
+        existing,
+        vendoredPackageVersions
+      })
     } satisfies Omit<DependencyVendorTask, "suggestedName">
     tasks.set(
       key,
@@ -116,10 +243,11 @@ export const dependencyVendorTasks = (
 interface DepsSummaryProps {
   readonly candidateCount: number
   readonly matchedCount: number
+  readonly tasks: ReadonlyArray<DependencyVendorTask>
   readonly taskCount: number
 }
 
-const DepsSummary = ({ candidateCount, matchedCount, taskCount }: DepsSummaryProps) => (
+const DepsSummary = ({ candidateCount, matchedCount, taskCount, tasks }: DepsSummaryProps) => (
   <Box flexDirection="column">
     <Header title="ingraft" subtitle="dependency scan" />
     <Section title="Summary">
@@ -131,6 +259,19 @@ const DepsSummary = ({ candidateCount, matchedCount, taskCount }: DepsSummaryPro
         ]}
       />
     </Section>
+    <Section title="Version drift">
+      <Table
+        columns={[
+          { header: "Package", value: (task: DependencyVendorTask) => task.primaryPackageName },
+          { header: "Local", value: (task) => task.versions.local },
+          { header: "Vendor", value: (task) => task.versions.vendor },
+          { header: "Remote", value: (task) => task.versions.remote },
+          { header: "Status", value: (task) => task.versions.status }
+        ]}
+        empty="No package-backed vendoring tasks detected."
+        rows={tasks}
+      />
+    </Section>
   </Box>
 )
 
@@ -140,7 +281,8 @@ const taskToJson = (task: DependencyVendorTask) => ({
   packageNames: task.packageNames,
   primaryPackageName: task.primaryPackageName,
   repositoryUrl: task.repositoryUrl,
-  suggestedName: task.suggestedName
+  suggestedName: task.suggestedName,
+  versions: task.versions
 })
 
 const runTask = (strategy: VendorStrategy, task: DependencyVendorTask) => {
@@ -174,7 +316,8 @@ export const depsImpl = ({ dryRun, json, strategy, yes }: DepsCommandParams) =>
     const cwd = yield* repoRoot
     const candidates = yield* PackageVersionSync.scan(cwd)
     const repos = yield* listVendored(cwd)
-    const tasks = dependencyVendorTasks(candidates, repos)
+    const vendoredPackageVersions = yield* detectVendoredPackageVersions(cwd, candidates, repos)
+    const tasks = dependencyVendorTasks(candidates, repos, vendoredPackageVersions)
 
     if (json) {
       yield* Console.log(JSON.stringify({ candidates, tasks: tasks.map(taskToJson) }, null, 2))
@@ -186,6 +329,7 @@ export const depsImpl = ({ dryRun, json, strategy, yes }: DepsCommandParams) =>
         <DepsSummary
           candidateCount={candidates.length}
           matchedCount={matchedCandidates(candidates).length}
+          tasks={tasks}
           taskCount={tasks.length}
         />
       )

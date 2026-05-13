@@ -93,7 +93,8 @@ export const formatTaskRow = (state: DashboardState, index: number): string => {
   const cursor = state.focusedTaskIndex === index ? ">" : " "
   const selected = state.selectedTaskIndexes.includes(index) ? "x" : " "
   const action = task.action.toUpperCase().padEnd(6, " ")
-  return `${cursor} [${selected}] ${action} ${taskPackageLabel(task)} -> ${taskTarget(task)}`
+  const status = task.versions === undefined ? "" : ` [${task.versions.status}]`
+  return `${cursor} [${selected}] ${action} ${taskPackageLabel(task)} -> ${taskTarget(task)}${status}`
 }
 
 export const visibleTaskRows = (state: DashboardState): ReadonlyArray<string> =>

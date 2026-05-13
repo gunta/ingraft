@@ -5,6 +5,14 @@ export interface VendorTuiTask {
   readonly primaryPackageName: string
   readonly repositoryUrl: string
   readonly suggestedName?: string
+  readonly versions?: VendorTuiTaskVersions
+}
+
+export interface VendorTuiTaskVersions {
+  readonly local: string
+  readonly remote: string
+  readonly status: string
+  readonly vendor: string
 }
 
 export interface VendorTuiCandidate {
@@ -37,5 +45,6 @@ export const taskRows = (snapshot: VendorTuiSnapshot): ReadonlyArray<string> =>
       task.action === "update" && task.existingName
         ? task.existingName
         : (task.suggestedName ?? task.repositoryUrl)
-    return `${task.action.toUpperCase()} ${packages} -> ${target}`
+    const status = task.versions === undefined ? "" : ` [${task.versions.status}]`
+    return `${task.action.toUpperCase()} ${packages} -> ${target}${status}`
   })

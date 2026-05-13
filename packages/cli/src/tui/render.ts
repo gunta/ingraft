@@ -95,12 +95,20 @@ const activePaneLines = (state: DashboardState): ReadonlyArray<string> => {
 const focusedTaskDetails = (state: DashboardState): ReadonlyArray<string> => {
   const task = state.snapshot.tasks[state.focusedTaskIndex]
   if (task === undefined) return ["No task focused."]
-  return [
+  const details = [
     `Action:      ${task.action}`,
     `Packages:    ${task.packageNames.join(", ")}`,
     `Repository:  ${task.repositoryUrl}`,
     `Target:      ${task.existingName ?? task.suggestedName ?? task.primaryPackageName}`,
     `Sync pkg:    ${task.primaryPackageName}`
+  ]
+  if (task.versions === undefined) return details
+  return [
+    ...details,
+    `Local:      ${task.versions.local}`,
+    `Vendor:     ${task.versions.vendor}`,
+    `Remote:     ${task.versions.remote}`,
+    `Drift:      ${task.versions.status}`
   ]
 }
 

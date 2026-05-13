@@ -1,4 +1,5 @@
-# vendor-subtree-skill: github-diff begin
+# ingraft: github-diff begin
 # Hide committed vendored subtree source in GitHub PR diffs by default.
+/vendor/effect-smol/** linguist-vendored linguist-generated
 /vendor/effect/** linguist-vendored linguist-generated
-# vendor-subtree-skill: github-diff end
+# ingraft: github-diff end
