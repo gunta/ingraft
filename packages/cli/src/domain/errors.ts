@@ -113,6 +113,65 @@ export interface CloudflareArtifactsRequestFailedParams {
   readonly output: string
 }
 
+export interface TomlParseFailedParams {
+  readonly source?: string
+  readonly cause: unknown
+}
+
+export interface YamlParseFailedParams {
+  readonly source?: string
+  readonly cause: unknown
+}
+
+export interface JsonParseFailedParams {
+  readonly source?: string
+  readonly cause: unknown
+}
+
+export interface JsoncParseFailedParams {
+  readonly source?: string
+  readonly cause: unknown
+}
+
+export interface JavaScriptParseFailedParams {
+  readonly source?: string
+  readonly cause: unknown
+}
+
+export interface TypeScriptParseFailedParams {
+  readonly source?: string
+  readonly cause: unknown
+}
+
+export interface SchemaDecodeFailedParams {
+  readonly source: string
+  readonly issue: SchemaIssue.Issue
+}
+
+export interface InkRenderFailedParams {
+  readonly view: string
+  readonly cause: unknown
+}
+
+export interface PromptInputFailedParams {
+  readonly cause: unknown
+}
+
+export interface TuiLaunchFailedParams {
+  readonly command: string
+  readonly cause: unknown
+}
+
+export interface TuiRendererFailedParams {
+  readonly phase: "acquire" | "render" | "release"
+  readonly cause: unknown
+}
+
+export interface ToolIgnoreCheckFailedParams {
+  readonly tool: string
+  readonly cause: unknown
+}
+
 export class GitCommandFailed extends Data.TaggedError(
   "GitCommandFailed"
 )<GitCommandFailedParams> {}
@@ -197,66 +256,55 @@ export class CloudflareArtifactsRequestFailed extends Data.TaggedError(
   "CloudflareArtifactsRequestFailed"
 )<CloudflareArtifactsRequestFailedParams> {}
 
-export class TomlParseFailed extends Data.TaggedError("TomlParseFailed")<{
-  readonly source?: string
-  readonly cause: unknown
-}> {}
+export class TomlParseFailed extends Data.TaggedError(
+  "TomlParseFailed"
+)<TomlParseFailedParams> {}
 
-export class YamlParseFailed extends Data.TaggedError("YamlParseFailed")<{
-  readonly source?: string
-  readonly cause: unknown
-}> {}
+export class YamlParseFailed extends Data.TaggedError(
+  "YamlParseFailed"
+)<YamlParseFailedParams> {}
 
-export class JsonParseFailed extends Data.TaggedError("JsonParseFailed")<{
-  readonly source?: string
-  readonly cause: unknown
-}> {}
+export class JsonParseFailed extends Data.TaggedError(
+  "JsonParseFailed"
+)<JsonParseFailedParams> {}
 
-export class JsoncParseFailed extends Data.TaggedError("JsoncParseFailed")<{
-  readonly source?: string
-  readonly cause: unknown
-}> {}
+export class JsoncParseFailed extends Data.TaggedError(
+  "JsoncParseFailed"
+)<JsoncParseFailedParams> {}
 
-export class JavaScriptParseFailed extends Data.TaggedError("JavaScriptParseFailed")<{
-  readonly source?: string
-  readonly cause: unknown
-}> {}
+export class JavaScriptParseFailed extends Data.TaggedError(
+  "JavaScriptParseFailed"
+)<JavaScriptParseFailedParams> {}
 
-export class TypeScriptParseFailed extends Data.TaggedError("TypeScriptParseFailed")<{
-  readonly source?: string
-  readonly cause: unknown
-}> {}
+export class TypeScriptParseFailed extends Data.TaggedError(
+  "TypeScriptParseFailed"
+)<TypeScriptParseFailedParams> {}
 
-export class SchemaDecodeFailed extends Data.TaggedError("SchemaDecodeFailed")<{
-  readonly source: string
-  readonly issue: SchemaIssue.Issue
-}> {}
+export class SchemaDecodeFailed extends Data.TaggedError(
+  "SchemaDecodeFailed"
+)<SchemaDecodeFailedParams> {}
 
-export class InkRenderFailed extends Data.TaggedError("InkRenderFailed")<{
-  readonly view: string
-  readonly cause: unknown
-}> {}
+export class InkRenderFailed extends Data.TaggedError(
+  "InkRenderFailed"
+)<InkRenderFailedParams> {}
 
-export class PromptInputFailed extends Data.TaggedError("PromptInputFailed")<{
-  readonly cause: unknown
-}> {}
+export class PromptInputFailed extends Data.TaggedError(
+  "PromptInputFailed"
+)<PromptInputFailedParams> {}
 
-export class TuiLaunchFailed extends Data.TaggedError("TuiLaunchFailed")<{
-  readonly command: string
-  readonly cause: unknown
-}> {}
+export class TuiLaunchFailed extends Data.TaggedError(
+  "TuiLaunchFailed"
+)<TuiLaunchFailedParams> {}
 
-export class TuiRendererFailed extends Data.TaggedError("TuiRendererFailed")<{
-  readonly phase: "acquire" | "render" | "release"
-  readonly cause: unknown
-}> {}
+export class TuiRendererFailed extends Data.TaggedError(
+  "TuiRendererFailed"
+)<TuiRendererFailedParams> {}
 
 export class BunRuntimeMissing extends Data.TaggedError("BunRuntimeMissing")<Record<string, never>> {}
 
-export class ToolIgnoreCheckFailed extends Data.TaggedError("ToolIgnoreCheckFailed")<{
-  readonly tool: string
-  readonly cause: unknown
-}> {}
+export class ToolIgnoreCheckFailed extends Data.TaggedError(
+  "ToolIgnoreCheckFailed"
+)<ToolIgnoreCheckFailedParams> {}
 
 export type VendorError =
   | GitCommandFailed
@@ -297,6 +345,17 @@ export type VendorError =
   | ToolIgnoreCheckFailed
 
 const gitCommand = (args: ReadonlyArray<string>) => `git ${args.join(" ")}`
+
+const parseErrorPresentation = (
+  format: string,
+  source: string | undefined,
+  cause: unknown
+): ErrorPresentation => ({
+  title: `${format} parse failed`,
+  detail: source ? `Source: ${source}\n${String(cause)}` : String(cause),
+  hint: `Inspect the file for invalid ${format} syntax.`,
+  code: 2
+})
 
 export const errorPresentation = (error: VendorError): ErrorPresentation => {
   switch (error._tag) {
@@ -464,59 +523,17 @@ export const errorPresentation = (error: VendorError): ErrorPresentation => {
         code: 3
       }
     case "TomlParseFailed":
-      return {
-        title: "TOML parse failed",
-        detail: error.source
-          ? `Source: ${error.source}\n${String(error.cause)}`
-          : String(error.cause),
-        hint: "Inspect the file for invalid TOML syntax.",
-        code: 2
-      }
+      return parseErrorPresentation("TOML", error.source, error.cause)
     case "YamlParseFailed":
-      return {
-        title: "YAML parse failed",
-        detail: error.source
-          ? `Source: ${error.source}\n${String(error.cause)}`
-          : String(error.cause),
-        hint: "Inspect the file for invalid YAML syntax.",
-        code: 2
-      }
+      return parseErrorPresentation("YAML", error.source, error.cause)
     case "JsonParseFailed":
-      return {
-        title: "JSON parse failed",
-        detail: error.source
-          ? `Source: ${error.source}\n${String(error.cause)}`
-          : String(error.cause),
-        hint: "Inspect the file for invalid JSON syntax.",
-        code: 2
-      }
+      return parseErrorPresentation("JSON", error.source, error.cause)
     case "JsoncParseFailed":
-      return {
-        title: "JSONC parse failed",
-        detail: error.source
-          ? `Source: ${error.source}\n${String(error.cause)}`
-          : String(error.cause),
-        hint: "Inspect the file for invalid JSONC syntax.",
-        code: 2
-      }
+      return parseErrorPresentation("JSONC", error.source, error.cause)
     case "JavaScriptParseFailed":
-      return {
-        title: "JavaScript parse failed",
-        detail: error.source
-          ? `Source: ${error.source}\n${String(error.cause)}`
-          : String(error.cause),
-        hint: "Inspect the file for invalid JavaScript syntax.",
-        code: 2
-      }
+      return parseErrorPresentation("JavaScript", error.source, error.cause)
     case "TypeScriptParseFailed":
-      return {
-        title: "TypeScript parse failed",
-        detail: error.source
-          ? `Source: ${error.source}\n${String(error.cause)}`
-          : String(error.cause),
-        hint: "Inspect the file for invalid TypeScript syntax.",
-        code: 2
-      }
+      return parseErrorPresentation("TypeScript", error.source, error.cause)
     case "SchemaDecodeFailed":
       return {
         title: `Schema decode failed for ${error.source}`,
