@@ -11,5 +11,8 @@
   "typescript.preferences.autoImportFileExcludePatterns": ["vendor/**"],
   "material-icon-theme.folders.associations": {
     "vendor": "packages"
-  }
+  },
+  "javascript.preferences.autoImportFileExcludePatterns": [
+    "vendor/**"
+  ]
 }
