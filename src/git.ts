@@ -9,6 +9,7 @@ import {
   GitCommandFailed,
   NotGitRepository
 } from "./errors.ts"
+import { RepositoryHosts } from "./repository-hosts.ts"
 import { RuntimeConfig } from "./runtime.ts"
 
 export interface GitResult {
@@ -137,12 +138,18 @@ export const assertCleanTree = (cwd: string) =>
   )
 
 export const detectDefaultBranch = (url: string) =>
-  git(["ls-remote", "--symref", url, "HEAD"]).pipe(
-    Effect.map((result) => {
-      if (result.exitCode !== 0) return Option.none<string>()
-      const match = result.stdout.match(/^ref:\s+refs\/heads\/(\S+)\s+HEAD/m)
-      return match?.[1] ? Option.some(match[1]) : Option.none<string>()
-    })
+  RepositoryHosts.defaultBranch(url).pipe(
+    Effect.flatMap((branch) =>
+      Option.isSome(branch)
+        ? Effect.succeed(branch)
+        : git(["ls-remote", "--symref", url, "HEAD"]).pipe(
+            Effect.map((result) => {
+              if (result.exitCode !== 0) return Option.none<string>()
+              const match = result.stdout.match(/^ref:\s+refs\/heads\/(\S+)\s+HEAD/m)
+              return match?.[1] ? Option.some(match[1]) : Option.none<string>()
+            })
+          )
+    )
   )
 
 export const commitConfigChanges = ({

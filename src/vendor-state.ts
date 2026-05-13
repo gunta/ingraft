@@ -3,6 +3,7 @@ import { Effect, Either, Option, ParseResult, Schema } from "effect"
 import {
   TRAILER_ACTION,
   TRAILER_DIR,
+  TRAILER_FILTER,
   TRAILER_REF,
   TRAILER_STRATEGY,
   TRAILER_URL
@@ -11,8 +12,14 @@ import { git } from "./git.ts"
 import {
   DEFAULT_VENDOR_STRATEGY,
   VendorActionSchema,
-  VendorStrategySchema,
+  VendorStrategySchema
 } from "./vendor-strategy.ts"
+import {
+  EMPTY_VENDOR_FILTER,
+  parseVendorFilterTrailer,
+  VendorFilterSchema,
+  type VendorFilter
+} from "./vendor-filter.ts"
 
 export const VendoredRepoSchema = Schema.Struct({
   name: Schema.String.pipe(Schema.minLength(1)),
@@ -20,6 +27,7 @@ export const VendoredRepoSchema = Schema.Struct({
   url: Schema.String.pipe(Schema.minLength(1)),
   ref: Schema.String.pipe(Schema.minLength(1)),
   strategy: VendorStrategySchema,
+  filter: VendorFilterSchema,
   sha: Schema.String.pipe(Schema.minLength(1)),
   date: Schema.String.pipe(Schema.minLength(1))
 })
@@ -75,6 +83,7 @@ interface VendoredLogRecordFields {
   readonly sha: string
   readonly strategy: string
   readonly url: string
+  readonly filter: VendorFilter
 }
 
 export const gitLogFormat = [
@@ -84,7 +93,8 @@ export const gitLogFormat = [
   `%(trailers:key=${TRAILER_URL},valueonly)`,
   `%(trailers:key=${TRAILER_REF},valueonly)`,
   `%(trailers:key=${TRAILER_STRATEGY},valueonly)`,
-  `%(trailers:key=${TRAILER_ACTION},valueonly)`
+  `%(trailers:key=${TRAILER_ACTION},valueonly)`,
+  `%(trailers:key=${TRAILER_FILTER},valueonly)`
 ].join("%x00")
 
 interface VendoredLogAccumulator {
@@ -112,10 +122,13 @@ const repoFromRecord = (record: string): VendoredLogRecordFields => {
   const ref = recordPart(parts, 4)
   const rawStrategy = recordPart(parts, 5)
   const rawAction = recordPart(parts, 6)
+  const rawFilter = recordPart(parts, 7)
   const name = prefix.replace(/\/+$/, "").split("/").pop() ?? ""
   const strategy = rawStrategy === "" ? DEFAULT_VENDOR_STRATEGY : rawStrategy
   const action = rawAction === "" ? "upsert" : rawAction
-  return { action, date, name, prefix, ref, sha, strategy, url }
+  const filter =
+    rawFilter === "" ? EMPTY_VENDOR_FILTER : parseVendorFilterTrailer(rawFilter)
+  return { action, date, filter, name, prefix, ref, sha, strategy, url }
 }
 
 const diagnosticFromRecord = (
@@ -147,6 +160,7 @@ const rememberRepo = (
             name: record.name,
             prefix: record.prefix,
             ref: record.ref,
+            filter: record.filter,
             sha: record.sha,
             strategy: record.strategy,
             url: record.url

@@ -60,6 +60,25 @@ export interface VendorStrategyCommandFailedParams {
   readonly output: string
 }
 
+export interface VersionSelectorConflictParams {
+  readonly selectors: ReadonlyArray<string>
+}
+
+export interface VersionResolutionFailedParams {
+  readonly selector: string
+  readonly url: string
+}
+
+export interface InvalidVendorFilterParams {
+  readonly value: string
+  readonly reason: string
+}
+
+export interface UnsupportedVendorFilterParams {
+  readonly strategy: VendorStrategy
+  readonly reason: string
+}
+
 export class GitCommandFailed extends Data.TaggedError(
   "GitCommandFailed"
 )<GitCommandFailedParams> {}
@@ -106,6 +125,22 @@ export class VendorStrategyCommandFailed extends Data.TaggedError(
   "VendorStrategyCommandFailed"
 )<VendorStrategyCommandFailedParams> {}
 
+export class VersionSelectorConflict extends Data.TaggedError(
+  "VersionSelectorConflict"
+)<VersionSelectorConflictParams> {}
+
+export class VersionResolutionFailed extends Data.TaggedError(
+  "VersionResolutionFailed"
+)<VersionResolutionFailedParams> {}
+
+export class InvalidVendorFilter extends Data.TaggedError(
+  "InvalidVendorFilter"
+)<InvalidVendorFilterParams> {}
+
+export class UnsupportedVendorFilter extends Data.TaggedError(
+  "UnsupportedVendorFilter"
+)<UnsupportedVendorFilterParams> {}
+
 export type VendorError =
   | GitCommandFailed
   | NotGitRepository
@@ -119,6 +154,10 @@ export type VendorError =
   | UpdateTargetMissing
   | UpdateFailed
   | VendorStrategyCommandFailed
+  | VersionSelectorConflict
+  | VersionResolutionFailed
+  | InvalidVendorFilter
+  | UnsupportedVendorFilter
 
 const gitCommand = (args: ReadonlyArray<string>) => `git ${args.join(" ")}`
 
@@ -210,6 +249,34 @@ export const errorPresentation = (error: VendorError): ErrorPresentation => {
         detail: error.output,
         hint: `Check ${error.prefix} and the git output above, then retry.`,
         code: 3
+      }
+    case "VersionSelectorConflict":
+      return {
+        title: "Conflicting version selectors",
+        detail: `Received: ${error.selectors.join(", ")}`,
+        hint: "Use only one of --ref, --tag, or --release.",
+        code: 2
+      }
+    case "VersionResolutionFailed":
+      return {
+        title: "Could not resolve requested version",
+        detail: `${error.selector} was not found for ${error.url}.`,
+        hint: "Use --tag for an exact git tag, --release for a host release, or --ref for a branch/commit/ref.",
+        code: 2
+      }
+    case "InvalidVendorFilter":
+      return {
+        title: "Invalid vendor filter",
+        detail: `${error.value}: ${error.reason}`,
+        hint: "Use patterns like --exclude '*.png', directories like --exclude-dir docs, extensions like --exclude-ext png, or sizes like --max-file-size 1MB.",
+        code: 2
+      }
+    case "UnsupportedVendorFilter":
+      return {
+        title: "Vendor filter is not supported for this strategy",
+        detail: `${error.strategy}: ${error.reason}`,
+        hint: "Use --strategy subtree for filtered committed source, or --strategy clone-ignore for a filtered local reference clone.",
+        code: 2
       }
   }
 }

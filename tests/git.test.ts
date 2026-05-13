@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Effect, Option } from "effect"
 import { Git, detectDefaultBranch } from "../src/git.ts"
+import { RepositoryHosts } from "../src/repository-hosts.ts"
 import { RuntimeConfig } from "../src/runtime.ts"
 
 describe("git service", () => {
@@ -13,7 +14,7 @@ describe("git service", () => {
     })
 
     const result = await Effect.runPromise(
-      detectDefaultBranch("https://example.com/repo.git").pipe(
+      detectDefaultBranch("https://github.com/Effect-TS/effect.git").pipe(
         Effect.provideService(
           Git,
           Git.make({
@@ -21,7 +22,7 @@ describe("git service", () => {
               expect(args).toEqual([
                 "ls-remote",
                 "--symref",
-                "https://example.com/repo.git",
+                "https://github.com/Effect-TS/effect.git",
                 "HEAD"
               ])
               return Effect.succeed({
@@ -32,10 +33,51 @@ describe("git service", () => {
             }
           })
         ),
+        Effect.provideService(
+          RepositoryHosts,
+          RepositoryHosts.make({
+            clone: () => Effect.succeed(Option.none()),
+            defaultBranch: () => Effect.succeed(Option.none()),
+            identify: () => Effect.succeed(Option.none()),
+            releaseTag: () => Effect.succeed(Option.none())
+          })
+        ),
         Effect.provideService(RuntimeConfig, runtime)
       )
     )
 
     expect(Option.getOrUndefined(result)).toBe("trunk")
+  })
+
+  test("uses repository host default branch before git fallback", async () => {
+    const runtime = RuntimeConfig.make({
+      argv: ["bun", "vendor.ts"],
+      colors: false,
+      cwd: "/workspace",
+      exit: (code) => Effect.dieMessage(`exit ${code}`)
+    })
+
+    const result = await Effect.runPromise(
+      detectDefaultBranch("https://github.com/Effect-TS/effect.git").pipe(
+        Effect.provideService(
+          Git,
+          Git.make({
+            exec: () => Effect.dieMessage("git fallback should not run")
+          })
+        ),
+        Effect.provideService(
+          RepositoryHosts,
+          RepositoryHosts.make({
+            clone: () => Effect.succeed(Option.none()),
+            defaultBranch: () => Effect.succeed(Option.some("main")),
+            identify: () => Effect.succeed(Option.none()),
+            releaseTag: () => Effect.succeed(Option.none())
+          })
+        ),
+        Effect.provideService(RuntimeConfig, runtime)
+      )
+    )
+
+    expect(Option.getOrUndefined(result)).toBe("main")
   })
 })

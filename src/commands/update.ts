@@ -22,6 +22,7 @@ import {
 } from "../git.ts"
 import { error, info, ok, warn, withCommandTelemetry } from "../log.ts"
 import { refreshGeneratedFiles } from "../project-files.ts"
+import { RepositoryHosts } from "../repository-hosts.ts"
 import { listVendored, type VendoredRepo } from "../vendor-state.ts"
 import type { VendorStrategy } from "../vendor-strategy.ts"
 
@@ -189,7 +190,14 @@ const updateCloneIgnore = (params: VendoredRepoCommandParams) =>
       yield* fs.makeDirectory(path.dirname(target), { recursive: true }).pipe(
         Effect.ignore
       )
-      yield* checkedStrategyGit(["clone", params.repo.url, params.repo.prefix], params)
+      const hostResult = yield* RepositoryHosts.clone({
+        cwd: params.cwd,
+        input: params.repo.url,
+        target: params.repo.prefix
+      })
+      if (Option.isNone(hostResult) || hostResult.value.exitCode !== 0) {
+        yield* checkedStrategyGit(["clone", params.repo.url, params.repo.prefix], params)
+      }
     }
     yield* checkoutRepoRef(params)
   })

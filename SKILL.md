@@ -63,6 +63,8 @@ This creates `AGENTS.md` (and updates `CLAUDE.md` if it exists), adds `vendor/**
 ```bash
 vendor-subtree add Effect-TS/effect
 vendor-subtree add Effect-TS/effect --ref main
+vendor-subtree add Effect-TS/effect --tag v3.21.2
+vendor-subtree add Effect-TS/effect --release latest
 vendor-subtree add Effect-TS/effect --strategy submodule
 vendor-subtree add Effect-TS/effect --strategy clone-ignore
 vendor-subtree add git@github.com:org/private-lib.git
@@ -85,7 +87,11 @@ After a successful `add`, summarize for the user: which repo, which ref, the pre
 
 - **Auth for private repos is the user's git credential helper.** SSH URLs use the SSH agent; HTTPS uses a stored token. If `git subtree add` fails with an auth error, suggest `git ls-remote <url>` to test access independently of this script.
 
-- **Default branch detection.** When `--ref` is not given, the script asks the remote via `git ls-remote --symref`. Most repos resolve to `main` or `master`. For non-standard defaults (`trunk`, `develop`), the detection still works. If detection fails, it falls back to `main` with a warning — pass `--ref` explicitly to avoid surprises.
+- **Host CLIs are preferred when useful.** If `gh` is installed and authenticated, the CLI uses it for GitHub default-branch detection, release lookup, and `clone-ignore` clones. If `glab` is installed and authenticated, the CLI can use it for GitLab default-branch detection, release lookup, and clones. It still falls back to git, and git remains required for subtree, submodule gitlinks, commits, and generic repos.
+
+- **Default branch detection.** When no version selector is given, the script asks GitHub/GitLab through host CLIs when possible, then falls back to `git ls-remote --symref`. Most repos resolve to `main` or `master`. For non-standard defaults (`trunk`, `develop`), the detection still works. If detection fails, it falls back to `main` with a warning — pass `--ref` explicitly to avoid surprises.
+
+- **Version selection.** Use `--ref <branch-or-sha>` for raw git refs, `--tag <tag>` for an exact git tag, or `--release <name>` / `--release latest` to resolve a GitHub/GitLab release to its tag. Use only one of these selectors.
 
 - **`vendor/` is hardcoded.** This is intentional. If the project is a Go module that uses `vendor/` for `go mod vendor`, vendor-subtree-skill will conflict. Suggest the user pass `--prefix third_party/<name>` on each `add` to use a different parent directory.
 
@@ -100,7 +106,7 @@ Run `vendor-subtree --help` or `bun "$SKILL_DIR/scripts/vendor.ts" --help` for t
 | Command | Behavior |
 |---|---|
 | `init` | Create the managed section in `AGENTS.md`/`CLAUDE.md`, add `vendor/**` to `.vscode/settings.json` exclusions, commit. |
-| `add <repo>` | Add a vendored repo with metadata trailers, update agent docs, commit. Flags: `--strategy subtree\|submodule\|clone-ignore`, `--ref/-r`, `--prefix/-p`, `--name/-n`. |
+| `add <repo>` | Add a vendored repo with metadata trailers, update agent docs, commit. Flags: `--strategy subtree\|submodule\|clone-ignore`, `--ref/-r`, `--tag`, `--release`, `--prefix/-p`, `--name/-n`. |
 | `update <name>` / `update --all` | Pull subtree changes, update submodule gitlinks, or refresh local ignored clones, then refresh agent docs. |
 | `remove <name>` | Remove/deinit the managed repo, record a removal trailer, refresh agent docs and `.gitignore`, commit. |
 | `list` | Show vendored repos and their strategies, derived from git commit trailers. Use `--json` for machine output. |

@@ -30,10 +30,39 @@ describe("vendor state parsing", () => {
         url: "https://github.com/Effect-TS/effect.git",
         ref: "main",
         strategy: "subtree",
+        filter: {
+          exclude: [],
+          excludeDirs: [],
+          excludeExtensions: [],
+          maxFileSizeBytes: null
+        },
         sha: "new-sha",
         date: "2026-05-13T00:00:00Z"
       }
     ])
+  })
+
+  test("parses filter metadata from git trailers", () => {
+    const filter = {
+      exclude: ["*.snap"],
+      excludeDirs: ["docs"],
+      excludeExtensions: ["png"],
+      maxFileSizeBytes: 1048576
+    }
+    const log = [
+      [
+        "sha-filtered",
+        "2026-05-13T00:00:00Z",
+        "vendor/effect",
+        "https://github.com/Effect-TS/effect.git",
+        "main",
+        "subtree",
+        "upsert",
+        JSON.stringify(filter)
+      ].join("\x00")
+    ].join("\x1e")
+
+    expect(parseVendoredLog(log)[0]?.filter).toEqual(filter)
   })
 
   test("parses explicit non-subtree strategies from git trailers", () => {

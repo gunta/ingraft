@@ -4,6 +4,7 @@ export const SECTION_END = "<!-- vendor-subtree-skill:end -->"
 export const TRAILER_URL = "vendor-source-url"
 export const TRAILER_REF = "vendor-source-ref"
 export const TRAILER_STRATEGY = "vendor-strategy"
+export const TRAILER_FILTER = "vendor-filter"
 export const TRAILER_ACTION = "vendor-action"
 export const TRAILER_DIR = "git-subtree-dir"
 export const AGENT_DOCS = ["AGENTS.md", "CLAUDE.md"] as const

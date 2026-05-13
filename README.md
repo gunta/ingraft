@@ -66,6 +66,8 @@ vendor-subtree --help
 
 - **Bun** ≥ 1.0 — `curl -fsSL https://bun.sh/install | bash` or `npm install -g bun`
 - **git** with `git subtree` for the default `subtree` strategy (ships with git ≥ 1.7.11; present in every modern install)
+- **GitHub CLI (`gh`) optional but preferred for GitHub repos.** When available, the CLI uses `gh repo view`, `gh release view`, and `gh repo clone` for GitHub-aware auth and protocol handling, then falls back to git.
+- **GitLab CLI (`glab`) optional for GitLab repos.** When available, the CLI can use `glab repo view`, `glab release view`, and `glab repo clone`, then falls back to git.
 
 ## Caveats
 
@@ -96,6 +98,8 @@ bun scripts/vendor.ts --version                         # 0.3.0
 bun scripts/vendor.ts init                              # one-time bootstrap
 bun scripts/vendor.ts add Effect-TS/effect              # add a vendored repo
 bun scripts/vendor.ts add Effect-TS/effect --ref main   # pin a ref
+bun scripts/vendor.ts add Effect-TS/effect --tag v3.21.2
+bun scripts/vendor.ts add Effect-TS/effect --release latest
 bun scripts/vendor.ts add Effect-TS/effect --strategy submodule
 bun scripts/vendor.ts add Effect-TS/effect --strategy clone-ignore
 bun scripts/vendor.ts add git@github.com:org/lib.git    # SSH (private)
@@ -134,6 +138,16 @@ vendor-action: upsert
 
 Subtree remains the best default for "agent always sees source after clone." Submodules and ignored clones trade portability for smaller parent repos.
 
+For GitHub and GitLab repos, the tool tries host CLIs first where they help with authentication, release lookup, and account-level git protocol settings. Git remains the execution engine for subtree, submodule gitlinks, commits, status checks, and generic repositories.
+
+Version selection:
+
+- `--ref <ref>` uses a raw branch, tag, commit SHA, or git ref.
+- `--tag <tag>` uses a specific git tag.
+- `--release <name>` resolves a provider release to its backing tag. `--release latest` is supported for providers that expose latest release metadata through their CLI.
+
+Use only one of `--ref`, `--tag`, or `--release`.
+
 ## Compatibility
 
 | Agent | Project path | Verified |
@@ -161,6 +175,10 @@ Key modules:
 - `src/cli.ts` wires the top-level Effect CLI and pretty logging.
 - `src/commands/` contains each subcommand implementation.
 - `src/git.ts` exposes git through an injectable Effect service.
+- `src/gh.ts` exposes GitHub CLI through an injectable Effect service and falls back cleanly when unavailable.
+- `src/glab.ts` exposes GitLab CLI through an injectable Effect service.
+- `src/repository-hosts.ts` owns provider detection and host-specific operations behind one service.
+- `src/version.ts` resolves `--ref`, `--tag`, and `--release` selectors.
 - `src/errors.ts` defines the typed domain error union used in the Effect error channel.
 - `src/log.ts` keeps colors and command spans consistent.
 - `src/project-files.ts` owns the shared AGENTS/CLAUDE/VS Code refresh flow.

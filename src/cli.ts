@@ -8,6 +8,9 @@ import {
   formatVendorError
 } from "./errors.ts"
 import { Git } from "./git.ts"
+import { GitHubCli } from "./gh.ts"
+import { GitLabCli } from "./glab.ts"
+import { RepositoryHosts } from "./repository-hosts.ts"
 import { RuntimeConfig } from "./runtime.ts"
 import { addCmd } from "./commands/add.ts"
 import { initCmd } from "./commands/init.ts"
@@ -41,7 +44,17 @@ export const runCli = Cli.run(vendorCommand, {
 })
 
 const GitLive = Git.Default.pipe(Layer.provide(BunContext.layer))
-const LiveLayer = Layer.mergeAll(BunContext.layer, GitLive, RuntimeConfig.Default)
+const GitHubCliLive = GitHubCli.Default.pipe(Layer.provide(BunContext.layer))
+const GitLabCliLive = GitLabCli.Default.pipe(Layer.provide(BunContext.layer))
+const RepositoryHostsLive = RepositoryHosts.Default.pipe(
+  Layer.provide(Layer.mergeAll(GitHubCliLive, GitLabCliLive))
+)
+const LiveLayer = Layer.mergeAll(
+  BunContext.layer,
+  GitLive,
+  RepositoryHostsLive,
+  RuntimeConfig.Default
+)
 
 const handleVendorError = <E extends VendorError>(
   cause: E
@@ -68,7 +81,9 @@ const app = RuntimeConfig.pipe(
     VendorPathAlreadyExists: handleVendorError,
     VendorStrategyCommandFailed: handleVendorError,
     VendoredRepoAlreadyExists: handleVendorError,
-    VendoredRepoNotFound: handleVendorError
+    VendoredRepoNotFound: handleVendorError,
+    VersionResolutionFailed: handleVendorError,
+    VersionSelectorConflict: handleVendorError
   })
 )
 
