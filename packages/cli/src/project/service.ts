@@ -1,5 +1,4 @@
-import { FileSystem, Path } from "@effect/platform"
-import { Effect, Option } from "effect"
+import { Context, Effect, FileSystem, Layer, Option, Path } from "effect"
 
 import { RuntimeConfig, type RuntimeConfigShape } from "../app/runtime.ts"
 import type { VendoredRepo } from "../domain/vendor-state.ts"
@@ -46,7 +45,7 @@ const refreshGeneratedFilesWith = (
   { commitMessage, cwd, editorSettings = false, repos }: RefreshGeneratedFilesParams
 ) =>
   Effect.gen(function* () {
-    const command = commandInvocation({ cwd, argv: runtime.argv })
+    const command = yield* commandInvocation({ cwd, argv: runtime.argv })
     const written = yield* updateAgentDocs({ cwd, repos, command })
     const gitignore = yield* updateGitignore({
       cwd,
@@ -56,33 +55,41 @@ const refreshGeneratedFilesWith = (
       cwd,
       prefixes: repos.filter((repo) => repo.strategy === "subtree").map((repo) => repo.prefix)
     })
-    yield* reportWritten({
-      cwd,
-      paths: [
-        ...written,
-        ...Option.match(gitignore, {
-          onNone: () => [],
-          onSome: (path) => [path]
-        }),
-        ...Option.match(gitattributes, {
-          onNone: () => [],
-          onSome: (path) => [path]
-        })
-      ]
-    })
+    let generatedPaths = [
+      ...written,
+      ...Option.match(gitignore, {
+        onNone: () => [],
+        onSome: (path) => [path]
+      }),
+      ...Option.match(gitattributes, {
+        onNone: () => [],
+        onSome: (path) => [path]
+      })
+    ]
+    yield* reportWritten({ cwd, paths: generatedPaths })
     if (editorSettings) {
       const editorPaths = yield* editorService.refresh({ cwd })
       yield* reportWritten({ cwd, paths: editorPaths })
+      generatedPaths = [...generatedPaths, ...editorPaths]
     }
     const toolIgnorePaths = yield* toolIgnores.refresh({ cwd })
     yield* reportWritten({ cwd, paths: toolIgnorePaths })
+    generatedPaths = [...generatedPaths, ...toolIgnorePaths]
     yield* vendorNotes.sync({ cwd, repos })
-    yield* commitConfigChanges({ cwd, message: commitMessage })
+    yield* commitConfigChanges({ cwd, message: commitMessage, paths: generatedPaths })
   })
 
-export class ProjectFiles extends Effect.Service<ProjectFiles>()("ingraft/ProjectFiles", {
-  accessors: true,
-  effect: Effect.gen(function* () {
+export interface ProjectFilesShape {
+  readonly refresh: (params: RefreshGeneratedFilesParams) => Effect.Effect<void, unknown>
+}
+
+export class ProjectFiles extends Context.Service<ProjectFiles, ProjectFilesShape>()(
+  "ingraft/ProjectFiles"
+) {}
+
+export const ProjectFilesLive = Layer.effect(
+  ProjectFiles,
+  Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const git = yield* Git
     const gitMetadata = yield* GitMetadata
@@ -105,4 +112,4 @@ export class ProjectFiles extends Effect.Service<ProjectFiles>()("ingraft/Projec
         )
     }
   })
-}) {}
+)

@@ -1,5 +1,5 @@
-import { Command as Cli } from "@effect/cli"
 import { Effect } from "effect"
+import { Command } from "effect/unstable/cli"
 
 import { ok, withCommandTelemetry } from "../app/log.tsx"
 import { RuntimeConfig } from "../app/runtime.ts"
@@ -12,8 +12,9 @@ export const initImpl = Effect.gen(function* () {
   const cwd = yield* repoRoot
   const repos = yield* listVendored(cwd)
   const runtime = yield* RuntimeConfig
-  const command = commandInvocation({ cwd, argv: runtime.argv })
-  yield* ProjectFiles.refresh({
+  const projectFiles = yield* ProjectFiles
+  const command = yield* commandInvocation({ cwd, argv: runtime.argv })
+  yield* projectFiles.refresh({
     cwd,
     repos,
     commitMessage: "vendor: initialize ingraft",
@@ -22,8 +23,8 @@ export const initImpl = Effect.gen(function* () {
   yield* ok(`Initialized. Run \`${command} add <repo>\` to vendor a repository.`)
 }).pipe(withCommandTelemetry("init"))
 
-export const initCmd = Cli.make("init", {}, () => initImpl).pipe(
-  Cli.withDescription(
+export const initCmd = Command.make("init", {}, () => initImpl).pipe(
+  Command.withDescription(
     "Bootstrap agent docs, .gitignore, .gitattributes, editor settings, and tool ignores, then commit."
   )
 )
