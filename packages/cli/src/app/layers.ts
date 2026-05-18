@@ -17,6 +17,7 @@ import { GitMetadataLive } from "../services/git-metadata.ts"
 import { GitLive } from "../services/git.ts"
 import { GitLabCliLive } from "../services/glab.ts"
 import { JujutsuLive } from "../services/jujutsu.ts"
+import { LocalStateLive } from "../services/local-state.ts"
 import { PromptsLive } from "../services/prompts.tsx"
 import { RepositoryHostsLive } from "../services/repository-hosts.ts"
 import { VendorNotesLive } from "../services/vendor-notes.ts"
@@ -106,5 +107,6 @@ export const LiveLayer = Layer.mergeAll(
   HostsLive,
   NotesLive,
   PkgSyncLive,
-  PrmptsLive
+  PrmptsLive,
+  LocalStateLive
 )
