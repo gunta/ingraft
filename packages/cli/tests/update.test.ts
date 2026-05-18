@@ -87,7 +87,8 @@ test("updating a local-only entry does not create a commit and advances resolved
           ref: Option.some("main"),
           name: Option.some("upstream"),
           strategy: "clone-ignore",
-          localOnly: true
+          localOnly: true,
+          prefix: Option.some("vendor/upstream")
         })
       ).pipe(Effect.provide(LiveLayer), Effect.provide(GitMetadataLive))
     )

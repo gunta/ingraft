@@ -38,7 +38,8 @@ describe("remove --local-only", () => {
           ref: Option.some("main"),
           name: Option.some("upstream"),
           strategy: "clone-ignore",
-          localOnly: true
+          localOnly: true,
+          prefix: Option.some("vendor/upstream")
         })
       ).pipe(Effect.provide(LiveLayer), Effect.provide(GitMetadataLive))
     )
