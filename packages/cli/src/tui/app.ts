@@ -15,7 +15,7 @@ import { TuiRenderer } from "./renderer.ts"
 const initialState = (): DashboardState =>
   createDashboardState(emptySnapshot(), {
     logLines: ["Opened dashboard; loading repository state in the background."],
-    statusMessage: "Loading vendored repositories and package metadata..."
+    statusMessage: "Loading durable source routes and package metadata..."
   })
 
 const renderState = (state: DashboardState) =>

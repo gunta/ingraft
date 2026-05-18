@@ -1,6 +1,11 @@
 # ingraft
 
-Standalone CLI for vendoring external git repositories into a project so coding agents and language tooling can read upstream source without treating it as application code.
+Standalone CLI for routing repository context into coding-agent workflows.
+The main route today is durable source for external git repositories, so agents
+and language tooling can read version-matched upstream source without treating
+it as application code. The same CLI also helps choose lighter routes: ignored
+local clones, shared cache links, repo packs, lazy source fetches, and local
+search tools.
 
 The CLI is built with Effect, `@effect/cli`, `@effect/platform`, and the Node platform layer. Bun is used for workspace development, tests, and the OpenTUI dashboard. Non-interactive subcommands stay Node-compatible; the zero-argument dashboard launches through Bun because OpenTUI is Bun-based.
 
@@ -73,7 +78,7 @@ ingraft remove effect --dangerously-rewrite-history
 ingraft refresh
 ```
 
-Running `ingraft` with no arguments opens the interactive dashboard. Use `ingraft deps` for the non-interactive package scan: it reads project `package.json`, `mix.exs`, `Package.swift`, Gradle build files, and Gradle version catalogs; resolves npm, Hex, Swift source, and Maven SCM metadata; groups packages that share the same source repo; and asks which source repos to add or update. Passing positional targets is shorthand for adding them, so `ingraft zod hex:jason swift:apple/swift-argument-parser Effect-TS/effect` vendors npm, Hex, Swift, and GitHub sources in one run. Repository aliases expand before package resolution, so `ingraft add effect` expands to `Effect-TS/effect`, and `ingraft add convex` expands to the Convex client and helper repositories. `deps --yes` processes every matched task without prompting; `deps --json` prints the detected candidates and planned tasks for tools such as the dashboard.
+Running `ingraft` with no arguments opens the interactive dashboard. Use `ingraft deps` for the non-interactive package scan: it reads project `package.json`, `mix.exs`, `Package.swift`, Gradle build files, and Gradle version catalogs; resolves npm, Hex, Swift source, and Maven SCM metadata; groups packages that share the same source repo; and asks which source repos to add or update. Passing positional targets is shorthand for adding them, so `ingraft zod hex:jason swift:apple/swift-argument-parser Effect-TS/effect` routes npm, Hex, Swift, and GitHub source context in one run. Repository aliases expand before package resolution, so `ingraft add effect` expands to `Effect-TS/effect`, and `ingraft add convex` expands to the Convex client and helper repositories. `deps --yes` processes every matched task without prompting; `deps --json` prints the detected candidates and planned tasks for tools such as the dashboard.
 
 ## Repository Aliases
 
@@ -136,26 +141,29 @@ Supported `[defaults]` keys mirror `ingraft add`: `strategy`, `ref`, `tag`,
 version selector flag (`--ref`, `--tag`, `--release`, or `--sync-package`), the
 configured version selector is ignored for that command.
 
-## Strategies
+## Context Routes
 
 - `subtree` - default committed source snapshot via `git subtree`.
 - `submodule` - gitlink for repositories that should not be committed into the host repository.
 - `clone-ignore` - local clone under `vendor/` plus generated `.gitignore` entries.
 - `cache-link` - ignored symlink under `vendor/` pointing at a shared resolved-commit checkout in the ingraft cache.
+- `context pack` - narrow Repomix snapshot for one-shot chat or review contexts.
+- `context source` - lazy OpenSrc source lookup for packages that should not be added to the repo.
+- `context` - detection of complementary local search and context tools.
 
 When a collocated `jj` repository is detected, `add` falls back to `clone-ignore` unless `cache-link` was explicitly requested, because both local strategies avoid git subtree and submodule mutations.
 
-### Editable vendors
+### Editable source routes
 
-If you expect to modify vendored source, use a fork-backed submodule. Fork the upstream repository, create a branch for your patches, and add the fork with `--strategy submodule --ref <branch>`:
+If you expect to modify upstream source, use a fork-backed submodule. Fork the upstream repository, create a branch for your patches, and add the fork with `--strategy submodule --ref <branch>`:
 
 ```sh
 ingraft add your-org/effect --strategy submodule --ref vendor-patches
 ```
 
-Make changes inside `vendor/<name>/`, commit and push them inside the submodule, then commit the updated submodule pointer in the parent repository. This keeps vendor patch history in the fork, makes upstream pull requests straightforward, and avoids mixing ongoing vendor development into the host repository history.
+Make changes inside `vendor/<name>/`, commit and push them inside the submodule, then commit the updated submodule pointer in the parent repository. This keeps source patch history in the fork, makes upstream pull requests straightforward, and avoids mixing ongoing upstream development into the host repository history.
 
-Use `subtree` for editable vendors only when the patch is intentionally private to the host project and every clone must include the patched files without submodule initialization. Use `clone-ignore` only for local experiments that do not need team-visible commits, and `cache-link` for shared read-only local references.
+Use `subtree` for editable source only when the patch is intentionally private to the host project and every clone must include the patched files without submodule initialization. Use `clone-ignore` only for local experiments that do not need team-visible commits, and `cache-link` for shared read-only local references.
 
 ## Dangerous History Rewrites
 
@@ -195,17 +203,19 @@ ingraft add swift:apple/swift-argument-parser android:com.squareup.okhttp3:okhtt
 ingraft
 ```
 
-Running `ingraft` with no arguments opens the interactive dashboard. It shows dependency matches and vendoring tasks. It reads `ingraft deps --json`, lets you select add/update tasks, previews exact commands, and only runs them after confirmation. OpenTUI currently requires Bun, so the default dashboard needs Bun even when other subcommands are run with Node.
+Running `ingraft` with no arguments opens the interactive dashboard. It shows dependency matches and source-context tasks. It reads `ingraft deps --json`, lets you select add/update tasks, previews exact commands, and only runs them after confirmation. OpenTUI currently requires Bun, so the default dashboard needs Bun even when other subcommands are run with Node.
 
 ## Tooling Integration
 
-`refresh` keeps agent docs and detected local tooling configuration in sync. It only writes ignore settings for tools that are present, including common TypeScript, JavaScript, Python, Rust, Swift, Android, Elixir, Zig, CSS, Markdown, editor, code-agent, and monorepo surfaces. `doctor` reports detected languages, editors, agent files, lint/format tools, monorepo tools, vendored repos, ignore status, and version-sync status. `doctor --fix` runs the same generated-file repair pass before reporting, which is the fastest way to repair drift in agent docs, `.gitattributes`, editor excludes, and detected tool ignores.
+`refresh` keeps agent docs and detected local tooling configuration in sync. It only writes ignore settings for tools that are present, including common TypeScript, JavaScript, Python, Rust, Swift, Android, Elixir, Zig, CSS, Markdown, editor, code-agent, and monorepo surfaces. `doctor` reports detected languages, editors, agent files, lint/format tools, monorepo tools, durable source routes, context-tool routes, ignore status, and version-sync status. `doctor --fix` runs the same generated-file repair pass before reporting, which is the fastest way to repair drift in agent docs, `.gitattributes`, editor excludes, and detected tool ignores.
 
 Monorepo support covers package-manager workspaces plus Turborepo, Nx/Lerna, pnpm workspaces, moon, Bazel, Rush, Lage, Pants, Buck2, Gradle, Maven reactor projects, and Please. Safe automatic edits are currently applied to `turbo.json`/`turbo.jsonc`, `nx.json`, `pnpm-workspace.yaml`, `.moon/workspace.yml`, `.moon/workspace.yaml`, and `.bazelignore`; the other tools are detected and reported without source-config rewrites.
 
 ## Optional Context Tools
 
-ingraft stays git-native for vendored repo state, but it can route to a small set of complementary open-source context tools:
+Vendored source is the durable route. `ingraft context` covers lighter routes
+for cases where committing source is too heavy, too temporary, or the wrong
+authority boundary:
 
 ```sh
 ingraft context

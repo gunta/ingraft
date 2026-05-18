@@ -2,11 +2,14 @@
   "name": "ingraft-website",
   "version": "0.3.0",
   "private": true,
-  "description": "Astro/Starlight documentation and marketing website for ingraft.",
+  "description": "Astro/Starlight documentation and marketing website for ingraft repository-context workflows.",
   "keywords": [
     "astro",
+    "coding-agents",
+    "context-routing",
     "documentation",
     "ingraft",
+    "repository-context",
     "starlight",
     "website"
   ],
@@ -36,10 +39,6 @@
     "deploy": "alchemy deploy",
     "typecheck": "astro check"
   },
-  "portless": {
-    "name": "ingraft",
-    "script": "dev:app"
-  },
   "dependencies": {
     "@astrojs/react": "^5.0.4",
     "@astrojs/starlight": "^0.39.2",
@@ -58,5 +57,9 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9"
+  },
+  "portless": {
+    "name": "ingraft",
+    "script": "dev:app"
   }
 }

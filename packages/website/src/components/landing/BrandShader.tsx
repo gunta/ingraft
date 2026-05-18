@@ -8,11 +8,11 @@
  * Use with `client:visible` to defer until in view.
  */
 
-import type { CSSProperties, FC } from "react"
 import {
   GrainGradient as GrainGradientRaw,
   MeshGradient as MeshGradientRaw
 } from "@paper-design/shaders-react"
+import type { CSSProperties, FC } from "react"
 
 // Paper Design ships its types against React 18; this project is on React 19.
 // The runtime is compatible — cast away the JSX-namespace mismatch.

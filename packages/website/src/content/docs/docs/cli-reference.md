@@ -1,6 +1,6 @@
 ---
 title: CLI Reference
-description: Common commands for scanning, adding, updating, listing, and removing vendors.
+description: Common commands for scanning, adding, updating, listing, and removing context routes.
 ---
 
 ![Engraving of a herbarium specimen tag tied to a twig, the tag reading "ingraft --help".](/visuals/section-cli-reference.png)
@@ -52,7 +52,7 @@ Useful options:
 --max-file-size <size>
 ```
 
-## Maintain vendors
+## Maintain durable source routes
 
 ```sh
 ingraft list
@@ -72,7 +72,7 @@ ingraft context pack vendor/effect --compress
 ingraft context source zod
 ```
 
-## Remove vendors
+## Remove durable source routes
 
 ```sh
 ingraft remove effect

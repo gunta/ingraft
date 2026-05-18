@@ -12,7 +12,7 @@ Two syllables. Stress on the second. Rhymes with _engraft_ and _draft_.
 
 > **ingraft** _(verb)_ — to insert (a scion) into a stock for propagation; to graft something firmly into a place.
 
-It is the precise word for the operation a vendoring tool performs: you take a piece from one organism (an upstream repository) and insert it into another (your project's git tree) so the two grow as one.
+It is the precise word for the deepest context route the tool performs: you take a piece from one organism (an upstream repository) and insert it into another (your project's git tree) so the two grow as one.
 
 ## Why this name
 
@@ -28,13 +28,13 @@ We considered `vendoring` (descriptive but generic), `vendora` (collided with a 
 
 ## Capitalization
 
-| Context                      | Form                                                                   | Example                                    |
-| ---------------------------- | ---------------------------------------------------------------------- | ------------------------------------------ |
-| Code, CLI, npm name, domains | `ingraft` (lowercase)                                                  | `bunx ingraft init`                        |
-| Start of a sentence          | `Ingraft`                                                              | "Ingraft vendors upstream source."         |
-| Mid-sentence prose           | `Ingraft` or `ingraft` (either; prefer `Ingraft` for proper-noun feel) | "We use Ingraft to manage vendored repos." |
-| All caps                     | **Never** — do not write `INGRAFT`                                     | ❌                                         |
-| Hyphenated                   | **Never** — do not write `in-graft`                                    | ❌                                         |
+| Context                      | Form                                                                   | Example                                        |
+| ---------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
+| Code, CLI, npm name, domains | `ingraft` (lowercase)                                                  | `bunx ingraft init`                            |
+| Start of a sentence          | `Ingraft`                                                              | "Ingraft vendors upstream source."             |
+| Mid-sentence prose           | `Ingraft` or `ingraft` (either; prefer `Ingraft` for proper-noun feel) | "We use Ingraft to manage repository context." |
+| All caps                     | **Never** — do not write `INGRAFT`                                     | ❌                                             |
+| Hyphenated                   | **Never** — do not write `in-graft`                                    | ❌                                             |
 
 ## Etymology — for the curious
 

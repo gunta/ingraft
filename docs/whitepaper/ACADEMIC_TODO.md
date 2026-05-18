@@ -96,7 +96,7 @@ This is the current "grill the paper" checklist for turning `paper.tex` from a s
     - package/repo setup manifest
     - context route condition
     - expected provenance record
-  - Include paired conditions: no extra context, docs-only, AGENTS.md docs index, source vendoring, lazy source fetch, semantic index, structural index, agentic search, router.
+  - Include paired conditions: no extra context, docs-only, AGENTS.md docs index, durable source, lazy source fetch, semantic index, structural index, agentic search, router.
 
 - [ ] **Run a pilot eval before publication.**
   - Minimum useful pilot: 20-40 tasks across 3-5 packages/repos, one model, fixed scaffold.
@@ -186,7 +186,7 @@ This is the current "grill the paper" checklist for turning `paper.tex` from a s
   - Prefer "in the cited eval" / "for this task family" / "in this vendor report".
 
 - [ ] **Avoid turning practitioner slogans into paper claims.**
-  - Effect's source-vendoring argument is strong as operating experience.
+  - Effect's durable-source argument is strong as operating experience.
   - Keep "source beats docs" as a conditional route, not a global law.
 
 - [ ] **Add an "authority conflict examples" box.**

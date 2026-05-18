@@ -1,6 +1,6 @@
 ---
 title: Synced Versions
-description: Resolve vendor versions from dependency manifests and lockfiles.
+description: Resolve durable source versions from dependency manifests and lockfiles.
 ---
 
 ![Exploded orthographic engraving of pruning shears beside a dial gauge labelled sync, the needle at twelve o'clock.](/visuals/section-version-sync.png)
@@ -21,7 +21,7 @@ version, and tries to map that package version to source:
 - Provider release metadata when available.
 - A precise commit when the dependency itself is git-based.
 
-The selected version is stored with vendor metadata so future refreshes can tell
+The selected version is stored with route metadata so future refreshes can tell
 whether local source still matches the dependency version.
 
 ```sh

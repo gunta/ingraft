@@ -54,7 +54,7 @@ interface RemoveCloneIgnoreParams {
 }
 
 const removeNameArg = Argument.string("name").pipe(
-  Argument.withDescription("Name (or prefix path) of the vendored repository to remove.")
+  Argument.withDescription("Name (or prefix path) of the durable source route to remove.")
 )
 
 const dangerouslyRewriteHistoryOption = Flag.boolean("dangerously-rewrite-history").pipe(
@@ -220,4 +220,4 @@ export const removeCmd = Command.make(
     name: removeNameArg
   },
   removeImpl
-).pipe(Command.withDescription("Remove a vendored repository."))
+).pipe(Command.withDescription("Remove durable source context."))

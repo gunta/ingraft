@@ -1,7 +1,7 @@
 {
-  "name": "Ingraft — Vendor source for agents",
+  "name": "Ingraft — Route context for agents",
   "short_name": "ingraft",
-  "description": "Vendor upstream source into agent-ready repositories without letting vendor code take over your project.",
+  "description": "Route repository context into coding-agent workflows without letting source, packs, fetches, or search take over your project.",
   "lang": "en",
   "start_url": "/",
   "scope": "/",

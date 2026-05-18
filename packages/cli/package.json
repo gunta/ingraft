@@ -1,15 +1,17 @@
 {
   "name": "ingraft",
   "version": "0.3.0",
-  "description": "Vendor external git repositories into a project for coding agents.",
+  "description": "Route repository context into coding-agent workflows.",
   "keywords": [
     "cli",
     "coding-agents",
+    "context-routing",
     "dependency-management",
     "effect",
     "git-subtree",
     "ingraft",
     "monorepo",
+    "repository-context",
     "vendor"
   ],
   "homepage": "https://ingraft.dev",

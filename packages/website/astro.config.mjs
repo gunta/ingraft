@@ -4,7 +4,7 @@ import { defineConfig } from "astro/config"
 
 const SITE = "https://ingraft.dev"
 const DESCRIPTION =
-  "Vendor upstream source into agent-ready repositories without letting vendor code take over the project."
+  "Route repository context into coding-agent workflows without letting source, packs, fetches, or search take over the project."
 const OG_DOCS = `${SITE}/visuals/og-docs.png`
 const DEV_HOST = process.env.HOST || "127.0.0.1"
 const DEV_PORT = Number.parseInt(process.env.PORT || "4321", 10)
@@ -55,7 +55,7 @@ export default defineConfig({
           attrs: {
             name: "keywords",
             content:
-              "ingraft, git subtree, git submodule, vendor source, coding agents, claude code, codex, cursor, effect, typescript, monorepo"
+              "ingraft, repository context, context routing, git subtree, git submodule, vendor source, coding agents, claude code, codex, cursor, copilot, jules, effect, typescript, monorepo"
           }
         },
         {
@@ -78,7 +78,7 @@ export default defineConfig({
           tag: "meta",
           attrs: {
             property: "og:image:alt",
-            content: "Ingraft — vendor upstream source for coding agents."
+            content: "Ingraft — repository context for coding agents."
           }
         },
         // Twitter
@@ -89,18 +89,30 @@ export default defineConfig({
           tag: "meta",
           attrs: {
             name: "twitter:image:alt",
-            content: "Ingraft — vendor upstream source for coding agents."
+            content: "Ingraft — repository context for coding agents."
           }
         },
         // Icons / PWA
         { tag: "link", attrs: { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" } },
-        { tag: "link", attrs: { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png" } },
-        { tag: "link", attrs: { rel: "icon", type: "image/png", sizes: "16x16", href: "/favicon-16.png" } },
-        { tag: "link", attrs: { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" } },
+        {
+          tag: "link",
+          attrs: { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png" }
+        },
+        {
+          tag: "link",
+          attrs: { rel: "icon", type: "image/png", sizes: "16x16", href: "/favicon-16.png" }
+        },
+        {
+          tag: "link",
+          attrs: { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" }
+        },
         { tag: "link", attrs: { rel: "mask-icon", href: "/favicon.svg", color: "#06060c" } },
         { tag: "link", attrs: { rel: "manifest", href: "/manifest.webmanifest" } },
         // Sitemap discovery
-        { tag: "link", attrs: { rel: "sitemap", type: "application/xml", href: "/sitemap-index.xml" } },
+        {
+          tag: "link",
+          attrs: { rel: "sitemap", type: "application/xml", href: "/sitemap-index.xml" }
+        },
         // Font preconnect
         { tag: "link", attrs: { rel: "preconnect", href: "https://fonts.googleapis.com" } },
         {

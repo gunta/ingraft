@@ -27,7 +27,7 @@ const listJsonOption = Flag.boolean("json").pipe(
 )
 
 const listVersionsOption = Flag.boolean("versions").pipe(
-  Flag.withDescription("Resolve package and version drift metadata for vendored repositories.")
+  Flag.withDescription("Resolve package and version drift metadata for durable source routes.")
 )
 
 const versionValue = (
@@ -105,14 +105,14 @@ const ListView = ({
   readonly versions: boolean
 }) => (
   <Box flexDirection="column">
-    <Header title="ingraft" subtitle="vendored repositories" />
+    <Header title="ingraft" subtitle="durable source routes" />
     <Section title="Workspace">
       <KeyValues entries={[{ label: "Vendor directory", value: `${VENDOR_DIR}/` }]} />
     </Section>
     <Section title="Repositories">
       <Table
         columns={versions ? versionRepositoryColumns : fastRepositoryColumns}
-        empty="No repositories vendored."
+        empty="No durable source routes."
         rows={repos}
       />
     </Section>
@@ -157,4 +157,4 @@ export const listCmd = Command.make(
   "list",
   { json: listJsonOption, versions: listVersionsOption },
   listImpl
-).pipe(Command.withDescription("List vendored repositories (derived from git commit trailers)."))
+).pipe(Command.withDescription("List durable source routes derived from git commit trailers."))

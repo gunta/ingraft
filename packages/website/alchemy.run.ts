@@ -13,7 +13,7 @@ export default Stack(
   "ingraft-website",
   {
     providers: Layer.mergeAll(Cloudflare.providers(), GitHub.providers()),
-    state: Cloudflare.state(),
+    state: Cloudflare.state()
   },
   Effect.gen(function* () {
     const site = yield* Cloudflare.StaticSite("ingraft-website", {
@@ -23,15 +23,15 @@ export default Stack(
       domain: "ingraft.dev",
       assetsConfig: {
         htmlHandling: "auto-trailing-slash",
-        notFoundHandling: "404-page",
-      },
+        notFoundHandling: "404-page"
+      }
     })
 
     yield* GitHub.Secret("cf-account-id", {
       owner,
       repository,
       name: "CLOUDFLARE_ACCOUNT_ID",
-      value: Redacted.make(accountId),
+      value: Redacted.make(accountId)
     })
 
     const cfApiToken = process.env.CLOUDFLARE_API_TOKEN
@@ -40,7 +40,7 @@ export default Stack(
         owner,
         repository,
         name: "CLOUDFLARE_API_TOKEN",
-        value: Redacted.make(cfApiToken),
+        value: Redacted.make(cfApiToken)
       })
     }
 
@@ -50,10 +50,10 @@ export default Stack(
         owner,
         repository,
         name: "ALCHEMY_PASSWORD",
-        value: Redacted.make(alchemyPassword),
+        value: Redacted.make(alchemyPassword)
       })
     }
 
     return { url: site.url }
-  }),
+  })
 )

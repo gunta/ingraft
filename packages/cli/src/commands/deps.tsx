@@ -42,7 +42,7 @@ export type DependencyVendorTaskVersions = PackageVersionReport
 export { dependencyVendorTasks, vendoredPackageVersionKey, type DependencyVendorTask }
 
 const depsJsonOption = Flag.boolean("json").pipe(
-  Flag.withDescription("Print dependency vendoring candidates as JSON.")
+  Flag.withDescription("Print dependency source-context candidates as JSON.")
 )
 
 const depsYesOption = Flag.boolean("yes").pipe(
@@ -108,7 +108,7 @@ const DepsSummary = ({ candidateCount, matchedCount, taskCount, tasks }: DepsSum
           { header: "Remote", value: (task) => task.versions.remote },
           { header: "Status", value: (task) => task.versions.status }
         ]}
-        empty="No package-backed vendoring tasks detected."
+        empty="No package-backed source-context tasks detected."
         rows={tasks}
       />
     </Section>
@@ -224,14 +224,14 @@ export const depsImpl = ({ dryRun, json, strategy, yes }: DepsCommandParams) =>
         )
 
     if (selected.length === 0) {
-      yield* info("No dependency vendoring tasks selected.")
+      yield* info("No dependency source-context tasks selected.")
       return
     }
 
     yield* Effect.forEach(selected, (task) => runTask(strategy, task), {
       concurrency: 1
     })
-    yield* ok(`Processed ${selected.length} dependency vendoring task(s).`)
+    yield* ok(`Processed ${selected.length} dependency source-context task(s).`)
   }).pipe(withCommandTelemetry("deps"))
 
 export const depsCmd = Command.make(

@@ -563,7 +563,9 @@
 }
 
 /* When a list uses explicit icon spans, suppress the ::before pseudo. */
-.check-list li:has(.check-list-icon)::before { content: none; }
+.check-list li:has(.check-list-icon)::before {
+  content: none;
+}
 
 .check-list li::before {
   display: grid;
@@ -742,8 +744,13 @@
 }
 
 @keyframes kn-pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.55; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }
 
 /* ============================================ Hero foot row */
@@ -829,7 +836,9 @@
     radial-gradient(80% 80% at 30% 20%, rgba(255, 60, 121, 0.12), transparent 60%),
     rgba(236, 232, 216, 0.03);
   color: var(--kn-magenta);
-  transition: color 180ms ease, border-color 180ms ease;
+  transition:
+    color 180ms ease,
+    border-color 180ms ease;
 }
 
 .tile:hover .tile-icon {
@@ -888,18 +897,44 @@
 }
 
 /* Terminal syntax tokens */
-.terminal .t-prompt { color: var(--kn-magenta); font-weight: 600; }
-.terminal .t-cmd    { color: var(--kn-chrome-hi); font-weight: 600; }
-.terminal .t-arg    { color: var(--syn-keyword); }
-.terminal .t-str    { color: var(--syn-string); }
-.terminal .t-num    { color: var(--syn-number); }
-.terminal .t-fn     { color: var(--syn-fn); }
-.terminal .t-key    { color: var(--syn-coral); }
-.terminal .t-dim    { color: var(--syn-comment); }
-.terminal .t-arrow  { color: var(--syn-comment); }
-.terminal .t-ok     { color: var(--kn-ok); }
-.terminal .t-warn   { color: var(--kn-warn); }
-.terminal .t-info   { color: var(--kn-info); }
+.terminal .t-prompt {
+  color: var(--kn-magenta);
+  font-weight: 600;
+}
+.terminal .t-cmd {
+  color: var(--kn-chrome-hi);
+  font-weight: 600;
+}
+.terminal .t-arg {
+  color: var(--syn-keyword);
+}
+.terminal .t-str {
+  color: var(--syn-string);
+}
+.terminal .t-num {
+  color: var(--syn-number);
+}
+.terminal .t-fn {
+  color: var(--syn-fn);
+}
+.terminal .t-key {
+  color: var(--syn-coral);
+}
+.terminal .t-dim {
+  color: var(--syn-comment);
+}
+.terminal .t-arrow {
+  color: var(--syn-comment);
+}
+.terminal .t-ok {
+  color: var(--kn-ok);
+}
+.terminal .t-warn {
+  color: var(--kn-warn);
+}
+.terminal .t-info {
+  color: var(--kn-info);
+}
 
 /* ============================================ Workflow tile */
 
@@ -922,7 +957,9 @@
 
 /* ============================================ Commands section */
 
-.commands-section .section-kicker { margin-bottom: 18px; }
+.commands-section .section-kicker {
+  margin-bottom: 18px;
+}
 
 .commands-grid {
   display: grid;
@@ -932,7 +969,9 @@
 }
 
 @media (max-width: 940px) {
-  .commands-grid { grid-template-columns: 1fr; }
+  .commands-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .command-tile {
@@ -1001,14 +1040,18 @@ code.inline,
   border: 1px solid var(--kn-line-strong);
   border-radius: 12px;
   background:
-    radial-gradient(80% 50% at 50% 0%, rgba(255, 60, 121, 0.06) 0%, transparent 60%),
-    var(--syn-bg);
+    radial-gradient(80% 50% at 50% 0%, rgba(255, 60, 121, 0.06) 0%, transparent 60%), var(--syn-bg);
   box-shadow: 0 24px 60px -32px rgba(0, 0, 0, 0.8);
 }
 
-.code-window.compact .code-window-body { padding: 16px 18px; }
+.code-window.compact .code-window-body {
+  padding: 16px 18px;
+}
 .code-window.compact pre,
-.code-window.compact pre code { font-size: 12.5px; line-height: 1.65; }
+.code-window.compact pre code {
+  font-size: 12.5px;
+  line-height: 1.65;
+}
 
 .code-window-bar {
   display: flex;
@@ -1090,8 +1133,7 @@ code.inline,
   overflow: hidden;
   border: 1px solid var(--kn-line-strong);
   background:
-    radial-gradient(60% 100% at 70% 0%, rgba(255, 60, 121, 0.08) 0%, transparent 65%),
-    var(--syn-bg);
+    radial-gradient(60% 100% at 70% 0%, rgba(255, 60, 121, 0.08) 0%, transparent 65%), var(--syn-bg);
   box-shadow: 0 32px 80px -32px rgba(0, 0, 0, 0.8);
 }
 
@@ -1102,7 +1144,9 @@ code.inline,
   background: transparent;
 }
 
-.agent-window > .code-window > .code-window-bar { display: none; }
+.agent-window > .code-window > .code-window-bar {
+  display: none;
+}
 
 .agent-window-head {
   display: flex;
@@ -1161,7 +1205,9 @@ code.inline,
 }
 
 /* Replace the dot ::before with the actual icon when the eyebrow has one. */
-.eyebrow:has(.icon)::before { content: none; }
+.eyebrow:has(.icon)::before {
+  content: none;
+}
 
 /* ============================================ Shader layers */
 
@@ -1218,4 +1264,7 @@ code.inline,
   display: block;
 }
 
-.hero > .hero-inner { position: relative; z-index: 2; }
+.hero > .hero-inner {
+  position: relative;
+  z-index: 2;
+}

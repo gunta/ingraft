@@ -5,7 +5,7 @@ import { Effect } from "effect"
 import { repoRows, summarizeSnapshot, taskRows } from "../src/tui/status.ts"
 
 describe("tui status", () => {
-  test("summarizes dependency and vendoring task state", () => {
+  test("summarizes dependency and source-context task state", () => {
     expect(
       Effect.runSync(
         summarizeSnapshot({
@@ -36,7 +36,7 @@ describe("tui status", () => {
       "2 dependencies scanned",
       "1 matched to source repositories",
       "1 repos ready to add",
-      "0 vendored repos ready to update"
+      "0 durable source routes ready to update"
     ])
   })
 

@@ -355,10 +355,12 @@ briefly because they determine which combinations are portable across
 agents.
 
 The guide is shaped by work on \emph{ingraft}, an open-source CLI for
-vendoring upstream source into agent-ready repositories, but ingraft is
-treated here as one slot in the landscape rather than the protagonist.
-The reader's question is the protagonist: ``what should I use for this
-job?''
+making repository context explicit for coding agents. Its flagship route
+is version-matched upstream source in the workspace, but the broader
+problem is routing: when should context be vendored, linked, fetched,
+packed, searched, or exposed through a tool? ingraft is treated here as
+one implementation slice rather than the protagonist. The reader's
+question is the protagonist: ``what should I use for this job?''
 \end{abstract}
 
 \renewcommand*\contentsname{Table of contents}
@@ -427,6 +429,15 @@ The guide is a dated snapshot. Most tool and standards claims were
 checked against public documentation, repositories, specifications, or
 vendor posts available during March--May 2026. Tool counts and product
 features age fast.
+
+The timing matters because coding agents are no longer only IDE chat
+assistants. Public product documentation now describes agents that run
+asynchronously in cloud worktrees, PR queues, desktop apps, mobile
+handoffs, and parallel review fleets (OpenAI 2026a; OpenAI 2026b;
+Anthropic 2026a; GitHub 2026a; GitHub 2026b; Google 2025). In that
+world, the repository becomes the most durable context contract:
+project files, source snapshots, route metadata, and agent instructions
+survive handoffs more reliably than conversational memory.
 
 The immediate product trigger was Maxwell Brown's Effect post on using
 git subtrees for coding-agent context (Brown 2026): ``coding agents
@@ -902,9 +913,10 @@ In real deployments the seven rarely run alone. A typical Claude Code
 setup combines instruct (CLAUDE.md), tool-mediated (bash + grep +
 read), skill (progressive disclosure), and lazy fetch via MCP. Cursor
 combines index (default), retrieve (\texttt{@docs}), and instruct
-(\texttt{.cursor/rules}). Effect's git-subtree recommendation is pure
-vendor leveraging the agent's tool-mediated capability over the
-embedded source.
+(\texttt{.cursor/rules}). Codex and Copilot increasingly add cloud,
+PR, and app surfaces around the same repository contract. Effect's
+git-subtree recommendation is pure vendor leveraging the agent's
+tool-mediated capability over the embedded source.
 
 Figure~\ref{fig-latency-profile} compares the seven strategies on four
 cost axes (per-request latency, token cost, upfront cost,
@@ -940,8 +952,10 @@ implement.}\label{tbl-tools-ide}\tabularnewline
 \bottomrule\noalign{}
 \endlastfoot
 Cursor & Index + instruct (\texttt{.cursor/rules}) + retrieve (\texttt{@docs}) & Day-to-day work in a large, stable codebase that benefits from amortized indexing\\
-Claude Code & Tool-mediated agentic + instruct (CLAUDE.md) + skills + lazy MCP fetch & High-context single-task work where freshness and exploration matter more than pre-built indices\\
-GitHub Copilot & Index + tool-mediated (Copilot Chat agent mode) & Teams already deep in the GitHub ecosystem; PR-and-IDE workflows\\
+OpenAI Codex & Tool-mediated agentic + cloud/app worktrees + skills/automations & Parallel local/cloud work where repo files, tests, and review state must survive handoffs\\
+Claude Code & Tool-mediated agentic + instruct (CLAUDE.md) + skills + web/cloud review & High-context single-task work and multi-agent review where freshness and exploration matter more than pre-built indices\\
+GitHub Copilot & Index + tool-mediated + coding agent + Copilot CLI & Teams already deep in the GitHub ecosystem; PR, issue delegation, mobile, and IDE workflows\\
+Google Jules & Async cloud coding agent over GitHub repos & Background fixes and upgrades where a managed environment can own the task loop\\
 Augment Code & Enterprise index + tool-mediated; 100M+ LOC repos; on-prem option & Highly regulated or massive proprietary codebases\\
 Sourcegraph Amp & Code graph (SCIP) + tool-mediated; multi-repo & Cross-repo enterprise navigation\\
 JetBrains AI / Junie & Index + tool-mediated, IDE-native & Teams committed to JetBrains IDEs\\
@@ -1852,11 +1866,11 @@ Router implication
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-Source vendoring & Agents learn patterns better from source than prose &
+Durable source & Agents learn patterns better from source than prose &
 Effect subtree argument (Brown 2026) & Source is available, navigable,
 version-matched, and not huge & Internal APIs, large repos, poor
-comments, private access & Vendor high-centrality packages with
-manageable source and high idiom value \\
+comments, private access & Route high-centrality packages through
+durable source when idiom value is high \\
 Agentic search & Let the model inspect live files instead of maintaining
 an index & Claude Code and Cline practice (S. (swyx). Wang and Trotta
 2025; Baumann 2025) & Agent has strong tools and time budget & Latency,
@@ -1891,7 +1905,7 @@ lock-in & Route through managed systems only when policy permits \\
 \subsection{Effect as the originating case}\label{sec-effect-origin}
 
 Effect is the motivating case for ingraft and for this paper. Brown's
-post makes a narrow but important source-vendoring claim: for an
+post makes a narrow but important durable-source claim: for an
 idiom-heavy TypeScript framework, human-facing docs can be too lossy for
 coding agents, while source, tests, examples, and module structure
 preserve the patterns agents need (Brown 2026). The recommended route is
@@ -1905,10 +1919,10 @@ pass/fail tables. Its evidential role here is practitioner operating
 experience: for Effect, the authors report that locally available source
 is more useful to agents than fragmented web fetches, human docs, or
 compiled \texttt{node\_modules} surfaces. That is enough to justify
-source vendoring as a candidate route, not enough to make it the global
+durable source as a candidate route, not enough to make it the global
 default.
 
-This is exactly the router opening. If source vendoring wins for Effect,
+This is exactly the router opening. If durable source wins for Effect,
 the hidden variables are high package centrality, idiom density,
 navigable TypeScript source, useful tests and examples, manageable
 repository size, and need for version-specific source. The router
@@ -1951,7 +1965,7 @@ directory (Gao 2026b).
 docs}\label{sec-source-docs}
 
 The Effect case is one operating zone, not a universal source-over-docs
-rule. The source-vendoring argument is strongest when agents need
+rule. The durable-source argument is strongest when agents need
 idioms, examples, type-level patterns, framework internals, and
 implementation behavior. Docs are often the authority for public API
 intent, migration guidance, deprecation warnings, and security
@@ -2352,6 +2366,14 @@ Agentic search & Command misuse and accidental broad reads \\
 Generated summaries & Untraceable hallucinated compression \\
 \end{longtable}
 
+Recent MCP security research strengthens the authority distinction in
+this table. OX Security and Cloud Security Alliance both describe a
+2026 MCP STDIO command-execution risk as systemic rather than a narrow
+bug (OX Security 2026; Cloud Security Alliance 2026). The practical
+router lesson is not ``avoid MCP.'' It is that read-only context
+routes, local files, remote retrieval, and executable tool routes must
+be different trust classes.
+
 A practical router should support policy modes such as:
 
 \begin{itemize}
@@ -2541,7 +2563,7 @@ No extra context & Baseline agent with repo only \\
 Docs-only & Version-specific docs retrieval where available \\
 Always-on docs index & AGENTS.md/CLAUDE.md points to local versioned
 docs \\
-Source vendoring & Dependency source in workspace \\
+Durable source & Dependency source in workspace \\
 Lazy source fetch & Package source fetched on demand \\
 Repo pack & Repomix-style snapshot \\
 Semantic index & Embedding or code-search retrieval \\
@@ -2623,8 +2645,8 @@ Regression rate & Safety \\
 Cost per solved task & Operational relevance \\
 \end{longtable}
 
-Ablations should remove model awareness, privacy constraints, vendoring,
-docs, graph/AST retrieval, stale-context detection, and
+Ablations should remove model awareness, privacy constraints, durable
+source routing, docs, graph/AST retrieval, stale-context detection, and
 failure-triggered strategy switching. Stress tests should include stale
 docs, distractor context, wrong package versions, and small versus
 frontier models.
@@ -2644,8 +2666,8 @@ The thesis should be considered weakened if:
   context strategy matters less than model choice once modern agents are
   used;
 \item
-  simpler agentic search dominates retrieval, indexing, and vendoring
-  under realistic budgets.
+  simpler agentic search dominates retrieval, indexing, and durable
+  source routing under realistic budgets.
 \end{itemize}
 
 Strong papers say what would falsify them. These are the falsification
@@ -2658,18 +2680,21 @@ tests.
 
 \section{Where ingraft Fits}\label{sec-ingraft}
 
-ingraft (Brunner 2026) is an open-source CLI that automates one specific
-slot in the landscape: \textbf{vendoring third-party packages and
-repositories into agent-ready reference directories}, with provenance,
-update tooling, and \texttt{AGENTS.md} guidance baked in.
+ingraft (Brunner 2026) is an open-source CLI for making repository
+context explicit for coding agents. Its implemented center of gravity is
+\textbf{durable source routing}: adding third-party packages and
+repositories into agent-ready reference directories with provenance,
+update tooling, and \texttt{AGENTS.md} guidance baked in. Its adjacent
+context commands route lighter cases to repo packs, lazy source fetches,
+and local search tools.
 
-In the language of \S\ref{sec-strategies}, ingraft implements
-Strategy~1 (vendoring) end-to-end and emits the Strategy~4 (instruct)
-glue that keeps the vendored source read-only for humans while
-remaining visible to agents. It does not try to be a full routing
-runtime; the seven strategies coexist in any non-trivial workflow, and
-the other six are best implemented by the tools surveyed in
-\S\ref{sec-tools}.
+In the language of \S\ref{sec-strategies}, ingraft implements the
+Strategy~1 durable-source route end-to-end, emits the Strategy~4
+(instruct) glue that keeps durable source read-only for humans while
+remaining visible to agents, and wraps selected Strategy~3/5 routes when
+committing or linking source is too heavy. It does not try to be a full routing runtime; the seven
+strategies coexist in any non-trivial workflow, and many routes are best
+implemented by the tools surveyed in \S\ref{sec-tools}.
 
 \subsection*{What ingraft does today}
 \addcontentsline{toc}{subsection}{What ingraft does today}
@@ -2679,21 +2704,26 @@ the other six are best implemented by the tools surveyed in
 \item
   Inspects the project's package manager state and lockfiles.
 \item
-  Adds chosen upstream repositories as committed subtrees under
-  \texttt{vendor/}, with the same revision pin recorded in
-  \texttt{.gitattributes} so PR diffs stay focused.
+  Adds chosen upstream repositories as durable source routes under
+  \texttt{vendor/}, including committed subtree routes with the same
+  revision pin recorded in \texttt{.gitattributes} so PR diffs stay
+  focused.
 \item
-  Supports four vendoring modes: \texttt{subtree} (committed source),
+  Supports four durable-source modes: \texttt{subtree} (committed source),
   \texttt{submodule} (gitlink), \texttt{clone-ignore} (local ignored
   clone), and \texttt{cache-link} (ignored symlink to a shared cache
   checkout).
 \item
-  Filters vendored repositories to omit media, generated directories,
+  Detects optional context tools and wraps lighter routes such as
+  Repomix-style packs, OpenSrc-style lazy package source lookup, and
+  local semantic search.
+\item
+  Filters durable source routes to omit media, generated directories,
   archives, fixtures, and oversized files when configured.
 \item
-  Generates \texttt{AGENTS.md} blocks listing what is vendored, the
+  Generates \texttt{AGENTS.md} blocks listing durable source routes, the
   upstream URL and revision, and the rule that humans should not edit
-  the vendored files.
+  read-only reference files.
 \item
   Provides \texttt{list}, \texttt{add}, and \texttt{update}
   subcommands so the catalog stays maintainable.
@@ -2794,7 +2824,7 @@ The router thesis makes testable predictions:
   The optimal route will vary by package centrality, not merely repo
   size.
 \item
-  Source vendoring will help most on idiom-heavy frameworks and least on
+  Durable source will help most on idiom-heavy frameworks and least on
   stable utility libraries.
 \item
   Docs-first retrieval will outperform source-first on migration tasks
@@ -2818,7 +2848,7 @@ The router thesis makes testable predictions:
 \section{Conclusion}\label{sec-conclusion}
 
 The 2026 context-engineering landscape is not a contest between
-``vendor source'' and ``use RAG.'' It is a catalog --- seven strategies
+``make source durable'' and ``use RAG.'' It is a catalog --- seven strategies
 that solve different parts of the same problem --- and a set of fit
 rules that say which combination wins for which task.
 
@@ -3044,9 +3074,9 @@ retrieval outperforms flat baselines & Prefer structural retrieval when
 possible & Workshop/preprint \\
 {Y. (Sherry). Zhang et al.} (2025) & Code RAG & AST chunks & AST
 chunking improves over line chunks & Structural chunking & Preprint \\
-Brown (2026) & Practitioner source-vendoring report & Effect source tree
+Brown (2026) & Practitioner durable-source report & Effect source tree
 & Locally vendored source gives agents implementation structure, tests,
-and examples that docs and web fetches omit & Treat source vendoring as
+and examples that docs and web fetches omit & Treat durable source as
 a candidate route for high-idiom, high-centrality packages &
 Practitioner/vendor evidence \\
 Gao (2026a) & Framework-agent evals & AGENTS.md docs index versus skills
@@ -3154,6 +3184,11 @@ Linux Foundation. 2025. {``{Linux Foundation} Announces the Formation of
 the {Agentic AI Foundation}.''} December.
 \url{https://www.linuxfoundation.org/press/linux-foundation-announces-the-formation-of-the-agentic-ai-foundation}.
 
+\bibitem[\citeproctext]{ref-csa2026mcprce}
+Cloud Security Alliance. 2026. {``{MCP} {STDIO} Design Flaw Enables
+Systemic {AI} Supply Chain {RCE}.''} April 23.
+\url{https://labs.cloudsecurityalliance.org/research/csa-research-note-mcp-rce-design-vulnerability-20260423-csa/}.
+
 \bibitem[\citeproctext]{ref-liu2024lost}
 Liu, Nelson F., Kevin Lin, John Hewitt, et al. 2024. {``Lost in the
 Middle: How Language Models Use Long Contexts.''} \emph{Transactions of
@@ -3164,6 +3199,38 @@ the Association for Computational Linguistics}.
 {Liu, Wei et al.} 2024. {``{GraphCoder}: Code Context Graph-Based
 Retrieval for Repository-Level Completion.''} \emph{ASE 2024}.
 \url{https://arxiv.org/abs/2406.07003}.
+
+\bibitem[\citeproctext]{ref-anthropic2026claudechangelog}
+Anthropic. 2026a. {``{Claude Code} Changelog.''} May.
+\url{https://code.claude.com/docs/en/changelog}.
+
+\bibitem[\citeproctext]{ref-github2026copilotcli}
+GitHub. 2026a. {``{GitHub Copilot CLI} Is Now Generally Available.''}
+February 25.
+\url{https://github.blog/changelog/2026-02-25-github-copilot-cli-is-now-generally-available/}.
+
+\bibitem[\citeproctext]{ref-github2026multiagent}
+GitHub. 2026b. {``Claude and Codex Now Available for {Copilot Business}
+\& {Pro} Users.''} February 26.
+\url{https://github.blog/changelog/2026-02-26-claude-and-codex-now-available-for-copilot-business-pro-users/}.
+
+\bibitem[\citeproctext]{ref-google2025jules}
+Google. 2025. {``Jules, Google's Asynchronous {AI} Coding Agent, Is Out
+of Public Beta.''}
+\url{https://blog.google/innovation-and-ai/models-and-research/google-labs/jules-now-available/}.
+
+\bibitem[\citeproctext]{ref-openai2026codexmobile}
+OpenAI. 2026a. {``Work with {Codex} from Anywhere.''} May 14.
+\url{https://openai.com/index/work-with-codex-from-anywhere/}.
+
+\bibitem[\citeproctext]{ref-openai2026codexapp}
+OpenAI. 2026b. {``Introducing the {Codex} App.''} February.
+\url{https://openai.com/index/introducing-the-codex-app/}.
+
+\bibitem[\citeproctext]{ref-ox2026mcpsupplychain}
+OX Security. 2026. {``The Mother of All {AI} Supply Chains: Critical
+Systemic Vulnerability at the Core of the {MCP}.''} April 15.
+\url{https://www.ox.security/blog/the-mother-of-all-ai-supply-chains-critical-systemic-vulnerability-at-the-core-of-the-mcp/}.
 
 \bibitem[\citeproctext]{ref-phan2025repohyper}
 {Phan, Huy N. et al.} 2025. {``{RepoHyper}: Search-Expand-Refine on

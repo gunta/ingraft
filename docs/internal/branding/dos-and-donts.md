@@ -7,29 +7,31 @@ Quick reference. When in doubt, default to the simpler / lowercase / less-shouty
 |                    | Do                        | Don't                                                                                       |
 | ------------------ | ------------------------- | ------------------------------------------------------------------------------------------- |
 | **Code, CLI, npm** | `ingraft`                 | `Ingraft`, `INGRAFT`, `in-graft`                                                            |
-| **Sentence start** | `Ingraft vendors source.` | `ingraft vendors source.` (sentence-initial lowercase is fine in code blocks, not in prose) |
+| **Sentence start** | `Ingraft routes context.` | `ingraft routes context.` (sentence-initial lowercase is fine in code blocks, not in prose) |
 | **All caps**       | (don't)                   | `INGRAFT` — never                                                                           |
 | **Hyphenated**     | (don't)                   | `in-graft` — never                                                                          |
 | **Possessive**     | `Ingraft's CLI`           | `Ingraft´s` (curly apostrophe), `INGRAFT'S`                                                 |
 
 ## What we call it
 
-| Do                                           | Don't                                                 |
-| -------------------------------------------- | ----------------------------------------------------- |
-| "Ingraft" (the brand)                        | "the ingraft tool" — redundant                        |
-| "the `@ingraft/skill` agent skill"           | "the skill" alone in mixed contexts                   |
-| "vendoring" (the verb the tool performs)     | "ingrafting" — the verb form is awkward; say "vendor" |
-| "graft" (the noun for what Ingraft produces) | —                                                     |
+| Do                                           | Don't                                  |
+| -------------------------------------------- | -------------------------------------- |
+| "Ingraft" (the brand)                        | "the ingraft tool" — redundant         |
+| "the `@ingraft/skill` agent skill"           | "the skill" alone in mixed contexts    |
+| "context routing" (the product category)     | "ingrafting" as the product verb       |
+| "vendoring" (the deep source route)          | "vendor" as the whole product category |
+| "graft" (the noun for what Ingraft produces) | —                                      |
 
 ## Mechanism vs brand
 
-The tool does **vendoring** using one of four **strategies**: `subtree`, `submodule`, `clone-ignore`, or `cache-link`. The brand `Ingraft` is method-agnostic; never let mechanism names creep into product copy.
+The tool routes repository context. Its deepest route is **vendored source** using one of four **durable source strategies**: `subtree`, `submodule`, `clone-ignore`, or `cache-link`. The brand `Ingraft` is method-agnostic; never let mechanism names creep into product copy.
 
-| Do                                      | Don't                                   |
-| --------------------------------------- | --------------------------------------- |
-| "Ingraft vendors upstream source."      | "Ingraft is a git subtree tool."        |
-| "Use `--strategy submodule` for X."     | "Use the submodule version of Ingraft." |
-| "Ingraft supports multiple strategies." | "Ingraft = git subtree."                |
+| Do                                          | Don't                                   |
+| ------------------------------------------- | --------------------------------------- |
+| "Ingraft routes repository context."        | "Ingraft is a git subtree tool."        |
+| "Use `--strategy submodule` for source."    | "Use the submodule version of Ingraft." |
+| "Ingraft supports multiple context routes." | "Ingraft = git subtree."                |
+| "Vendored source is the durable route."     | "Vendoring is the whole product."       |
 
 ## Agent context
 

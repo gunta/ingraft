@@ -5,20 +5,20 @@ import CodeWindow from "./CodeWindow.astro"
 const commands = [
   {
     icon: "package",
-    title: "Add a vendor",
-    body: "Resolve the package, pick the strategy, write source under <code>vendor/</code>.",
+    title: "Add durable source",
+    body: "Resolve the package, pick the storage route, write source under <code>vendor/</code> when that is the right contract.",
     code: `bunx ingraft add effect-ts/effect
 bunx ingraft add zod --strategy subtree
-bunx ingraft add convex --strategy submodule`,
+bunx ingraft add convex --strategy cache-link`,
     lang: "bash"
   },
   {
-    icon: "git-compare-arrows",
-    title: "Stay in sync",
-    body: "Re-resolve every vendor against your lockfile in one call.",
-    code: `bunx ingraft refresh
-bunx ingraft update --all
-bunx ingraft update effect --to v3.21.2`,
+    icon: "layers",
+    title: "Use lighter routes",
+    body: "Detect optional context tools, pack a narrow snapshot, or fetch source without committing it.",
+    code: `bunx ingraft context
+bunx ingraft context pack vendor/effect --compress
+bunx ingraft context source zod`,
     lang: "bash"
   },
   {
@@ -47,10 +47,11 @@ export const sync:    <A>(thunk: LazyArg<A>) => Effect<A> = core.sync`
 
 <section class="section commands-section">
   <p class="section-kicker">Real code, local</p>
-  <h2>Your agent reads the source. Not a description of it.</h2>
+  <h2>Your repo carries the context. Not just the chat.</h2>
   <p class="section-intro">
-    Every vendored repo lands under <code class="inline">vendor/</code> as real files — indexable
-    by your editor's LSP, navigable by Claude / Codex / Cursor, lint-able only if you ask.
+    Durable context lands as real files under <code class="inline">vendor/</code>; lighter context
+    can be packed, fetched, linked, or searched. The point is the route: explicit enough for Claude,
+    Codex, Cursor, Copilot, Jules, and whatever worker picks up the thread next.
   </p>
 
   <div class="commands-grid">

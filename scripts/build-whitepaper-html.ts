@@ -125,7 +125,7 @@ const html = String.raw`<!doctype html>
       <section>
         <h2>Abstract</h2>
         <p>AI coding agents increasingly fail not because relevant knowledge is unavailable, but because it is poorly allocated: too much, too stale, retrieved from the wrong authority, positioned where the model attends weakly, or exposed through the wrong trust boundary.</p>
-        <p>This paper proposes the context router: an explicit policy layer that selects, per task and knowledge object, among vendored source, lazy source fetch, documentation retrieval, semantic or structural search, packaged snapshots, skills, and agent-mediated inspection.</p>
+        <p>This paper proposes the context router: an explicit policy layer that selects, per task and knowledge object, among durable source routes, lazy source fetch, documentation retrieval, semantic or structural search, packaged snapshots, skills, and agent-mediated inspection.</p>
       </section>
       <section>
         <h2>Citation</h2>

@@ -4,13 +4,13 @@ Authoritative source for the ingraft research paper.
 
 ## Files
 
-| File | Purpose |
-|---|---|
-| `paper.tex` | Canonical LaTeX source for the paper |
-| `figures.tex` | TikZ/PGFPlots figures and figure macros |
-| `references.bib` | Bibliography metadata for future citation maintenance |
-| `_build/` | LaTeX intermediates, ignored |
-| `_output/` | Publish-ready `index.pdf` and HTML landing page, ignored |
+| File             | Purpose                                                  |
+| ---------------- | -------------------------------------------------------- |
+| `paper.tex`      | Canonical LaTeX source for the paper                     |
+| `figures.tex`    | TikZ/PGFPlots figures and figure macros                  |
+| `references.bib` | Bibliography metadata for future citation maintenance    |
+| `_build/`        | LaTeX intermediates, ignored                             |
+| `_output/`       | Publish-ready `index.pdf` and HTML landing page, ignored |
 
 ## Prerequisites
 

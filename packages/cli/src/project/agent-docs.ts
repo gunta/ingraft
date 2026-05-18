@@ -103,9 +103,9 @@ const vendorRepoLines = (
   repos: ReadonlyArray<VendoredRepo>
 ): ReadonlyArray<string> =>
   repos.length === 0
-    ? [`_No repositories vendored yet. Run \`${invocation} add <repo>\`._`]
+    ? [`_No durable source routes yet. Run \`${invocation} add <repo>\`._`]
     : [
-        "**Vendored repositories:**",
+        "**Durable source routes:**",
         "",
         ...repos.map(
           (repo) =>
@@ -121,9 +121,9 @@ export const renderVendorSection = ({
   const invocation = command ?? (scriptRel ? `bun ${scriptRel}` : "bunx ingraft@latest")
   return [
     SECTION_BEGIN,
-    "## Vendored Repositories",
+    "## Durable Source Routes",
     "",
-    `This project vendors external repositories under \`${VENDOR_DIR}/\` via \`ingraft\`.`,
+    `This project routes durable upstream source under \`${VENDOR_DIR}/\` via \`ingraft\`.`,
     "Treat these as **read-only reference material**, not as part of the application codebase.",
     "",
     "**Rules:**",
@@ -134,8 +134,8 @@ export const renderVendorSection = ({
     "- Committed subtree sources are marked in `.gitattributes` as vendored/generated so GitHub PR diffs stay focused on project code.",
     "- Strategies: `subtree` is committed source, `submodule` is a gitlink, `clone-ignore` is a local ignored clone, and `cache-link` is an ignored symlink to a shared cache checkout.",
     "- Some repos may be filtered to omit media, generated directories, archives, fixtures, or oversized files.",
-    `- Use \`${invocation} list\` to see what is vendored.`,
-    `- To add or update vendored repos, run \`${invocation} add <repo>\` or \`update <name>\`.`,
+    `- Use \`${invocation} list\` to see durable source routes.`,
+    `- To add or update durable source routes, run \`${invocation} add <repo>\` or \`update <name>\`.`,
     "",
     ...vendorRepoLines(invocation, repos),
     "",

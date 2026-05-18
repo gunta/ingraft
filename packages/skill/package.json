@@ -1,12 +1,14 @@
 {
   "name": "@ingraft/skill",
   "version": "0.3.0",
-  "description": "Agent skill wrapper for the ingraft CLI.",
+  "description": "Agent skill wrapper for the ingraft repository-context CLI.",
   "keywords": [
     "agent-skill",
     "claude-code",
     "coding-agents",
+    "context-routing",
     "ingraft",
+    "repository-context",
     "skill",
     "vendor"
   ],
@@ -34,7 +36,7 @@
     "check": "bun run lint && bun run format:check",
     "format": "oxfmt . --write",
     "format:check": "oxfmt . --check",
-    "lint": "oxlint .",
-    "lint:fix": "oxlint . --fix"
+    "lint": "oxlint . --no-error-on-unmatched-pattern",
+    "lint:fix": "oxlint . --fix --no-error-on-unmatched-pattern"
   }
 }

@@ -196,7 +196,7 @@ export const streamSnapshotWith = <E, R>(
     let snapshot = snapshotFromParts(repos, [], vendoredPackageVersions)
     yield* emitProgress(onProgress, {
       complete: false,
-      message: `Loaded ${repos.length} vendored repo(s); scanning project manifests...`,
+      message: `Loaded ${repos.length} durable source route(s); scanning project manifests...`,
       snapshot
     })
 

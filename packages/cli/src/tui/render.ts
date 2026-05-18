@@ -131,7 +131,7 @@ const commandPaneLines = (state: DashboardState): ReadonlyArray<string> => {
   if (state.mode === "confirming-run") {
     return ["Run these commands?", ...preview, "", "Press y to run, n to cancel."]
   }
-  if (state.mode === "running") return ["Running selected vendoring commands..."]
+  if (state.mode === "running") return ["Running selected source-context commands..."]
   return preview.length === 0
     ? ["No runnable task."]
     : [`${selectedLabel(state)} will run:`, ...preview, "", "Press enter to confirm."]

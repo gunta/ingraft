@@ -239,7 +239,7 @@ const addCloudflareArtifactOption = Flag.boolean("cloudflare-artifact").pipe(
 
 const addCloudflareArtifactNameOption = Flag.string("cloudflare-artifact-name").pipe(
   Flag.withDescription(
-    "Cloudflare Artifacts repository name. Defaults to the vendored repository name."
+    "Cloudflare Artifacts repository name. Defaults to the durable source route name."
   ),
   Flag.optional
 )
@@ -1172,6 +1172,6 @@ export const addCmd = Command.make(
   addManyImpl
 ).pipe(
   Command.withDescription(
-    "Add one or more vendored repositories, aliases, npm packages, or hex:<package> packages using subtree, submodule, clone-ignore, or cache-link strategy metadata."
+    "Add one or more repositories, aliases, npm packages, or hex:<package> packages as durable source context using subtree, submodule, clone-ignore, or cache-link strategy metadata."
   )
 )

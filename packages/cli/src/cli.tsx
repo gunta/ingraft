@@ -62,7 +62,7 @@ export const vendorCommand = Command.make("ingraft", { targets: rootTargetsArg }
   })
 ).pipe(
   Command.withDescription(
-    "Manage vendored external git repositories for coding agents using subtree, submodule, clone-ignore, or cache-link strategies."
+    "Route repository context into coding-agent workflows using durable source, packs, fetches, search, and tool hygiene."
   ),
   Command.withSubcommands([
     initCmd,

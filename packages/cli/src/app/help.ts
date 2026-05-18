@@ -16,23 +16,23 @@ const commands: readonly SubcommandEntry[] = [
   {
     name: "add",
     args: "<repo>...",
-    description: "Add vendored repositories, aliases, or npm packages."
+    description: "Add durable source context from repositories, aliases, or packages."
   },
   {
     name: "update",
     args: "[<name>]",
-    description: "Pull upstream changes for one or all vendored repos."
+    description: "Pull upstream changes for one or all durable source routes."
   },
-  { name: "remove", args: "<name>", description: "Remove a vendored repository." },
-  { name: "list", description: "List vendored repositories." },
-  { name: "deps", description: "Scan package manifests and vendor matched dependency sources." },
+  { name: "remove", args: "<name>", description: "Remove durable source context." },
+  { name: "list", description: "List durable source routes." },
+  { name: "deps", description: "Scan package manifests for source-context candidates." },
   {
     name: "init",
     description: "Bootstrap agent docs, gitignore, editor settings, and tool ignores."
   },
   { name: "refresh", description: "Re-generate project surfaces from current git state." },
   { name: "context", description: "Detect or run optional context tools (Repomix, OpenSrc)." },
-  { name: "doctor", description: "Inspect vendored repos and detected tool status." }
+  { name: "doctor", description: "Inspect context routes and detected tool status." }
 ]
 
 export function printRootHelp(): void {
@@ -40,7 +40,7 @@ export function printRootHelp(): void {
 
   lines.push("")
   lines.push(
-    `  ${bold("ingraft")} ${dim(`v${VERSION}`)} ${dim("— git reference manager for coding agents")}`
+    `  ${bold("ingraft")} ${dim(`v${VERSION}`)} ${dim("— repository context router for coding agents")}`
   )
   lines.push("")
   lines.push(`  ${bold("USAGE")}`)

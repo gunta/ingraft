@@ -78,13 +78,13 @@ Hand this paragraph to the model as a leading **style preamble** before every in
 After the background renders, layer the typography:
 
 - **Wordmark** `ingraft` — Inter or Geist Display, weight 700, 88 pt, fill `#f4f4f7`, tracking −0.025 em, baseline at y=298, x-origin at 808.
-- **Tagline** `Vendor source for agents.` — Inter, weight 400, 28 pt, fill `#9da0a8`, tracking +0.02 em, baseline at y=348.
+- **Tagline** `Route context for agents.` — Inter, weight 400, 28 pt, fill `#9da0a8`, tracking +0.02 em, baseline at y=348.
 - **Accent rule** the existing magenta rule on the plate already serves; do not double-up.
 
 ### Notes
 
 - Also export `og-default@2x.png` at 2400 × 1260 by rendering the background at 2× and re-compositing the text at 2× pt sizes.
-- Variant `og-docs.png`: identical plate, post-composite tagline becomes `Read the source.` instead of `Vendor source for agents.`
+- Variant `og-docs.png`: identical plate, post-composite tagline becomes `Read the source.` instead of `Route context for agents.`
 
 ---
 

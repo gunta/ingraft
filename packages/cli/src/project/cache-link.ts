@@ -4,6 +4,7 @@ import { dirname, join } from "node:path"
 
 import { Effect, FileSystem, Path } from "effect"
 
+import { RuntimeConfig } from "../app/runtime.ts"
 import { VendorStrategyCommandFailed } from "../domain/errors.ts"
 import { hostedRepoFromInput } from "../domain/repo.ts"
 import type { VendorStrategy } from "../domain/vendor-strategy.ts"
@@ -55,9 +56,7 @@ const cachePathSegments = (url: string): ReadonlyArray<string> => {
   return [hosted.host, ...hosted.path.split("/").map(sanitizeSegment)]
 }
 
-export const cacheLinkCacheRootFromEnv = (
-  env: CacheLinkCacheEnv = process.env as CacheLinkCacheEnv
-): string => {
+export const cacheLinkCacheRootFromEnv = (env: CacheLinkCacheEnv = {}): string => {
   if (env.INGRAFT_CACHE_DIR && env.INGRAFT_CACHE_DIR.trim().length > 0) {
     return trimTrailingSlashes(env.INGRAFT_CACHE_DIR.trim())
   }
@@ -261,7 +260,8 @@ export const ensureCacheLinkCheckout = ({
 }: EnsureCacheLinkCheckoutParams) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    const cacheRoot = cacheLinkCacheRootFromEnv()
+    const runtime = yield* RuntimeConfig
+    const cacheRoot = cacheLinkCacheRootFromEnv(runtime.env)
     const advertisedRef = yield* resolveRemoteCommit({ cwd, ref, url })
     if (advertisedRef !== null) {
       const cachePath = cacheLinkEntryPath({

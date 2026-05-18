@@ -5,9 +5,9 @@ description: A deep comparison of every method for feeding library knowledge to 
 
 # Repository Context for Coding Agents
 
-> How should you feed library and dependency knowledge to AI coding agents?
+> How should you feed durable project, library, and dependency knowledge to AI coding agents?
 
-This document compares every major approach — from native git mechanisms to dedicated tools and services — for providing repository context to coding agents like Claude Code, Cursor, Copilot, and others.
+This document compares every major approach — from native git mechanisms to dedicated tools and services — for providing repository context to coding agents like Claude Code, Codex, Cursor, Copilot, Jules, and others.
 
 The comparison is informed by the [Effect team's recommendation](https://effect.website/blog/the-one-weird-git-trick-that-makes-coding-agents-more-effect-ive/) that **git subtree** is the most effective method. We extend their analysis to cover the full landscape.
 
@@ -17,7 +17,7 @@ The comparison is informed by the [Effect team's recommendation](https://effect.
 
 ```mermaid
 flowchart TB
-  Q["AI coding agent needs<br/>library context"]
+  Q["AI coding agent needs<br/>repository context"]
 
   subgraph Embed["Embed in workspace (offline, native tools)"]
     direction TB
@@ -59,12 +59,17 @@ flowchart TB
   style Instruct fill:#5f3a1e,stroke:#d94a90,color:#fff
 ```
 
-**Two fundamental strategies, with one hybrid layer**:
+**Four route families**:
 
 - **Embed** — vendor source code into the workspace. Agent uses its native `Read` / `grep` / `find`. Offline. Highest signal density.
 - **Retrieve** — query an external service for code or docs. No repo bloat. Network dependency.
 - **Package** — snapshot a repo into a single file. Good for chat, weaker for agents.
 - **Instruct** — give the agent rules instead of code. Use _with_ one of the above, not instead.
+
+The 2026 shift is that agents increasingly run across local terminals, cloud
+worktrees, PR queues, web apps, and mobile handoffs. That makes the repository
+itself the most durable context contract. Vendored source is the deepest route,
+but it is one route in a broader routing problem.
 
 ---
 
@@ -145,11 +150,11 @@ In Maxwell Brown's blog post, the Effect team argued (qualitatively) that agents
 
 **npm**: [`ingraft`](https://www.npmjs.com/package/ingraft) · **Skill**: `ingraft` (Claude Code)
 
-Opinionated, multi-strategy CLI that wraps git subtree, git submodules, local ignored clones, and shared cache-linked checkouts. Distributed both as a standalone npm package and as a Claude Code skill. Built on Effect-TS.
+Opinionated repository-context CLI. Its primary route wraps git subtree, git submodules, local ignored clones, and shared cache-linked checkouts. It also detects and wraps lighter context routes such as Repomix snapshots, OpenSrc lazy source fetches, and local search tools. Distributed both as a standalone npm package and as a Claude Code skill. Built on Effect-TS.
 
 ```bash
-bunx ingraft@latest                          # scan package.json, ask what to vendor
-bunx ingraft@latest init                     # set up vendoring
+bunx ingraft@latest                          # scan package.json, ask what context to add
+bunx ingraft@latest init                     # set up context/vendoring policy
 bunx ingraft@latest add effect               # alias → Effect-TS/effect
 bunx ingraft@latest add effect --tag v3.21.2 # pin to a tag
 bunx ingraft@latest add effect --sync-package effect      # follow npm version
@@ -170,9 +175,10 @@ bunx ingraft@latest context source zod       # wrap OpenSrc for long-tail source
 flowchart TB
   User["User intent<br/>(natural language)"] --> Skill["ingraft<br/>(Claude Code)"]
   Skill --> Router{Intent}
-  Router -->|"vendor X"| Add["ingraft add"]
+  Router -->|"add source context"| Add["ingraft add"]
   Router -->|"scan deps"| Deps["ingraft deps"]
   Router -->|"update all"| Update["ingraft update --all"]
+  Router -->|"pack / fetch / search"| Context["ingraft context"]
   Router -->|"check hygiene"| Doctor["ingraft doctor"]
 
   Add --> Strategy{Strategy}
@@ -201,7 +207,7 @@ flowchart TB
 | Optional context-tool routing for Repomix / OpenSrc / Repobase                                             |                                      |
 | Destructive history rewrite option for full removal                                                        |                                      |
 
-**Best for**: Teams that want git subtree's benefits without rough edges — especially in monorepos or when vendoring npm packages with version-sync.
+**Best for**: Teams that want the repository to become the context contract for agents. Use the vendoring routes for deep, version-matched source context; use the context wrappers for lighter packs, lazy source lookup, and search.
 
 ---
 
@@ -618,7 +624,7 @@ The MCP server's **codemode pattern**: agents write JavaScript that runs server-
 
 ## Subtree-Wrapper Head-to-Head
 
-Three projects wrap `git subtree` for agent vendoring. All inspired by the Effect post; all created within weeks of each other in 2026.
+Three projects wrap `git subtree` for agent vendoring. ingraft is broader than that narrow category, but the comparison is useful because subtree remains its flagship durable-source route.
 
 | Feature                             | Raw `git subtree` | **ingraft** (this project)                      | **Vendir**        |
 | ----------------------------------- | ----------------- | ----------------------------------------------- | ----------------- |
@@ -659,7 +665,7 @@ Three projects wrap `git subtree` for agent vendoring. All inspired by the Effec
 | **Works offline**              | ✅          | ✅      | ✅     | ✅\*      | ✅    | ✅       | ✅        | ✅         | ❌           | ❌                            | ❌         | Partial        | After fetch |
 | **Committed to host**          | ✅          | ✅      | ✅     | Pointer   | ❌    | ✅       | Optional  | ❌         | ❌           | ❌                            | Docs repo  | ❌             | ❌          |
 | **Repo size impact**           | High        | High    | High   | Low       | None  | None     | Low       | None       | None         | None                          | None       | None           | None        |
-| **Multi-strategy**             | ❌          | ✅ (3)  | ❌     | —         | —     | —        | —         | —          | —            | —                             | —          | —              | —           |
+| **Multi-strategy**             | ❌          | ✅ (4)  | ❌     | —         | —     | —        | —         | —          | —            | —                             | —          | —              | —           |
 | **Manifest scan**              | ❌          | ✅      | ❌     | ❌        | ❌    | ❌       | ❌        | ❌         | ❌           | ❌                            | Org repos  | ❌             | ❌          |
 | **Setup complexity**           | Low         | Low     | Low    | Medium    | Low   | Low      | Low       | Medium     | Low (+ auth) | Low                           | **High**   | Medium         | Low         |
 | **Works with any agent**       | ✅          | ✅      | ✅     | Partial   | ✅    | Standard | ✅        | MCP        | Plugins      | MCP                           | Custom     | Multi          | CLI / MCP   |
@@ -714,19 +720,19 @@ flowchart TB
 
 ### Quick reference
 
-| Your situation                                                             | Use                                     |
-| -------------------------------------------------------------------------- | --------------------------------------- |
-| Daily coding with one or a few key libraries                               | **ingraft** (or Vendir, or raw subtree) |
-| Want the agent to invoke the right vendoring command from natural language | **ingraft** + Claude Code               |
-| Need latest API docs across many libraries                                 | **Context7** (complement, not replace)  |
-| Quick one-shot question / chat-based AI                                    | **Repomix**                             |
-| Search across many private repos, offline                                  | **Repobase**                            |
-| Fast semantic "where is X?" across a codebase                              | **mgrep** (if cloud upload is OK)       |
-| Inspect a random npm/PyPI/crates package                                   | **OpenSrc**                             |
-| Ad-hoc Q&A research over a specific repo                                   | **BTCA**                                |
-| Org-wide architecture context across N repos                               | **RepoSwarm**                           |
-| Team needs shared, reproducible context                                    | Subtree wrapper (committed)             |
-| Just need to tell the agent conventions                                    | **Skills** (with one of the above)      |
+| Your situation                                                 | Use                                     |
+| -------------------------------------------------------------- | --------------------------------------- |
+| Daily coding with one or a few key libraries                   | **ingraft** (or Vendir, or raw subtree) |
+| Want the agent to choose a context route from natural language | **ingraft** + agent skill               |
+| Need latest API docs across many libraries                     | **Context7** (complement, not replace)  |
+| Quick one-shot question / chat-based AI                        | **Repomix**                             |
+| Search across many private repos, offline                      | **Repobase**                            |
+| Fast semantic "where is X?" across a codebase                  | **mgrep** (if cloud upload is OK)       |
+| Inspect a random npm/PyPI/crates package                       | **OpenSrc**                             |
+| Ad-hoc Q&A research over a specific repo                       | **BTCA**                                |
+| Org-wide architecture context across N repos                   | **RepoSwarm**                           |
+| Team needs shared, reproducible context                        | Subtree wrapper (committed)             |
+| Just need to tell the agent conventions                        | **Skills** (with one of the above)      |
 
 ---
 
@@ -823,9 +829,9 @@ lives in the fork and the parent repository only records the gitlink pointer.
 
 ## Key Takeaways
 
-1. **For serious agent-driven development, vendored source is the gold standard.** The Effect team's argument — agents read code better than docs — is architecturally sound. Whether you use raw `git subtree`, **ingraft**, or **Vendir**, the underlying win is the same: navigable source in the workspace.
+1. **For deep dependency work, vendored source is the gold standard.** The Effect team's argument — agents read code better than docs — is architecturally sound. Whether you use raw `git subtree`, **ingraft**, or **Vendir**, the underlying win is the same: navigable source in the workspace.
 
-2. **The wrapper choice matters less than the wrapping choice.** Both ingraft and Vendir are inspired by the Effect post. Pick ingraft for multi-strategy + manifest scanning + monorepo support + skill integration. Pick Vendir for a minimal subtree-only wrapper with TOML config. Both beat running raw commands.
+2. **The route choice matters more than the tool label.** Pick ingraft when you want manifest scanning, version sync, multiple durable-source strategies, optional context-tool wrappers, monorepo hygiene, and agent-skill routing. Pick Vendir for a minimal subtree-only wrapper with TOML config.
 
 3. **No single approach covers everything.** Combine layers: subtree for depth, OpenSrc for the long tail, Context7 / mgrep for on-demand breadth, Skills for intent routing.
 
@@ -835,7 +841,7 @@ lives in the fork and the parent repository only records the gitlink pointer.
 
 6. **Retrieval-based tools trade depth for convenience.** Watch for failure modes: Context7's hallucination rate on bleeding-edge features (~63%) and ContextCrush incident; Repobase's early-stage maturity; mgrep's cloud-upload privacy posture; BTCA's AI-mediation latency.
 
-7. **The landscape is moving fast.** ingraft, Vendir, mgrep, BTCA-3, and OpenSrc are all young or recently rebuilt. Expect more tooling. The fundamental insight — **agents work best with navigable source code in their workspace** — is unlikely to change.
+7. **The landscape is moving fast.** ingraft, Vendir, mgrep, BTCA-3, OpenSrc, and the async cloud-agent products are all young or recently rebuilt. Expect more tooling. The durable insight is broader than vendoring: **agents work best when the route to context is explicit, inspectable, and aligned with the task's authority boundary**.
 
 ---
 

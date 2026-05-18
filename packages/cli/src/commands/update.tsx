@@ -62,13 +62,13 @@ interface StrategyGitFailureParams {
 }
 
 const updateNameArg = Argument.string("name").pipe(
-  Argument.withDescription("Name (or prefix path) of the vendored repository to update."),
+  Argument.withDescription("Name (or prefix path) of the durable source route to update."),
   Argument.optional
 )
 
 const updateAllOption = Flag.boolean("all").pipe(
   Flag.withAlias("a"),
-  Flag.withDescription("Update every vendored repository.")
+  Flag.withDescription("Update every durable source route.")
 )
 
 type UpdateTargetSelectionError = UpdateTargetMissing | VendoredRepoNotFound
@@ -380,7 +380,7 @@ export const updateImpl = ({ all, name }: UpdateCommandParams) =>
     )
 
     yield* Option.match(targets, {
-      onNone: () => warn("No vendored repos to update."),
+      onNone: () => warn("No durable source routes to update."),
       onSome: (repos) =>
         Effect.forEach(repos, (repo) => updateOne({ cwd, repo }), {
           concurrency: 1
@@ -398,4 +398,4 @@ export const updateCmd = Command.make(
   "update",
   { name: updateNameArg, all: updateAllOption },
   updateImpl
-).pipe(Command.withDescription("Pull upstream changes for one or all vendored repositories."))
+).pipe(Command.withDescription("Pull upstream changes for one or all durable source routes."))

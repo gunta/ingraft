@@ -30,7 +30,7 @@ const matched = (
   remoteVersion
 })
 
-describe("dependency vendoring tasks", () => {
+describe("dependency source-context tasks", () => {
   test("deduplicates packages that resolve to the same source repo", () => {
     expect(
       dependencyVendorTasks(

@@ -47,7 +47,7 @@ const summarizeSnapshotSync = (snapshot: VendorTuiSnapshot): ReadonlyArray<strin
     `${snapshot.candidates.length} dependencies scanned`,
     `${matched} matched to source repositories`,
     `${adds} repos ready to add`,
-    `${updates} vendored repos ready to update`
+    `${updates} durable source routes ready to update`
   ]
 }
 

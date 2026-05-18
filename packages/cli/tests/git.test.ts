@@ -12,6 +12,7 @@ describe("git service", () => {
       argv: ["bun", "vendor.ts"],
       colors: false,
       cwd: "/workspace",
+      env: {},
       exit: (code) => Effect.die(`exit ${code}`)
     })
 
@@ -56,6 +57,7 @@ describe("git service", () => {
       argv: ["bun", "vendor.ts"],
       colors: false,
       cwd: "/workspace",
+      env: {},
       exit: (code) => Effect.die(`exit ${code}`)
     })
 

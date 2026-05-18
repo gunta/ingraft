@@ -1,11 +1,11 @@
 ---
 name: ingraft
-description: Vendors upstream repositories into a project's vendor/ directory via git subtree, submodule, ignored clone, or cache-linked checkout. Use when the user wants to vendor a dependency, copy upstream source for offline agent reference, scan package manifests for vendoring candidates, run any ingraft command, or set up, refresh, update, or remove vendored repos in a monorepo. Also use when the user mentions git subtree, vendored dependencies, or bundling upstream source into a project.
+description: Routes repository context into coding-agent workflows. Use when the user wants to add durable upstream source under vendor/, choose between subtree, submodule, ignored clone, or cache-linked checkouts, pack context for chat, fetch dependency source, detect optional context tools, scan package manifests for context candidates, run any ingraft command, or refresh agent/editor hygiene in a monorepo. Also use when the user mentions git subtree, vendored dependencies, repository context, context routing, Repomix, OpenSrc, or bundling upstream source into a project.
 ---
 
 # ingraft
 
-Thin agent wrapper around the `ingraft` CLI. The vendoring implementation lives in the npm package; the skill never executes a local TypeScript entrypoint.
+Thin agent wrapper around the `ingraft` CLI. The repository-context implementation lives in the npm package; the skill never executes a local TypeScript entrypoint.
 
 This root `SKILL.md` is the install target for `skills.sh`:
 
@@ -31,22 +31,22 @@ Do not run `scripts/vendor.ts` from the repository. The skill intentionally dele
 
 ## Intent Routing
 
-| User intent                                     | Command                                                   |
-| ----------------------------------------------- | --------------------------------------------------------- |
-| "open dashboard", "TUI"                         | `bunx ingraft@latest` or `bunx ingraft@latest tui`        |
-| "auto vendor dependencies", "scan dependencies" | `bunx ingraft@latest deps`                                |
-| "set up vendoring"                              | `bunx ingraft@latest init`                                |
-| "vendor this repo"                              | `bunx ingraft@latest add <repo>`                          |
-| "vendor these packages/repos"                   | `bunx ingraft@latest <package-or-repo> <package-or-repo>` |
-| "show vendored repos"                           | `bunx ingraft@latest list`                                |
-| "refresh agent docs/tool ignores"               | `bunx ingraft@latest refresh`                             |
-| "check vendor status"                           | `bunx ingraft@latest doctor`                              |
-| "repair vendor hygiene drift"                   | `bunx ingraft@latest doctor --fix`                        |
-| "detect optional context tools"                 | `bunx ingraft@latest context`                             |
-| "pack vendored context for chat"                | `bunx ingraft@latest context pack`                        |
-| "fetch dependency source path"                  | `bunx ingraft@latest context source <package>`            |
-| "remove vendored repo"                          | `bunx ingraft@latest remove <name>`                       |
-| "purge vendored repo from git history"          | See "Destructive history rewrite" below                   |
+| User intent                                  | Command                                                   |
+| -------------------------------------------- | --------------------------------------------------------- |
+| "open dashboard", "TUI"                      | `bunx ingraft@latest` or `bunx ingraft@latest tui`        |
+| "scan dependencies for context"              | `bunx ingraft@latest deps`                                |
+| "set up repository context"                  | `bunx ingraft@latest init`                                |
+| "add durable source context"                 | `bunx ingraft@latest add <repo>`                          |
+| "add these packages/repos as context"        | `bunx ingraft@latest <package-or-repo> <package-or-repo>` |
+| "show context routes"                        | `bunx ingraft@latest list`                                |
+| "refresh agent docs/tool ignores"            | `bunx ingraft@latest refresh`                             |
+| "check context health"                       | `bunx ingraft@latest doctor`                              |
+| "repair context hygiene drift"               | `bunx ingraft@latest doctor --fix`                        |
+| "detect optional context tools"              | `bunx ingraft@latest context`                             |
+| "pack repository or vendor context for chat" | `bunx ingraft@latest context pack`                        |
+| "fetch dependency source path"               | `bunx ingraft@latest context source <package>`            |
+| "remove durable source context"              | `bunx ingraft@latest remove <name>`                       |
+| "purge vendored source from git history"     | See "Destructive history rewrite" below                   |
 
 ## Common Commands
 
@@ -90,7 +90,7 @@ bunx ingraft@latest refresh
 - Use `clone-ignore` for very large repositories, local-only references, or jj-collocated repositories.
 - Use `cache-link` when repeated local projects should share one read-only resolved-commit checkout through an ignored `vendor/` symlink.
 - Use filters to omit directories, file extensions, globs, or files over a size limit.
-- Use `--sync-package <name>` when the vendored source should follow the version used by the host package manifest; use `hex:<name>`, `swift:<owner/repo>`, or `android:<group>:<artifact>` for non-npm ecosystems.
+- Use `--sync-package <name>` when durable source should follow the version used by the host package manifest; use `hex:<name>`, `swift:<owner/repo>`, or `android:<group>:<artifact>` for non-npm ecosystems.
 - Npm, React, Expo, and React Native package targets use exact installed/locked versions when available: `node_modules`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, then `bun.lock`.
 - Hex package targets use `mix.lock` when available and fall back to Hex package metadata.
 - Swift package targets read direct `Package.swift` source URLs. Android package targets read Gradle coordinates and Maven POM SCM metadata.

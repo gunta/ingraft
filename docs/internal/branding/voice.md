@@ -22,7 +22,8 @@ The vocabulary inside Ingraft reuses the horticulture metaphor consistently. Use
 | **scion**                        | The upstream repository being vendored — the piece grafted _in_.                        |
 | **rootstock**                    | The host project — the repo that receives the graft.                                    |
 | **vendor/**                      | The directory where ingrafts land (Go-style vendoring convention).                      |
-| **strategy**                     | The mechanism used to ingraft: `subtree`, `submodule`, `clone-ignore`, or `cache-link`. |
+| **context route**                | The route used to make context available: durable source, pack, fetch, search, or tool. |
+| **strategy**                     | The durable-source mechanism: `subtree`, `submodule`, `clone-ignore`, or `cache-link`.  |
 | **refresh**                      | Re-emit agent docs, tool ignores, and project surfaces from the current vendor state.   |
 | **doctor**                       | Diagnose drift between vendor state and project configuration.                          |
 
@@ -31,10 +32,11 @@ The vocabulary inside Ingraft reuses the horticulture metaphor consistently. Use
 - The product/brand: **Ingraft**
 - The CLI command: `ingraft`
 - The agent skill: `@ingraft/skill` (npm) / `ingraft` (skill name)
-- The vendoring activity it performs: "vendoring" (the verb stays generic; Ingraft is the tool that does it)
+- The product category: "repository context routing"
+- The deep source route: "vendoring" or "vendored source"
 
 ## What NOT to call it
 
 - ❌ "the subtree tool" — leaks the mechanism; we support multiple strategies
-- ❌ "the vendoring tool" — fine in introductory bridge sentences ("Ingraft, the vendoring tool from the Effect article"), but the name is `Ingraft`, not "the vendoring tool"
+- ❌ "the vendoring tool" — fine only in a bridge sentence about the original Effect article; current product copy should say repository-context CLI or context router
 - ❌ "INGRAFT" / "in-graft" / "Ingraft.io" — wrong forms

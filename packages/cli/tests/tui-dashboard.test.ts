@@ -76,7 +76,7 @@ const snapshot = {
 } satisfies VendorTuiSnapshot
 
 describe("tui dashboard", () => {
-  test("includes a vendored repositories tab", () => {
+  test("includes a repositories tab", () => {
     expect(dashboardTabs).toContain("repositories")
     expect(visibleRepositoryRows(snapshot)).toEqual([
       "effect                       subtree      effect                       effect@3.21.2 (bun-lock)         effect@3.21.2 (vendored source)  effect@3.21.3 (npm latest)       remote-drift"

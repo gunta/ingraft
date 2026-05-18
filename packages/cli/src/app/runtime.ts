@@ -6,6 +6,7 @@ export interface RuntimeConfigShape {
   readonly argv: ReadonlyArray<string>
   readonly colors: boolean
   readonly cwd: string
+  readonly env: Readonly<Record<string, string | undefined>>
   readonly exit: RuntimeExit
 }
 
@@ -34,6 +35,7 @@ const liveRuntimeConfig = Effect.gen(function* () {
     argv: [...process.argv],
     colors: resolveColors(env),
     cwd: process.cwd(),
+    env: process.env,
     exit: (code: number) => Effect.sync((): never => process.exit(code))
   } satisfies RuntimeConfigShape
 })

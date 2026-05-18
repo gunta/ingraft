@@ -1,10 +1,11 @@
 ---
 title: Strategies
-description: Choose subtree, submodule, clone-ignore, or cache-link for each vendored source.
+description: Choose the durable source strategy for a repository context route.
 ---
 
-Each vendored target has a strategy. The default is `subtree` because it gives the
-project a portable, reviewable copy of upstream source.
+When a context route needs real source in the workspace, each target has a
+durable source strategy. The default is `subtree` because it gives the project a
+portable, reviewable copy of upstream source.
 
 ## Subtree
 
@@ -62,8 +63,8 @@ agents and language tooling, while fresh clones can recreate the link with
 
 ## Filters
 
-Large or irrelevant files can be filtered during vendoring when the strategy
-supports it:
+Large or irrelevant files can be filtered while adding durable source when the
+strategy supports it:
 
 ```sh
 ingraft add Effect-TS/effect \
@@ -85,5 +86,6 @@ coding workflow.
 | Shared local read-only checkout                 | `cache-link`         |
 
 The default `subtree` path optimizes for agent visibility. The fork-backed
-`submodule` path optimizes for patch ownership. The `cache-link` path optimizes
-for repeated large references across multiple local projects.
+`submodule` path optimizes for patch ownership. The `clone-ignore` and
+`cache-link` paths optimize for local context that should stay out of the parent
+repository history. For lighter non-source routes, use `ingraft context`.

@@ -38,19 +38,19 @@
      Muted, brand-coherent. These read as "tooling colors" — never compete
      with the magenta brand accent. */
   --syn-comment: #6a6f7a;
-  --syn-keyword: #c4a8fa;   /* soft violet */
-  --syn-string:  #a5e8b4;   /* soft mint */
-  --syn-number:  #fcd07f;   /* soft amber */
-  --syn-fn:      #7ad9f0;   /* soft cyan */
-  --syn-prop:    #ece8d8;   /* chrome */
-  --syn-coral:   #ff79a6;   /* magenta-soft for emphasis */
-  --syn-rest:    #9da0a8;
-  --syn-bg:      #08080f;
+  --syn-keyword: #c4a8fa; /* soft violet */
+  --syn-string: #a5e8b4; /* soft mint */
+  --syn-number: #fcd07f; /* soft amber */
+  --syn-fn: #7ad9f0; /* soft cyan */
+  --syn-prop: #ece8d8; /* chrome */
+  --syn-coral: #ff79a6; /* magenta-soft for emphasis */
+  --syn-rest: #9da0a8;
+  --syn-bg: #08080f;
 
   /* === Status accents (sparingly) === */
-  --kn-ok:    #7be0a6;
-  --kn-warn:  #fcd07f;
-  --kn-info:  #7ad9f0;
+  --kn-ok: #7be0a6;
+  --kn-warn: #fcd07f;
+  --kn-info: #7ad9f0;
 
   /* === Legacy aliases (back-compat for any selector that hasn't been refactored) === */
   --vst-ink: var(--kn-chrome);

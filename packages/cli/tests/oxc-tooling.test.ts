@@ -10,6 +10,25 @@ const packagePaths = [
   "packages/website/package.json"
 ] as const
 
+const expectedLintScripts = (path: (typeof packagePaths)[number]) => {
+  if (path === "package.json") {
+    return {
+      lint: "oxlint . --disable-nested-config",
+      "lint:fix": "oxlint . --fix --disable-nested-config"
+    }
+  }
+  if (path === "packages/skill/package.json") {
+    return {
+      lint: "oxlint . --no-error-on-unmatched-pattern",
+      "lint:fix": "oxlint . --fix --no-error-on-unmatched-pattern"
+    }
+  }
+  return {
+    lint: "oxlint .",
+    "lint:fix": "oxlint . --fix"
+  }
+}
+
 const readJson = async <T>(path: string): Promise<T> =>
   JSON.parse(await Bun.file(join(workspaceRoot, path)).text()) as T
 
@@ -27,8 +46,7 @@ describe("Oxc workspace tooling", () => {
       oxfmt: expect.any(String)
     })
     expect(rootPackage.scripts).toMatchObject({
-      lint: "oxlint .",
-      "lint:fix": "oxlint . --fix",
+      ...expectedLintScripts("package.json"),
       format: "oxfmt . --write",
       "format:check": "oxfmt . --check"
     })
@@ -46,8 +64,7 @@ describe("Oxc workspace tooling", () => {
 
     for (const [path, scripts] of packageScripts) {
       expect(scripts, path).toMatchObject({
-        lint: "oxlint .",
-        "lint:fix": "oxlint . --fix",
+        ...expectedLintScripts(path),
         format: "oxfmt . --write",
         "format:check": "oxfmt . --check"
       })

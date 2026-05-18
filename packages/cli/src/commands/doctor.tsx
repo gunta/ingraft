@@ -72,7 +72,7 @@ const DoctorView = ({
         ]}
       />
     </Section>
-    <Section title="Vendored repositories">
+    <Section title="Durable source routes">
       <Table
         columns={[
           { header: "Name", value: (repo: VendoredRepo) => repo.name },
@@ -80,7 +80,7 @@ const DoctorView = ({
           { header: "Path", value: (repo: VendoredRepo) => repo.prefix },
           { header: "Ref", value: (repo: VendoredRepo) => repo.ref }
         ]}
-        empty="No repositories vendored."
+        empty="No durable source routes."
         rows={repos}
       />
     </Section>
@@ -180,6 +180,6 @@ export const doctorCmd = Command.make(
   doctorImpl
 ).pipe(
   Command.withDescription(
-    "Inspect vendored repositories and detected formatter, linter, editor, and monorepo tool status."
+    "Inspect repository context routes and detected formatter, linter, editor, and monorepo tool status."
   )
 )

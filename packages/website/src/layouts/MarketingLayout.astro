@@ -30,7 +30,7 @@ const jsonLdSoftware = {
   applicationCategory: "DeveloperApplication",
   operatingSystem: "macOS, Linux, Windows",
   description:
-    "Vendor upstream source into agent-ready repositories without letting vendor code take over the project.",
+    "Route durable repository context for coding agents without letting context code take over the project.",
   url: "https://ingraft.dev",
   downloadUrl: "https://www.npmjs.com/package/ingraft",
   softwareVersion: "0.3",
@@ -60,7 +60,7 @@ const jsonLdWebsite = {
   url: "https://ingraft.dev",
   inLanguage: "en",
   description:
-    "Vendor upstream source into agent-ready repositories. The source vendoring CLI for coding-agent workflows."
+    "Repository context workflows for coding agents: vendored source, cache links, packs, fetches, search, and project hygiene."
 }
 ---
 
@@ -78,7 +78,7 @@ const jsonLdWebsite = {
     {!noindex && <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />}
     <meta name="generator" content={Astro.generator} />
     <meta name="author" content="Gunther Brunner" />
-    <meta name="keywords" content="ingraft, git subtree, git submodule, vendor source, coding agents, claude code, codex, cursor, effect, typescript, monorepo" />
+    <meta name="keywords" content="ingraft, repository context, context routing, git subtree, git submodule, vendor source, coding agents, claude code, codex, cursor, copilot, jules, effect, typescript, monorepo" />
     <link rel="canonical" href={canonical.toString()} />
 
     {/* Open Graph */}
@@ -121,8 +121,8 @@ const jsonLdWebsite = {
     {/* Structured data */}
     {isHome && (
       <>
-        <script type="application/ld+json" set:html={JSON.stringify(jsonLdSoftware)} />
-        <script type="application/ld+json" set:html={JSON.stringify(jsonLdWebsite)} />
+        <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLdSoftware)} />
+        <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLdWebsite)} />
       </>
     )}
   </head>

@@ -87,7 +87,7 @@ export const createDashboardState = (
 ): DashboardState => ({
   activeTab: "tasks",
   focusedTaskIndex: 0,
-  logLines: options.logLines ?? ["Loaded dependency vendoring snapshot."],
+  logLines: options.logLines ?? ["Loaded dependency source-context snapshot."],
   mode: "browsing",
   selectedTaskIndexes: [],
   snapshot,
@@ -119,14 +119,14 @@ export const formatTaskRow = (state: DashboardState, index: number): string => {
 
 export const visibleTaskRows = (state: DashboardState): ReadonlyArray<string> =>
   state.snapshot.tasks.length === 0
-    ? ["No package-backed vendoring tasks detected."]
+    ? ["No package-backed source-context tasks detected."]
     : state.snapshot.tasks.map((_, index) => formatTaskRow(state, index))
 
 export const visibleCandidateRows = (snapshot: VendorTuiSnapshot): ReadonlyArray<string> =>
   snapshot.candidates.map((candidate) => formatCandidateRow(candidate))
 
 export const visibleRepositoryRows = (snapshot: VendorTuiSnapshot): ReadonlyArray<string> =>
-  snapshot.repos.length === 0 ? ["No vendored repositories detected."] : repoRowsSync(snapshot)
+  snapshot.repos.length === 0 ? ["No durable source routes detected."] : repoRowsSync(snapshot)
 
 const candidateStatusLabel = (candidate: VendorTuiCandidate): string => {
   switch (candidate.status) {
@@ -214,7 +214,7 @@ export const dispatchDashboard = (
       return commandPlanForSelection(state).length === 0
         ? {
             ...state,
-            statusMessage: "No vendoring tasks to run."
+            statusMessage: "No source-context tasks to run."
           }
         : {
             ...state,
@@ -257,7 +257,7 @@ export const dispatchDashboard = (
       return setSelected(
         {
           ...state,
-          statusMessage: "Selected every visible vendoring task."
+          statusMessage: "Selected every visible source-context task."
         },
         state.snapshot.tasks.map((_, index) => index)
       )
@@ -276,7 +276,7 @@ export const dispatchDashboard = (
       return {
         ...state,
         mode: "running",
-        statusMessage: "Running vendoring command..."
+        statusMessage: "Running source-context command..."
       }
     case "ToggleSelected": {
       if (state.snapshot.tasks[state.focusedTaskIndex] === undefined) return state

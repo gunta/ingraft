@@ -2,7 +2,12 @@
 
 [![skills.sh](https://skills.sh/b/gunta/ingraft)](https://skills.sh/gunta/ingraft)
 
-Monorepo for the `ingraft` CLI and the agent skill that delegates to it.
+Monorepo for the `ingraft` CLI, website, dashboard, and agent skill.
+
+`ingraft` is a repository-context tool for coding agents. Its main route today is
+version-matched upstream source under `vendor/`, but it also helps choose lighter
+routes: ignored local clones, shared cache links, narrow repo packs, lazy source
+fetches, local search tools, and generated project instructions.
 
 ## Packages
 
@@ -59,7 +64,7 @@ Run the built CLI with Node:
 node packages/cli/dist/bin/ingraft.js --help
 ```
 
-Run dependency discovery from a project:
+Run context and dependency discovery from a project:
 
 ```sh
 ingraft

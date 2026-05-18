@@ -11,6 +11,7 @@ const runtime = RuntimeConfig.of({
   argv: ["bun", "vendor.ts"],
   colors: false,
   cwd: "/workspace",
+  env: {},
   exit: (code) => Effect.die(`exit ${code}`)
 })
 

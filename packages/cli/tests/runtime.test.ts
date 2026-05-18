@@ -10,6 +10,7 @@ describe("runtime config service", () => {
       argv: ["bun", "vendor.ts", "list"],
       colors: false,
       cwd: "/workspace",
+      env: {},
       exit: (code) => Effect.die(`exit ${code}`)
     })
 

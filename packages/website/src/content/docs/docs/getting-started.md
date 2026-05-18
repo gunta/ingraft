@@ -1,11 +1,11 @@
 ---
 title: Getting Started
-description: Install the CLI, scan a project, and add your first vendored source.
+description: Install the CLI, scan a project, and add your first repository context route.
 ---
 
 ![Engraving of a grafting knife laid diagonally beside a fresh scion-cutting.](/visuals/section-getting-started.png)
 
-Run the CLI from the root of the project that should receive source:
+Run the CLI from the root of the project that should receive context:
 
 ```sh
 bunx ingraft
@@ -49,8 +49,8 @@ ingraft list
 ingraft doctor
 ```
 
-If you expect to edit the vendored source, choose the strategy up front. A
-fork-backed submodule is the recommended workflow for durable vendor patches:
+If you expect to edit upstream source, choose the strategy up front. A
+fork-backed submodule is the recommended workflow for durable source patches:
 
 ```sh
 ingraft add your-org/effect --strategy submodule --ref vendor-patches
@@ -62,9 +62,11 @@ projects should share the same large read-only checkout.
 
 ## Where source goes
 
-By default, vendored repositories live under `vendor/`. The tool also updates the
-project surfaces that matter for the detected stack: editor settings, lint ignores,
-agent notes, `.gitignore`, and `.gitattributes`.
+By default, durable source routes live under `vendor/`. Lighter routes can stay
+as packs, fetched source paths, ignored clones, cache links, or detected local
+search tools. The tool also updates the project surfaces that matter for the
+detected stack: editor settings, lint ignores, agent notes, `.gitignore`, and
+`.gitattributes`.
 
 The CLI only writes tool-specific files when the tool is already present in the
 project.

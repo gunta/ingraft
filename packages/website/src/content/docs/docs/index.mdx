@@ -1,21 +1,27 @@
 ---
 title: Overview
-description: A source vendoring workflow for coding agents, LSPs, and humans.
+description: Repository context workflows for coding agents, LSPs, and humans.
 ---
 
-`ingraft` brings upstream source into your repository in a controlled way.
-The goal is not to vendor everything forever. The goal is to make the source that
-matters available to coding agents and language tooling while keeping project
-history, diffs, editors, and linters quiet.
+`ingraft` routes context into your repository in a controlled way. The flagship
+route is version-matched upstream source under `vendor/`, but the goal is not to
+vendor everything forever. The goal is to make the context that matters available
+to coding agents and language tooling while keeping project history, diffs,
+editors, and linters quiet.
+
+For deep dependency work, that usually means real source files. For lighter or
+temporary work, it can mean cache links, ignored clones, narrow packs, lazy
+source fetches, local search tools, or generated agent instructions.
 
 ## What it manages
 
 - Dependency discovery from manifests and lockfiles.
 - Source matching for package names and git repositories.
-- Four storage strategies: subtree, submodule, clone-ignore, and cache-link.
+- Four durable source strategies: subtree, submodule, clone-ignore, and cache-link.
+- Optional lighter routes through Repomix packs, OpenSrc source lookup, and local search detection.
 - Version selection from branches, tags, releases, commits, and synced package versions.
 - Tooling integration for editors, linters, formatters, monorepos, and agent files.
-- Doctor output for the detected project stack and vendor status.
+- Doctor output for the detected project stack, context routes, and vendor status.
 
 ## Core loop
 

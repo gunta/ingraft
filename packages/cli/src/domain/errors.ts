@@ -456,14 +456,14 @@ export const errorPresentation = (error: VendorError): ErrorPresentation => {
       return {
         title: "Could not infer a repository name",
         detail: `No path segment could be used as a repo name in '${error.url}'.`,
-        hint: "Pass --name to choose the vendored repository name explicitly.",
+        hint: "Pass --name to choose the durable source route name explicitly.",
         code: 2
       }
     case "VendoredRepoAlreadyExists":
       return {
-        title: `Vendored repo '${error.name}' already exists`,
+        title: `Durable source route '${error.name}' already exists`,
         detail: `It is already registered at '${error.prefix}'.`,
-        hint: `Use \`vendor update ${error.name}\` to pull upstream changes.`,
+        hint: `Use \`ingraft update ${error.name}\` to pull upstream changes.`,
         code: 4
       }
     case "VendorPathAlreadyExists":
@@ -482,8 +482,8 @@ export const errorPresentation = (error: VendorError): ErrorPresentation => {
       }
     case "VendoredRepoNotFound":
       return {
-        title: `No vendored repo named '${error.name}'`,
-        hint: "Run `vendor list` to see the currently registered names and prefixes.",
+        title: `No durable source route named '${error.name}'`,
+        hint: "Run `ingraft list` to see the currently registered names and prefixes.",
         code: 4
       }
     case "GitRemoveFailed":
@@ -496,8 +496,8 @@ export const errorPresentation = (error: VendorError): ErrorPresentation => {
     case "UpdateTargetMissing":
       return {
         title: "No update target specified",
-        detail: "The update command needs one vendored repo name or --all.",
-        hint: "Usage: vendor update <name> or vendor update --all",
+        detail: "The update command needs one durable source route name or --all.",
+        hint: "Usage: ingraft update <name> or ingraft update --all",
         code: 2
       }
     case "UpdateFailed":
@@ -532,7 +532,7 @@ export const errorPresentation = (error: VendorError): ErrorPresentation => {
       return {
         title: `Could not sync package '${error.packageName}'`,
         detail: `${error.reason}\nRepository: ${error.url}`,
-        hint: "Check root package.json, npm registry metadata, and that the vendored repo has a matching published commit or tag.",
+        hint: "Check root package.json, npm registry metadata, and that the durable source route has a matching published commit or tag.",
         code: 2
       }
     case "InvalidVendorFilter":

@@ -1,17 +1,17 @@
-# Context Router + Knowledge Vendoring — Phase 1 Design
+# Repository Context Router — Phase 1 Design
 
 **Date:** 2026-05-13
 **Author:** ingraft project (Gunther Brunner + Claude)
 **Status:** Draft for review
-**Companion:** [`docs/whitepaper.mdx`](../../whitepaper.mdx) — empirical motivation; this spec is the technical commitment.
+**Companion:** [`docs/whitepaper/paper.tex`](../../whitepaper/paper.tex) — research motivation; this spec is the technical commitment.
 
 ## Problem
 
-`ingraft` today is a git-subtree wrapper with submodule and clone-ignore fallbacks. The story is subtree-first. But the decision graph in `docs/comparison.mdx` itself shows subtree is *not always best* — long-tail deps want lazy fetch, docs want Context7, semantic queries want mgrep. The empirical whitepaper (`docs/whitepaper.mdx`) collects 35+ peer-reviewed papers and 50+ practitioner quotes that converge on the same operational principle: **the right context, at the right position, bounded, with model- and task-aware policies.** No single primitive is universally correct.
+`ingraft` today is a repository-context CLI whose deepest implemented route is durable upstream source under `vendor/`. That route matters, but the decision graph in `docs/comparison.mdx` itself shows it is _not always best_ — long-tail deps want lazy fetch, docs want Context7, semantic queries want mgrep, and one-shot reviews often want packs. The whitepaper (`docs/whitepaper/paper.tex`) converges on the same operational principle: **the right context, at the right position, bounded, with model- and task-aware policies.** No single primitive is universally correct.
 
 Independently, the Effect/Cherny argument generalizes: **agents read any navigable workspace text better than retrieval APIs.** The same insight that motivates `git subtree` for code motivates committing Notion pages, Linear tickets, and OpenAPI specs into the workspace as files an agent can `grep` and `Read` with its own tools. No existing tool does this — Glean/Unblocked index, Backstage runs a portal, RepoSwarm exports to a separate hub repo. None of them put cross-source knowledge **in the consuming project's workspace as committed text**.
 
-Phase 1 ships the reposition (CLI is the context router for AI coding agents) with five Tier 1 connectors (github, npm/pypi/crates, openapi, notion, linear), a strategy expansion (vendor / fetch / mount / live / pack / skill / search / tool-mediate), a new directory convention (`vendor/<connector>/<artifact>`), and an auto-router heuristic that picks the strategy per target and explains its choice.
+Phase 1 ships the broader context-router direction with five Tier 1 connectors (github, npm/pypi/crates, openapi, notion, linear), a route expansion (durable source / fetch / mount / live / pack / skill / search / tool-mediate), a new directory convention (`vendor/<connector>/<artifact>`) for committed context, and an auto-router heuristic that picks the route per target and explains its choice.
 
 ## Non-goals (deferred to Phase 2+)
 
@@ -54,32 +54,33 @@ AGENTS.md                        # generated stanza: vendor/ surface explanation
 ```
 
 **Two structural rules:**
+
 1. `vendor/<connector>/<artifact>` — every committed artifact carries provenance in its path. No name collisions across connectors.
 2. `vendor/` is committed; `.ingraft/cache/` and `.ingraft/mounts/` are not. Clean `git status` separation.
 
 ### Strategies (8 total)
 
-| Strategy | Location | Latency | Phase |
-|---|---|---|---|
-| **vendor** | `vendor/<conn>/<id>` (committed) | none | P1 — all Tier 1 connectors |
-| **fetch** | `.ingraft/cache/<conn>/<id>` (gitignored) | one-shot | P1 — npm/pypi/crates |
-| **mount** | `.ingraft/mounts/<conn>` (FUSE) | live | P2+ |
-| **live** | none (in-context) | live | P1 (via Context7 wrapper) |
-| **pack** | one artifact (file) | one-shot | P1 (via existing Repomix wrapper) |
-| **skill** | `~/.claude/skills/` | progressive | P1 (today's behavior; renamed conceptually) |
-| **search** | external index | live | P2 (via mgrep wrapper) |
-| **tool-mediate** | n/a | live | P1 — the agent's native grep over `vendor/` (no ingraft work needed; emergent) |
+| Strategy         | Location                                  | Latency     | Phase                                                                          |
+| ---------------- | ----------------------------------------- | ----------- | ------------------------------------------------------------------------------ |
+| **vendor**       | `vendor/<conn>/<id>` (committed)          | none        | P1 — all Tier 1 connectors                                                     |
+| **fetch**        | `.ingraft/cache/<conn>/<id>` (gitignored) | one-shot    | P1 — npm/pypi/crates                                                           |
+| **mount**        | `.ingraft/mounts/<conn>` (FUSE)           | live        | P2+                                                                            |
+| **live**         | none (in-context)                         | live        | P1 (via Context7 wrapper)                                                      |
+| **pack**         | one artifact (file)                       | one-shot    | P1 (via existing Repomix wrapper)                                              |
+| **skill**        | `~/.claude/skills/`                       | progressive | P1 (today's behavior; renamed conceptually)                                    |
+| **search**       | external index                            | live        | P2 (via mgrep wrapper)                                                         |
+| **tool-mediate** | n/a                                       | live        | P1 — the agent's native grep over `vendor/` (no ingraft work needed; emergent) |
 
 ### Privacy classes
 
 Per-artifact flag in `.ingraft/state.json`:
 
-| Class | Location | Git tracked | Default for |
-|---|---|---|---|
-| `committed` | `vendor/<conn>/<id>` | yes | github, openapi, notion (public pages), linear (non-customer-private) |
-| `gitignored` | `vendor/<conn>/<id>` (in `.gitignore`) | no | linear with customer-private label, notion in private spaces |
-| `local-only` | `.ingraft/cache/<conn>/<id>` | no | npm/pypi/crates fetched packages |
-| `mounted` | `.ingraft/mounts/<conn>` (FUSE) | no | P2+ — huge data, freshness > reproducibility |
+| Class        | Location                               | Git tracked | Default for                                                           |
+| ------------ | -------------------------------------- | ----------- | --------------------------------------------------------------------- |
+| `committed`  | `vendor/<conn>/<id>`                   | yes         | github, openapi, notion (public pages), linear (non-customer-private) |
+| `gitignored` | `vendor/<conn>/<id>` (in `.gitignore`) | no          | linear with customer-private label, notion in private spaces          |
+| `local-only` | `.ingraft/cache/<conn>/<id>`           | no          | npm/pypi/crates fetched packages                                      |
+| `mounted`    | `.ingraft/mounts/<conn>` (FUSE)        | no          | P2+ — huge data, freshness > reproducibility                          |
 
 `ingraft doctor` warns when class conflicts with detected content (PII patterns, secrets) or `.gitignore` configuration.
 
@@ -90,6 +91,7 @@ Per-artifact flag in `.ingraft/state.json`:
 ```
 
 Examples:
+
 - `github:effect-ts/effect`
 - `github:effect-ts/effect@v3.21.2`
 - `npm:zod`
@@ -104,6 +106,7 @@ Examples:
 - `openapi:./schemas/payments.json` (local file)
 
 Aliases configured in `.ingraft/config.toml`:
+
 ```toml
 [aliases]
 effect = "github:effect-ts/effect"
@@ -121,7 +124,15 @@ import type { Effect, Stream } from "effect"
 
 export type ConnectorId = "github" | "npm" | "pypi" | "crates" | "notion" | "linear" | "openapi"
 
-export type Strategy = "vendor" | "fetch" | "mount" | "live" | "pack" | "skill" | "search" | "tool-mediate"
+export type Strategy =
+  | "vendor"
+  | "fetch"
+  | "mount"
+  | "live"
+  | "pack"
+  | "skill"
+  | "search"
+  | "tool-mediate"
 
 export type PrivacyClass = "committed" | "gitignored" | "local-only" | "mounted"
 
@@ -135,9 +146,9 @@ export interface Target {
 export interface Artifact {
   readonly connector: ConnectorId
   readonly id: string
-  readonly path: string            // relative to repo root
-  readonly version: string         // ref / tag / commit / page-version
-  readonly fetchedAt: string       // ISO 8601
+  readonly path: string // relative to repo root
+  readonly version: string // ref / tag / commit / page-version
+  readonly fetchedAt: string // ISO 8601
   readonly sourceUrl: string
   readonly strategy: Strategy
   readonly privacyClass: PrivacyClass
@@ -249,6 +260,7 @@ For overrides:
 - Promote to vendor: `ingraft promote npm:zod` → moves to `vendor/github/<owner>/zod` with subtree
 
 Edge cases:
+
 - Package has no `repository` field → error with suggestion to file an upstream PR
 - Version tag mismatch → list candidate tags, ask user
 - Monorepo packages (e.g., `@effect/platform-node`) → resolve to the parent repo + a subdirectory hint in metadata
@@ -284,6 +296,7 @@ Edge cases:
 - Recursive flag: `ingraft add notion:<id> --recursive` vendors child pages too
 
 Format example:
+
 ```markdown
 ---
 id: 9b1a8c3d-...
@@ -301,6 +314,7 @@ We use OAuth 2.0 with PKCE for the mobile clients...
 ```
 
 Edge cases:
+
 - Notion-specific blocks (toggle, callout, equation): render with semantic prefixes (`> [!callout]`)
 - Images / files: download alongside `index.md` (`vendor/notion/<slug>/images/`)
 - Databases: serialize as a CSV alongside `index.md`
@@ -326,6 +340,7 @@ Edge cases:
   - `--label=architecture`
 
 Format example:
+
 ```markdown
 ---
 key: DEV-42
@@ -388,6 +403,7 @@ ingraft refresh                              # regenerate agent docs, ignores, A
 
 ```markdown
 <!-- ingraft:begin -->
+
 ## Vendored Context
 
 This project vendors external knowledge under `vendor/` via `ingraft`. Treat these as
@@ -403,22 +419,27 @@ This project vendors external knowledge under `vendor/` via `ingraft`. Treat the
 ### Vendored artifacts (24 total)
 
 **GitHub source (2):**
+
 - `vendor/github/effect-ts/effect` — subtree @ v3.21.2
 - `vendor/github/colinhacks/zod` — subtree @ v3.22.0
 
 **Notion (3):**
+
 - `vendor/notion/team-handbook/` — Team onboarding handbook
 - `vendor/notion/arch-decisions/adr-001-auth.md` — Auth ADR
 - `vendor/notion/arch-decisions/adr-002-db.md` — DB ADR
 
 **Linear (18):**
+
 - `vendor/linear/DEV-42/` ... `vendor/linear/DEV-59/` — current cycle (2026-Q2)
 
 **OpenAPI (1):**
+
 - `vendor/openapi/payments-api.json` — pinned at 2026-05-12
 
 Run `ingraft list` to see strategies + freshness.
 Run `ingraft update` to refresh all.
+
 <!-- ingraft:end -->
 ```
 
