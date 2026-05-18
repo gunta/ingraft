@@ -4,11 +4,15 @@ import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { Effect } from "effect"
+import { Effect, Layer } from "effect"
+import { NodeServices } from "@effect/platform-node"
 import { LiveLayer } from "../src/app/layers.ts"
 import { GitMetadataLive } from "../src/services/git-metadata.ts"
+import { GitLive } from "../src/services/git.ts"
+import { GitHubCli } from "../src/services/gh.ts"
+import { RuntimeConfigLive } from "../src/app/runtime.ts"
 
-import { readForkMode, writeForkMode } from "../src/domain/fork-mode.ts"
+import { readForkMode, writeForkMode, detectFork } from "../src/domain/fork-mode.ts"
 
 const initRepo = () => {
   const cwd = mkdtempSync(join(tmpdir(), "ingraft-forkmode-"))
@@ -76,5 +80,102 @@ describe("fork mode config", () => {
     )
 
     expect(mode).toBeUndefined()
+  })
+})
+
+describe("fork detection", () => {
+  let originalCwd: string
+  beforeEach(() => {
+    originalCwd = process.cwd()
+  })
+  afterEach(() => {
+    process.chdir(originalCwd)
+  })
+
+  test("detects a fork via gh repo view", async () => {
+    const cwd = initRepo()
+    process.chdir(cwd)
+
+    const stubGh = Layer.succeed(
+      GitHubCli,
+      GitHubCli.of({
+        exec: () =>
+          Effect.succeed({
+            stdout: JSON.stringify({
+              isFork: true,
+              parent: { nameWithOwner: "upstream/repo" }
+            }),
+            stderr: "",
+            exitCode: 0
+          })
+      })
+    )
+
+    const result = await Effect.runPromise(
+      detectFork({ cwd }).pipe(
+        Effect.provide(stubGh),
+        Effect.provide(GitLive.pipe(Layer.provide(NodeServices.layer))),
+        Effect.provide(NodeServices.layer),
+        Effect.provide(GitMetadataLive),
+        Effect.provide(RuntimeConfigLive)
+      )
+    )
+
+    expect(result.isFork).toBe(true)
+    expect(result.source).toBe("gh")
+    expect(result.source === "gh" ? result.parentNameWithOwner : undefined).toBe("upstream/repo")
+  })
+
+  test("falls back to upstream remote when gh is unavailable", async () => {
+    const cwd = initRepo()
+    process.chdir(cwd)
+    execSync("git remote add upstream https://github.com/upstream/repo.git", { cwd })
+
+    const stubGh = Layer.succeed(
+      GitHubCli,
+      GitHubCli.of({
+        exec: () =>
+          Effect.succeed({ stdout: "", stderr: "command not found", exitCode: 127 })
+      })
+    )
+
+    const result = await Effect.runPromise(
+      detectFork({ cwd }).pipe(
+        Effect.provide(stubGh),
+        Effect.provide(GitLive.pipe(Layer.provide(NodeServices.layer))),
+        Effect.provide(NodeServices.layer),
+        Effect.provide(GitMetadataLive),
+        Effect.provide(RuntimeConfigLive)
+      )
+    )
+
+    expect(result.isFork).toBe(true)
+    expect(result.source).toBe("remotes")
+  })
+
+  test("returns not-a-fork when no signals match", async () => {
+    const cwd = initRepo()
+    process.chdir(cwd)
+
+    const stubGh = Layer.succeed(
+      GitHubCli,
+      GitHubCli.of({
+        exec: () =>
+          Effect.succeed({ stdout: "", stderr: "command not found", exitCode: 127 })
+      })
+    )
+
+    const result = await Effect.runPromise(
+      detectFork({ cwd }).pipe(
+        Effect.provide(stubGh),
+        Effect.provide(GitLive.pipe(Layer.provide(NodeServices.layer))),
+        Effect.provide(NodeServices.layer),
+        Effect.provide(GitMetadataLive),
+        Effect.provide(RuntimeConfigLive)
+      )
+    )
+
+    expect(result.isFork).toBe(false)
+    expect(result.source).toBe("none")
   })
 })
