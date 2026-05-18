@@ -1,6 +1,7 @@
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { spawnSync } from "node:child_process"
 
 import { NodeServices } from "@effect/platform-node"
 import { describe, expect, test } from "bun:test"
@@ -8,6 +9,7 @@ import { Effect, Layer } from "effect"
 
 import { GitMetadataLive } from "../src/services/git-metadata.ts"
 import { GitLive } from "../src/services/git.ts"
+import { LocalState, LocalStateLive } from "../src/services/local-state.ts"
 import { RuntimeConfigLive } from "../src/app/runtime.ts"
 import {
   listVendored,
@@ -307,6 +309,7 @@ describe("listVendored with local state", () => {
       listVendored(cwd).pipe(
         Effect.provide(
           Layer.mergeAll(
+            LocalStateLive,
             GitMetadataLive,
             GitLive.pipe(Layer.provide(NodeServices.layer)),
             NodeServices.layer,
@@ -319,5 +322,75 @@ describe("listVendored with local state", () => {
     expect(
       repos.some((repo) => repo.prefix === "vendor/effect" && repo.localOnly === true)
     ).toBe(true)
+  })
+})
+
+describe("listVendored fast-path", () => {
+  test("returns the LocalState index when HEAD SHA matches", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ingraft-listvendored-"))
+    try {
+      spawnSync("git", ["init", "-q", "--initial-branch=main"], { cwd: dir })
+      spawnSync(
+        "git",
+        [
+          "-c",
+          "user.email=t@t",
+          "-c",
+          "user.name=T",
+          "commit",
+          "--allow-empty",
+          "-q",
+          "-m",
+          "init"
+        ],
+        { cwd: dir }
+      )
+      const headResult = spawnSync("git", ["rev-parse", "HEAD"], { cwd: dir })
+      const headSha = headResult.stdout.toString().trim()
+
+      const layer = Layer.mergeAll(
+        LocalStateLive,
+        GitMetadataLive,
+        GitLive.pipe(Layer.provide(NodeServices.layer)),
+        NodeServices.layer,
+        RuntimeConfigLive
+      )
+
+      const result = await Effect.runPromise(
+        Effect.gen(function* () {
+          const local = yield* LocalState
+          yield* local.writeVendorIndex({
+            cwd: dir,
+            headSha,
+            builtAt: new Date().toISOString(),
+            repos: [
+              {
+                name: "effect",
+                prefix: "vendor/effect",
+                url: "https://github.com/Effect-TS/effect.git",
+                ref: "main",
+                strategy: "clone-ignore",
+                filter: {
+                  exclude: [],
+                  excludeDirs: [],
+                  excludeExtensions: [],
+                  include: [],
+                  includeDirs: [],
+                  maxFileSizeBytes: null
+                },
+                sha: "deadbeef",
+                date: "2026-05-13T00:00:00.000Z"
+              }
+            ]
+          })
+          return yield* listVendored(dir)
+        }).pipe(Effect.provide(layer))
+      )
+
+      expect(result.length).toBeGreaterThanOrEqual(1)
+      expect(result.some((r) => r.name === "effect")).toBe(true)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

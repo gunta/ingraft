@@ -1,6 +1,7 @@
 import { Effect, FileSystem, Option, Path, Result, Schema } from "effect"
 
 import { GitMetadata, type GitMetadataCommit } from "../services/git-metadata.ts"
+import { LocalState } from "../services/local-state.ts"
 import { readLocalVendorState } from "./local-state.ts"
 import { git } from "../services/git.ts"
 import {
@@ -428,19 +429,61 @@ const listVendoredWithGit = (cwd: string) =>
     )
   )
 
-export const listVendored = (cwd: string) =>
+const currentHeadSha = (cwd: string) =>
   Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    const path = yield* Path.Path
+    const result = yield* git(["rev-parse", "HEAD"], { cwd }).pipe(Effect.option)
+    return Option.flatMap(result, (r) =>
+      r.exitCode === 0 && r.stdout.trim().length > 0
+        ? Option.some(r.stdout.trim())
+        : Option.none<string>()
+    )
+  })
+
+const parseTrailers = (cwd: string) =>
+  Effect.gen(function* () {
     const gitMetadata = yield* GitMetadata
     const parsed = yield* gitMetadata.listCommits(cwd).pipe(
       Effect.map(parseVendoredCommitsWithDiagnostics),
       Effect.catch(() => listVendoredWithGit(cwd))
     )
-    yield* Effect.forEach(parsed.diagnostics, (diagnostic) => Effect.logDebug(diagnostic.reason), {
-      discard: true
-    })
-    const trailerRepos = yield* Effect.filter(parsed.repos, (repo) =>
+    yield* Effect.forEach(
+      parsed.diagnostics,
+      (diagnostic) => Effect.logDebug(diagnostic.reason),
+      { discard: true }
+    )
+    return parsed.repos
+  })
+
+const trailerReposWithCache = (cwd: string) =>
+  Effect.gen(function* () {
+    const localState = yield* LocalState
+    const headSha = yield* currentHeadSha(cwd)
+    const cached = Option.isSome(headSha)
+      ? yield* localState.readVendorIndex({ cwd, currentHeadSha: headSha.value })
+      : Option.none<{ readonly repos: ReadonlyArray<unknown> }>()
+    if (Option.isSome(cached)) {
+      return cached.value.repos as ReadonlyArray<VendoredRepo>
+    }
+    const repos = yield* parseTrailers(cwd)
+    if (Option.isSome(headSha)) {
+      yield* localState
+        .writeVendorIndex({
+          cwd,
+          headSha: headSha.value,
+          builtAt: new Date().toISOString(),
+          repos
+        })
+        .pipe(Effect.ignore)
+    }
+    return repos
+  })
+
+export const listVendored = (cwd: string) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const parsedRepos = yield* trailerReposWithCache(cwd)
+    const trailerRepos = yield* Effect.filter(parsedRepos, (repo) =>
       repo.strategy === "clone-ignore" || repo.strategy === "cache-link"
         ? Effect.succeed(true)
         : fs.exists(path.resolve(cwd, repo.prefix))
