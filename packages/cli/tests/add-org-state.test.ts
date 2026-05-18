@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test"
 
 import { Option } from "effect"
 
+import { EMPTY_VENDOR_FILTER } from "../src/domain/vendor-filter.ts"
+import type { VendoredRepo } from "../src/domain/vendor-state.ts"
 import type { OrgRepository } from "../src/services/local-state.ts"
 import { handleAddOrgKey } from "../src/tui/add-org/keyboard.ts"
 import { addOrgRepoParams } from "../src/tui/add-org/runner.ts"
@@ -9,7 +11,8 @@ import {
   AddOrgAction,
   createAddOrgState,
   dispatchAddOrg,
-  filteredRepos
+  filteredRepos,
+  vendoredOrgRepoIds
 } from "../src/tui/add-org/state.ts"
 
 const repo = (overrides: Partial<OrgRepository>): OrgRepository => ({
@@ -31,6 +34,18 @@ const repos = [
   repo({ name: "beta", isArchived: true }),
   repo({ name: "gamma", primaryLanguage: "Python" })
 ]
+
+const vendoredRepo = (overrides: Partial<VendoredRepo>): VendoredRepo => ({
+  name: "alpha",
+  prefix: "vendor/gunta/alpha",
+  url: "https://github.com/gunta/alpha.git",
+  ref: "main",
+  strategy: "clone-ignore",
+  filter: EMPTY_VENDOR_FILTER,
+  sha: "abc123",
+  date: "2026-05-01T00:00:00Z",
+  ...overrides
+})
 
 const initial = createAddOrgState({ owner: "gunta", repos, vendored: new Set() })
 
@@ -84,6 +99,16 @@ describe("dispatchAddOrg", () => {
     })
     const selectedAll = dispatchAddOrg(state, AddOrgAction.SelectAllFiltered())
     expect(selectedAll.selected.has("gunta/alpha")).toBe(false)
+  })
+
+  test("vendored repos cannot be toggled into the run selection", () => {
+    const state = createAddOrgState({
+      owner: "gunta",
+      repos,
+      vendored: new Set(["gunta/alpha"])
+    })
+    const selected = dispatchAddOrg(state, AddOrgAction.ToggleSelected())
+    expect(selected).toBe(state)
   })
 
   test("Confirm + StartRun mode transition", () => {
@@ -232,5 +257,25 @@ describe("addOrgRepoParams", () => {
     expect(params.repo).toBe("https://github.com/gunta/demo.git")
     expect(params.name).toEqual(Option.some("alpha"))
     expect(params.strategy).toBe("clone-ignore")
+  })
+})
+
+describe("vendoredOrgRepoIds", () => {
+  test("maps existing vendored URLs to org repo ids", () => {
+    const ids = vendoredOrgRepoIds({
+      repos: [repo({ name: "alpha", url: "https://github.com/gunta/alpha" })],
+      vendored: [vendoredRepo({ url: "https://github.com/gunta/alpha.git" })]
+    })
+
+    expect(ids.has("gunta/alpha")).toBe(true)
+  })
+
+  test("does not mark same-name repositories with different URLs as vendored", () => {
+    const ids = vendoredOrgRepoIds({
+      repos: [repo({ name: "alpha", url: "https://github.com/gunta/alpha" })],
+      vendored: [vendoredRepo({ url: "https://github.com/other/alpha.git" })]
+    })
+
+    expect(ids.has("gunta/alpha")).toBe(false)
   })
 })

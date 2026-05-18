@@ -6,6 +6,7 @@ import { Argument, Command, Flag } from "effect/unstable/cli"
 import { info, ok, warn, withCommandTelemetry } from "../app/log.tsx"
 import { OrgFilterParseFailed } from "../domain/errors.ts"
 import { filterOrgRepos, parseSince, type OrgFilter } from "../domain/org-filter.ts"
+import { listVendored } from "../domain/vendor-state.ts"
 import { type VendorStrategy } from "../domain/vendor-strategy.ts"
 import { repoRoot } from "../services/git.ts"
 import { GitHubOrg } from "../services/github-org.ts"
@@ -17,7 +18,8 @@ import {
   AddOrgAction,
   createAddOrgState,
   dispatchAddOrg,
-  type AddOrgState
+  type AddOrgState,
+  vendoredOrgRepoIds
 } from "../tui/add-org/state.ts"
 import { addImpl } from "./add.tsx"
 
@@ -120,9 +122,12 @@ export const addOrgImpl = (params: AddOrgCommandParams) =>
     const concurrency = clampConcurrency(params.concurrency)
 
     if (!params.yes && stdin.isTTY && stdout.isTTY) {
+      const cwd = yield* repoRoot
+      const vendored = yield* listVendored(cwd)
       yield* launchAddOrgTui({
         owner: params.owner,
         repos: selected,
+        vendored: vendoredOrgRepoIds({ repos: selected, vendored }),
         strategy: params.strategy,
         concurrency,
         ref: params.ref,
@@ -309,6 +314,7 @@ export const addOrgCmd = Command.make(
 interface AddOrgTuiParams {
   readonly owner: string
   readonly repos: ReadonlyArray<OrgRepository>
+  readonly vendored: ReadonlySet<string>
   readonly strategy: VendorStrategy
   readonly concurrency: number
   readonly ref: Option.Option<string>
@@ -374,6 +380,7 @@ const runTuiKeyboardLoop = (initial: AddOrgState) =>
 const launchAddOrgTui = ({
   owner,
   repos,
+  vendored,
   strategy,
   concurrency,
   ref,
@@ -384,7 +391,7 @@ const launchAddOrgTui = ({
     const initial = createAddOrgState({
       owner,
       repos,
-      vendored: new Set(),
+      vendored,
       strategy,
       concurrency
     })

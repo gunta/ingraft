@@ -1,6 +1,7 @@
 import { Data } from "effect"
 
 import { filterOrgRepos, type OrgFilter } from "../../domain/org-filter.ts"
+import type { VendoredRepo } from "../../domain/vendor-state.ts"
 import type { VendorStrategy } from "../../domain/vendor-strategy.ts"
 import type { OrgRepository } from "../../services/local-state.ts"
 
@@ -49,6 +50,21 @@ export type AddOrgAction = Data.TaggedEnum<{
 export const AddOrgAction = Data.taggedEnum<AddOrgAction>()
 
 const idOf = (repo: OrgRepository): string => `${repo.owner}/${repo.name}`
+
+const comparableRepoUrl = (url: string): string => url.replace(/\.git$/, "").replace(/\/+$/, "")
+
+export const vendoredOrgRepoIds = ({
+  repos,
+  vendored
+}: {
+  readonly repos: ReadonlyArray<OrgRepository>
+  readonly vendored: ReadonlyArray<VendoredRepo>
+}): ReadonlySet<string> => {
+  const vendoredUrls = new Set(vendored.map((repo) => comparableRepoUrl(repo.url)))
+  return new Set(
+    repos.filter((repo) => vendoredUrls.has(comparableRepoUrl(repo.url))).map((repo) => idOf(repo))
+  )
+}
 
 const DEFAULT_FILTERS: OrgFilter = {
   language: [],
@@ -164,6 +180,7 @@ export const dispatchAddOrg = (state: AddOrgState, action: AddOrgAction): AddOrg
       const focused = visible[state.focusedIndex]
       if (focused === undefined) return state
       const id = idOf(focused)
+      if (state.vendored.has(id)) return state
       const next = new Set(state.selected)
       if (next.has(id)) {
         next.delete(id)
