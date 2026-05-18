@@ -34,16 +34,13 @@ const FIELDS = [
   "url"
 ].join(",")
 
+// `gh repo list` supports up to 1000 in a single page; orgs larger than this
+// need pagination, which is out of scope for v1.
 const HARD_LIMIT = 1000
 
 const isAuthError = (stderr: string): boolean => {
   const lower = stderr.toLowerCase()
-  return (
-    lower.includes("authentication") ||
-    lower.includes("gh auth login") ||
-    lower.includes("401") ||
-    lower.includes("403")
-  )
+  return lower.includes("authentication") || lower.includes("gh auth login")
 }
 
 const normalizeUrl = (url: string): string =>
@@ -78,7 +75,7 @@ export const listOrgRepos = ({ owner }: { readonly owner: string }) =>
     }
     const parsed = yield* Effect.try({
       try: () => JSON.parse(result.stdout) as ReadonlyArray<RawRepo>,
-      catch: () => new GitHubOrgNotFound({ owner })
+      catch: (error) => new GitHubCliMissing({ cause: error })
     })
     if (parsed.length === 0) {
       return yield* Effect.fail(new GitHubOrgNotFound({ owner }))
@@ -101,5 +98,7 @@ export class GitHubOrg extends Context.Service<GitHubOrg, GitHubOrgShape>()(
 ) {}
 
 export const GitHubOrgLive = Layer.sync(GitHubOrg, () => ({
-  listRepos: ({ owner }) => listOrgRepos({ owner })
+  listRepos: Effect.fn("GitHubOrg.listRepos")(({ owner }: { readonly owner: string }) =>
+    listOrgRepos({ owner })
+  )
 }))

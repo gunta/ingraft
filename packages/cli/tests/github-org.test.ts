@@ -136,6 +136,19 @@ describe("listOrgRepos", () => {
     }
   })
 
+  test("fails with GitHubCliMissing on unparseable gh stdout", async () => {
+    const exit = await Effect.runPromiseExit(
+      provide(listOrgRepos({ owner: "gunta" }), {
+        exec: () =>
+          Effect.succeed({ stdout: "not-json", stderr: "", exitCode: 0 })
+      })
+    )
+    expect(Exit.isFailure(exit)).toBe(true)
+    if (Exit.isFailure(exit)) {
+      expect(String(exit.cause)).toContain("GitHubCliMissing")
+    }
+  })
+
   test("GitHubOrgLive provides listRepos via the GitHubOrg service", async () => {
     const program = Effect.gen(function* () {
       const org = yield* GitHubOrg
