@@ -62,8 +62,6 @@ describe("updateIgnoreFile (info-exclude target)", () => {
     )
 
     const target = join(cwd, ".git", "info", "exclude")
-    if (!existsSync(target)) return
-    const content = readFileSync(target, "utf-8")
-    expect(content).not.toContain("# ingraft: clone-ignore begin")
+    expect(existsSync(target)).toBe(false)
   })
 })
