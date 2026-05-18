@@ -142,6 +142,243 @@
       "targets": ["golang/go"]
     },
     {
+      "alias": "svelte",
+      "targets": ["sveltejs/svelte"]
+    },
+    {
+      "alias": "sveltekit",
+      "targets": ["sveltejs/kit"]
+    },
+    {
+      "alias": "vue",
+      "targets": ["vuejs/core"]
+    },
+    {
+      "alias": "nuxt",
+      "targets": ["nuxt/nuxt"]
+    },
+    {
+      "alias": "remix",
+      "targets": ["remix-run/remix"]
+    },
+    {
+      "alias": "solid",
+      "targets": ["solidjs/solid"]
+    },
+    {
+      "alias": "qwik",
+      "targets": ["QwikDev/qwik"]
+    },
+    {
+      "alias": "angular",
+      "description": "Angular framework source. Defaults to submodule because the upstream repository is large.",
+      "targets": [{ "target": "angular/angular", "strategy": "submodule" }]
+    },
+    {
+      "alias": "express",
+      "targets": ["expressjs/express"]
+    },
+    {
+      "alias": "fastify",
+      "targets": ["fastify/fastify"]
+    },
+    {
+      "alias": "nestjs",
+      "targets": ["nestjs/nest"]
+    },
+    {
+      "alias": "mui",
+      "targets": ["mui/material-ui"]
+    },
+    {
+      "alias": "radix",
+      "targets": ["radix-ui/primitives"]
+    },
+    {
+      "alias": "shadcn",
+      "targets": ["shadcn-ui/ui"]
+    },
+    {
+      "alias": "lucide",
+      "targets": ["lucide-icons/lucide"]
+    },
+    {
+      "alias": "motion",
+      "targets": ["motiondivision/motion"]
+    },
+    {
+      "alias": "zustand",
+      "targets": ["pmndrs/zustand"]
+    },
+    {
+      "alias": "jotai",
+      "targets": ["pmndrs/jotai"]
+    },
+    {
+      "alias": "redux",
+      "targets": ["reduxjs/redux"]
+    },
+    {
+      "alias": "swr",
+      "targets": ["vercel/swr"]
+    },
+    {
+      "alias": "axios",
+      "targets": ["axios/axios"]
+    },
+    {
+      "alias": "date-fns",
+      "targets": ["date-fns/date-fns"]
+    },
+    {
+      "alias": "lodash",
+      "targets": ["lodash/lodash"]
+    },
+    {
+      "alias": "tanstack-table",
+      "targets": ["TanStack/table"]
+    },
+    {
+      "alias": "tanstack-form",
+      "targets": ["TanStack/form"]
+    },
+    {
+      "alias": "pnpm",
+      "targets": ["pnpm/pnpm"]
+    },
+    {
+      "alias": "turbo",
+      "targets": ["vercel/turbo"]
+    },
+    {
+      "alias": "turborepo",
+      "targets": ["vercel/turborepo"]
+    },
+    {
+      "alias": "nx",
+      "targets": ["nrwl/nx"]
+    },
+    {
+      "alias": "esbuild",
+      "targets": ["evanw/esbuild"]
+    },
+    {
+      "alias": "swc",
+      "targets": ["swc-project/swc"]
+    },
+    {
+      "alias": "rspack",
+      "targets": ["web-infra-dev/rspack"]
+    },
+    {
+      "alias": "webpack",
+      "targets": ["webpack/webpack"]
+    },
+    {
+      "alias": "rollup",
+      "targets": ["rollup/rollup"]
+    },
+    {
+      "alias": "vitest",
+      "targets": ["vitest-dev/vitest"]
+    },
+    {
+      "alias": "jest",
+      "targets": ["jestjs/jest"]
+    },
+    {
+      "alias": "cypress",
+      "targets": ["cypress-io/cypress"]
+    },
+    {
+      "alias": "storybook",
+      "targets": ["storybookjs/storybook"]
+    },
+    {
+      "alias": "supabase",
+      "targets": ["supabase/supabase"]
+    },
+    {
+      "alias": "firebase",
+      "targets": ["firebase/firebase-js-sdk"]
+    },
+    {
+      "alias": "clerk",
+      "targets": ["clerk/javascript"]
+    },
+    {
+      "alias": "stripe",
+      "targets": ["stripe/stripe-node"]
+    },
+    {
+      "alias": "better-auth",
+      "targets": ["better-auth/better-auth"]
+    },
+    {
+      "alias": "tauri",
+      "targets": ["tauri-apps/tauri"]
+    },
+    {
+      "alias": "electron",
+      "description": "Electron runtime source. Defaults to submodule because the upstream repository is large.",
+      "targets": [{ "target": "electron/electron", "strategy": "submodule" }]
+    },
+    {
+      "alias": "react-native",
+      "description": "React Native source. Defaults to submodule because the upstream repository is large.",
+      "targets": [{ "target": "facebook/react-native", "strategy": "submodule" }]
+    },
+    {
+      "alias": "expo",
+      "description": "Expo monorepo. Defaults to submodule because the upstream repository is large.",
+      "targets": [{ "target": "expo/expo", "strategy": "submodule" }]
+    },
+    {
+      "alias": "fastapi",
+      "targets": ["tiangolo/fastapi"]
+    },
+    {
+      "alias": "pydantic",
+      "targets": ["pydantic/pydantic"]
+    },
+    {
+      "alias": "django",
+      "targets": ["django/django"]
+    },
+    {
+      "alias": "axum",
+      "targets": ["tokio-rs/axum"]
+    },
+    {
+      "alias": "serde",
+      "targets": ["serde-rs/serde"]
+    },
+    {
+      "alias": "clap",
+      "targets": ["clap-rs/clap"]
+    },
+    {
+      "alias": "gin",
+      "targets": ["gin-gonic/gin"]
+    },
+    {
+      "alias": "ollama",
+      "targets": ["ollama/ollama"]
+    },
+    {
+      "alias": "transformers",
+      "description": "Hugging Face Transformers library. Defaults to submodule because the upstream repository is large.",
+      "targets": [{ "target": "huggingface/transformers", "strategy": "submodule" }]
+    },
+    {
+      "alias": "terraform",
+      "targets": ["hashicorp/terraform"]
+    },
+    {
+      "alias": "docker",
+      "targets": ["moby/moby"]
+    },
+    {
       "alias": "kubernetes",
       "description": "Kubernetes core source. Defaults to submodule because the upstream repository is large.",
       "targets": [{ "target": "kubernetes/kubernetes", "strategy": "submodule" }]

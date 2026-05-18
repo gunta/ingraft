@@ -27,6 +27,8 @@ import {
   VendoredRepoAlreadyExists,
   VersionResolutionFailed
 } from "../domain/errors.ts"
+import { readForkMode } from "../domain/fork-mode.ts"
+import { upsertLocalVendorEntry } from "../domain/local-state.ts"
 import { hostedRepoFromInput, inferRepoName, normalizeRepoUrl } from "../domain/repo.ts"
 import {
   formatVendorFilterTrailer,
@@ -56,8 +58,6 @@ import {
 import { ensureCacheLinkCheckout, linkCacheCheckout } from "../project/cache-link.ts"
 import { checkoutFilteredRepo, materializeFilteredRepo } from "../project/filtered-checkout.ts"
 import { updateGitignore, updateIgnoreFile } from "../project/gitignore.ts"
-import { readForkMode } from "../domain/fork-mode.ts"
-import { upsertLocalVendorEntry } from "../domain/local-state.ts"
 import { ProjectFiles } from "../project/service.ts"
 import {
   artifactRemoteWithCredentials,
@@ -874,7 +874,9 @@ const addCloneIgnore = ({
         target: "info-exclude",
         prefixes: [
           ...existingRepos
-            .filter((repo) => isLocalIgnoredVendorStrategy(repo.strategy) && repo.localOnly === true)
+            .filter(
+              (repo) => isLocalIgnoredVendorStrategy(repo.strategy) && repo.localOnly === true
+            )
             .map((repo) => repo.prefix),
           finalPrefix
         ]
@@ -966,7 +968,9 @@ const addCacheLink = ({
         target: "info-exclude",
         prefixes: [
           ...existingRepos
-            .filter((repo) => isLocalIgnoredVendorStrategy(repo.strategy) && repo.localOnly === true)
+            .filter(
+              (repo) => isLocalIgnoredVendorStrategy(repo.strategy) && repo.localOnly === true
+            )
             .map((repo) => repo.prefix),
           finalPrefix
         ]
@@ -1103,10 +1107,7 @@ export const addImpl = ({
       ownerSegment === null
         ? `${VENDOR_DIR}/${finalName}`
         : `${VENDOR_DIR}/${ownerSegment}/${finalName}`
-    const finalPrefix = (Option.isSome(prefix) ? prefix.value : defaultPrefix).replace(
-      /\/+$/,
-      ""
-    )
+    const finalPrefix = (Option.isSome(prefix) ? prefix.value : defaultPrefix).replace(/\/+$/, "")
     const finalRef =
       target._tag === "PackageTarget" && selector._tag === "Default"
         ? Option.getOrThrow(packageResolution).ref

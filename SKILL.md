@@ -31,25 +31,25 @@ Do not run `scripts/vendor.ts` from the repository. The skill intentionally dele
 
 ## Intent Routing
 
-| User intent                                  | Command                                                   |
-| -------------------------------------------- | --------------------------------------------------------- |
-| "open dashboard", "TUI"                      | `bunx ingraft@latest` or `bunx ingraft@latest tui`        |
-| "scan dependencies for context"              | `bunx ingraft@latest deps`                                |
-| "set up repository context"                  | `bunx ingraft@latest init`                                |
-| "add durable source context"                 | `bunx ingraft@latest add <repo>`                          |
-| "add these packages/repos as context"        | `bunx ingraft@latest <package-or-repo> <package-or-repo>` |
-| "show context routes"                        | `bunx ingraft@latest list`                                |
-| "refresh agent docs/tool ignores"            | `bunx ingraft@latest refresh`                             |
-| "check context health"                       | `bunx ingraft@latest doctor`                              |
-| "repair context hygiene drift"               | `bunx ingraft@latest doctor --fix`                        |
-| "detect optional context tools"              | `bunx ingraft@latest context`                             |
-| "pack repository or vendor context for chat" | `bunx ingraft@latest context pack`                        |
-| "fetch dependency source path"               | `bunx ingraft@latest context source <package>`            |
-| "vendor without committing", "fork-safe vendor"      | `bunx ingraft@latest add <repo> --local-only`            |
-| "vendor only these dirs"                              | `bunx ingraft@latest add <repo> --include-dir <path>`    |
-| "configure fork mode"                                 | `bunx ingraft@latest init`                                |
-| "remove durable source context"              | `bunx ingraft@latest remove <name>`                       |
-| "purge vendored source from git history"     | See "Destructive history rewrite" below                   |
+| User intent                                     | Command                                                   |
+| ----------------------------------------------- | --------------------------------------------------------- |
+| "open dashboard", "TUI"                         | `bunx ingraft@latest` or `bunx ingraft@latest tui`        |
+| "scan dependencies for context"                 | `bunx ingraft@latest deps`                                |
+| "set up repository context"                     | `bunx ingraft@latest init`                                |
+| "add durable source context"                    | `bunx ingraft@latest add <repo>`                          |
+| "add these packages/repos as context"           | `bunx ingraft@latest <package-or-repo> <package-or-repo>` |
+| "show context routes"                           | `bunx ingraft@latest list`                                |
+| "refresh agent docs/tool ignores"               | `bunx ingraft@latest refresh`                             |
+| "check context health"                          | `bunx ingraft@latest doctor`                              |
+| "repair context hygiene drift"                  | `bunx ingraft@latest doctor --fix`                        |
+| "detect optional context tools"                 | `bunx ingraft@latest context`                             |
+| "pack repository or vendor context for chat"    | `bunx ingraft@latest context pack`                        |
+| "fetch dependency source path"                  | `bunx ingraft@latest context source <package>`            |
+| "vendor without committing", "fork-safe vendor" | `bunx ingraft@latest add <repo> --local-only`             |
+| "vendor only these dirs"                        | `bunx ingraft@latest add <repo> --include-dir <path>`     |
+| "configure fork mode"                           | `bunx ingraft@latest init`                                |
+| "remove durable source context"                 | `bunx ingraft@latest remove <name>`                       |
+| "purge vendored source from git history"        | See "Destructive history rewrite" below                   |
 
 ## Common Commands
 

@@ -1,10 +1,6 @@
 import { Context, Effect, Layer } from "effect"
 
-import {
-  GitHubCliMissing,
-  GitHubCliUnauthenticated,
-  GitHubOrgNotFound
-} from "../domain/errors.ts"
+import { GitHubCliMissing, GitHubCliUnauthenticated, GitHubOrgNotFound } from "../domain/errors.ts"
 import { GitHubCli } from "./gh.ts"
 import type { OrgRepository } from "./local-state.ts"
 
@@ -43,8 +39,7 @@ const isAuthError = (stderr: string): boolean => {
   return lower.includes("authentication") || lower.includes("gh auth login")
 }
 
-const normalizeUrl = (url: string): string =>
-  url.endsWith(".git") ? url : `${url}.git`
+const normalizeUrl = (url: string): string => (url.endsWith(".git") ? url : `${url}.git`)
 
 const parseRawRepo = (raw: RawRepo): OrgRepository => ({
   name: raw.name,
@@ -64,9 +59,7 @@ export const listOrgRepos = ({ owner }: { readonly owner: string }) =>
     const gh = yield* GitHubCli
     const result = yield* gh
       .exec(["repo", "list", owner, "--json", FIELDS, "--limit", String(HARD_LIMIT)])
-      .pipe(
-        Effect.catch((cause) => Effect.fail(new GitHubCliMissing({ cause })))
-      )
+      .pipe(Effect.catch((cause) => Effect.fail(new GitHubCliMissing({ cause }))))
     if (result.exitCode !== 0) {
       if (isAuthError(result.stderr)) {
         return yield* Effect.fail(new GitHubCliUnauthenticated({ output: result.stderr }))
@@ -93,9 +86,7 @@ export interface GitHubOrgShape {
   >
 }
 
-export class GitHubOrg extends Context.Service<GitHubOrg, GitHubOrgShape>()(
-  "ingraft/GitHubOrg"
-) {}
+export class GitHubOrg extends Context.Service<GitHubOrg, GitHubOrgShape>()("ingraft/GitHubOrg") {}
 
 export const GitHubOrgLive = Layer.sync(GitHubOrg, () => ({
   listRepos: Effect.fn("GitHubOrg.listRepos")(({ owner }: { readonly owner: string }) =>

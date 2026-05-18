@@ -18,11 +18,11 @@ import {
   HistoryRewriteToolMissing,
   VendoredRepoNotFound
 } from "../domain/errors.ts"
+import { removeLocalVendorEntry } from "../domain/local-state.ts"
 import { formatVendorFilterTrailer } from "../domain/vendor-filter.ts"
 import { findByName, listVendored, type VendoredRepo } from "../domain/vendor-state.ts"
 import { isLocalIgnoredVendorStrategy } from "../domain/vendor-strategy.ts"
 import { updateGitignore, updateIgnoreFile } from "../project/gitignore.ts"
-import { removeLocalVendorEntry } from "../domain/local-state.ts"
 import { ProjectFiles } from "../project/service.ts"
 import {
   assertCleanTree,
@@ -157,10 +157,7 @@ const removeLocalOnly = ({ cwd, reposBefore, target }: RemoveCloneIgnoreParams) 
       cwd,
       target: "info-exclude",
       prefixes: reposBefore
-        .filter(
-          (repo) =>
-            repo.localOnly === true && repo.prefix !== target.prefix
-        )
+        .filter((repo) => repo.localOnly === true && repo.prefix !== target.prefix)
         .map((repo) => repo.prefix)
     })
     yield* removeLocalVendorEntry({ cwd, prefix: target.prefix })

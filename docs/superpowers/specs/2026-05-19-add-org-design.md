@@ -220,13 +220,13 @@ mapping is mechanical — `excludeX = !flagIncludeX`. Default state is
 
 **Invalidation rules:**
 
-| File                  | Invalid when                                       | Action                       |
-| --------------------- | -------------------------------------------------- | ---------------------------- |
-| `orgs/<owner>.json`   | `now - fetchedAt > 1h`, or `--refresh` passed      | Re-fetch from gh             |
-| `index.json`          | `headSha !== currentHeadSha`                       | Rebuild from `git log`       |
-| `user.json`           | `now - fetchedAt > 24h`, or `--refresh` passed     | Re-fetch via `gh api user` and `gh api user/orgs` |
-| `repo-meta.json` entry| `now - entry.fetchedAt > 24h`, or `--refresh`      | Re-fetch via `gh repo view <owner>/<name> --json isFork,parent,visibility,owner` |
-| Any file              | parse error / unknown schema version               | Log debug, delete, rebuild   |
+| File                   | Invalid when                                   | Action                                                                           |
+| ---------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------- |
+| `orgs/<owner>.json`    | `now - fetchedAt > 1h`, or `--refresh` passed  | Re-fetch from gh                                                                 |
+| `index.json`           | `headSha !== currentHeadSha`                   | Rebuild from `git log`                                                           |
+| `user.json`            | `now - fetchedAt > 24h`, or `--refresh` passed | Re-fetch via `gh api user` and `gh api user/orgs`                                |
+| `repo-meta.json` entry | `now - entry.fetchedAt > 24h`, or `--refresh`  | Re-fetch via `gh repo view <owner>/<name> --json isFork,parent,visibility,owner` |
+| Any file               | parse error / unknown schema version           | Log debug, delete, rebuild                                                       |
 
 Local state never blocks the command — it can only make it faster. A cache
 write failure is logged at debug and ignored.
@@ -323,7 +323,7 @@ type AddOrgAction =
 
 **v1 TUI editability:** filters, search, selection, and confirm/cancel are
 fully editable in the TUI. Strategy, concurrency, and version flags are
-*displayed* in the status bar but only settable from the CLI in v1; the
+_displayed_ in the status bar but only settable from the CLI in v1; the
 `SetStrategy` / `SetConcurrency` actions in the reducer are defined as
 forward-compatibility seams.
 
@@ -371,11 +371,11 @@ include the owner — out of scope here.
 The "Durable source routes" table in `packages/cli/src/commands/doctor.tsx`
 gains a **Type** column with one of three values:
 
-| Type       | Rule                                                                                   |
-| ---------- | -------------------------------------------------------------------------------------- |
-| `own`      | Vendored repo's owner equals `user.login` OR is in `user.orgs`.                       |
-| `fork`     | Not `own`, AND `repoMeta.isFork === true`. Show parent inline as `fork ← <parent>`.    |
-| `upstream` | Not `own`, AND `repoMeta.isFork === false`.                                            |
+| Type       | Rule                                                                                |
+| ---------- | ----------------------------------------------------------------------------------- |
+| `own`      | Vendored repo's owner equals `user.login` OR is in `user.orgs`.                     |
+| `fork`     | Not `own`, AND `repoMeta.isFork === true`. Show parent inline as `fork ← <parent>`. |
+| `upstream` | Not `own`, AND `repoMeta.isFork === false`.                                         |
 
 When a vendored repo has no `repo-meta.json` entry (e.g., a non-GitHub host
 or first run), the column reads `unknown` and `doctor --fix` populates it by
@@ -406,11 +406,11 @@ reads `non-github`. We don't attempt classification for them in v1.
 
 ```ts
 columns: [
-  { header: "Name",     value: r => r.name },
-  { header: "Type",     value: r => formatType(classifyRepo(r)) },  // new
-  { header: "Strategy", value: r => r.strategy },
-  { header: "Path",     value: r => r.prefix },
-  { header: "Ref",      value: r => r.ref }
+  { header: "Name", value: (r) => r.name },
+  { header: "Type", value: (r) => formatType(classifyRepo(r)) }, // new
+  { header: "Strategy", value: (r) => r.strategy },
+  { header: "Path", value: (r) => r.prefix },
+  { header: "Ref", value: (r) => r.ref }
 ]
 ```
 
@@ -421,15 +421,15 @@ raw `{ isFork, parent, owner }` for downstream tooling.
 
 New error tags added to `packages/cli/src/domain/errors.ts`:
 
-| Error                          | When                                          | Exit | Hint                                                                  |
-| ------------------------------ | --------------------------------------------- | ---- | --------------------------------------------------------------------- |
-| `GitHubCliMissing`             | `gh` binary not on PATH                       | 127  | "Install GitHub CLI: brew install gh, then gh auth login."            |
-| `GitHubCliUnauthenticated`     | `gh repo list` fails with auth error          | 4    | "Run gh auth login to authenticate."                                  |
-| `GitHubOrgNotFound`            | No repos AND `gh api /users/<owner>` 404s     | 5    | "Owner not found, or no public repos visible to your token."         |
-| `OrgFilterParseFailed`         | `--since 90bogus`, empty `--language`         | 2    | "Use ISO date (2026-01-01) or relative (90d, 12w, 6m)."               |
-| `LocalStateSchemaMismatch`     | `.ingraft/state/*.json` unknown version       | —    | "Cleared incompatible local state file." (warn, delete, rebuild — not surfaced as a typed error to the user) |
+| Error                      | When                                      | Exit | Hint                                                                                                         |
+| -------------------------- | ----------------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------ |
+| `GitHubCliMissing`         | `gh` binary not on PATH                   | 127  | "Install GitHub CLI: brew install gh, then gh auth login."                                                   |
+| `GitHubCliUnauthenticated` | `gh repo list` fails with auth error      | 4    | "Run gh auth login to authenticate."                                                                         |
+| `GitHubOrgNotFound`        | No repos AND `gh api /users/<owner>` 404s | 5    | "Owner not found, or no public repos visible to your token."                                                 |
+| `OrgFilterParseFailed`     | `--since 90bogus`, empty `--language`     | 2    | "Use ISO date (2026-01-01) or relative (90d, 12w, 6m)."                                                      |
+| `LocalStateSchemaMismatch` | `.ingraft/state/*.json` unknown version   | —    | "Cleared incompatible local state file." (warn, delete, rebuild — not surfaced as a typed error to the user) |
 
-`AddOrgPartialFailure` is intentionally *not* a typed Effect error. Per-repo
+`AddOrgPartialFailure` is intentionally _not_ a typed Effect error. Per-repo
 failures are caught and recorded in the run summary; the command itself
 completes successfully when at least one repo succeeded.
 
@@ -458,27 +458,27 @@ Existing test layout under `packages/cli/tests/` with Bun's test runner.
 
 **Pure-function unit tests:**
 
-| File                                          | Coverage                                                                                                                                                            |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/domain/org-filter.test.ts`             | `parseSince` happy + error paths; filter composition (language ∧ since ∧ archived ∧ forks ∧ visibility ∧ search) over a hand-built `OrgRepository[]`.               |
-| `tests/tui/add-org/state.test.ts`             | `dispatchAddOrg` per action; mode transitions; `filteredRepos` derivation; selection persists across filter changes; pre-vendored repos excluded from default sel.  |
-| `tests/config/local-state.test.ts`            | Round-trip read/write; TTL expiry; schema-version mismatch deletes and rebuilds; corrupt JSON deletes and rebuilds; cache miss path.                                |
-| `tests/services/github-repo-meta.test.ts`     | `classifyRepo` truth table: own (owner == login), own (owner in orgs), fork (not own, isFork=true), upstream (not own, isFork=false), unknown (no meta), non-github (no host match). |
+| File                                      | Coverage                                                                                                                                                                             |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `tests/domain/org-filter.test.ts`         | `parseSince` happy + error paths; filter composition (language ∧ since ∧ archived ∧ forks ∧ visibility ∧ search) over a hand-built `OrgRepository[]`.                                |
+| `tests/tui/add-org/state.test.ts`         | `dispatchAddOrg` per action; mode transitions; `filteredRepos` derivation; selection persists across filter changes; pre-vendored repos excluded from default sel.                   |
+| `tests/config/local-state.test.ts`        | Round-trip read/write; TTL expiry; schema-version mismatch deletes and rebuilds; corrupt JSON deletes and rebuilds; cache miss path.                                                 |
+| `tests/services/github-repo-meta.test.ts` | `classifyRepo` truth table: own (owner == login), own (owner in orgs), fork (not own, isFork=true), upstream (not own, isFork=false), unknown (no meta), non-github (no host match). |
 
 **Service tests with mocked process spawner:**
 
-| File                                | Coverage                                                                                                                                |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/services/github-org.test.ts`         | Mock `gh repo list --json` stdout → parsed `OrgRepository[]`; `--limit 1000` cap; `gh` missing → typed error; auth stderr → typed error. |
+| File                                            | Coverage                                                                                                                                                                  |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/services/github-org.test.ts`             | Mock `gh repo list --json` stdout → parsed `OrgRepository[]`; `--limit 1000` cap; `gh` missing → typed error; auth stderr → typed error.                                  |
 | `tests/services/github-repo-meta-fetch.test.ts` | Mock `gh api user`, `gh api user/orgs`, `gh repo view --json` → typed `UserIdentity` / `RepoMeta`; cache write through `LocalState` on success; cache untouched on error. |
 
 **Integration tests (real `git`, fake remote):**
 
-| File                                   | Coverage                                                                                                                                                                                                                   |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/commands/add-org.test.ts`       | Non-interactive `--yes` end-to-end: discover → filter → parallel add into a temp git repo with file:// remote. Verify (a) `vendor/<owner>/<repo>` prefix, (b) trailers, (c) one repo failing doesn't abort others, (d) cache populated. |
-| `tests/commands/add.test.ts` (modify)  | New cases for the prefix-shape change; existing fixtures keep their old-shape expectations to prove no migration is needed.                                                                                                |
-| `tests/commands/doctor.test.ts` (modify) | Three vendored fixtures (own/fork/upstream) with seeded `user.json` and `repo-meta.json`. Assert `Type` column rendering and the `--json` `repoType` field. Non-GitHub vendored repo renders `non-github`. |
+| File                                     | Coverage                                                                                                                                                                                                                                |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/commands/add-org.test.ts`         | Non-interactive `--yes` end-to-end: discover → filter → parallel add into a temp git repo with file:// remote. Verify (a) `vendor/<owner>/<repo>` prefix, (b) trailers, (c) one repo failing doesn't abort others, (d) cache populated. |
+| `tests/commands/add.test.ts` (modify)    | New cases for the prefix-shape change; existing fixtures keep their old-shape expectations to prove no migration is needed.                                                                                                             |
+| `tests/commands/doctor.test.ts` (modify) | Three vendored fixtures (own/fork/upstream) with seeded `user.json` and `repo-meta.json`. Assert `Type` column rendering and the `--json` `repoType` field. Non-GitHub vendored repo renders `non-github`.                              |
 
 **Not tested:**
 

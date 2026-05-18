@@ -1,15 +1,12 @@
+import { describe, expect, test } from "bun:test"
+import { spawnSync } from "node:child_process"
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { spawnSync } from "node:child_process"
 
 import { NodeServices } from "@effect/platform-node"
-import { describe, expect, test } from "bun:test"
 import { Effect, Layer } from "effect"
 
-import { GitMetadataLive } from "../src/services/git-metadata.ts"
-import { GitLive } from "../src/services/git.ts"
-import { LocalState, LocalStateLive } from "../src/services/local-state.ts"
 import { RuntimeConfigLive } from "../src/app/runtime.ts"
 import {
   listVendored,
@@ -17,6 +14,9 @@ import {
   parseVendoredLog,
   parseVendoredLogWithDiagnostics
 } from "../src/domain/vendor-state.ts"
+import { GitMetadataLive } from "../src/services/git-metadata.ts"
+import { GitLive } from "../src/services/git.ts"
+import { LocalState, LocalStateLive } from "../src/services/local-state.ts"
 
 describe("vendor state parsing", () => {
   test("parses vendored records from isomorphic-git commit objects", () => {
@@ -272,10 +272,7 @@ describe("listVendored with local state", () => {
     const cwd = mkdtempSync(join(tmpdir(), "ingraft-merge-"))
     const { execSync } = await import("node:child_process")
     execSync("git init -q", { cwd })
-    execSync(
-      "git config user.email tests@example.com && git config user.name tests",
-      { cwd }
-    )
+    execSync("git config user.email tests@example.com && git config user.name tests", { cwd })
     execSync("git commit --allow-empty -m init -q", { cwd })
 
     mkdirSync(join(cwd, ".git", "ingraft"), { recursive: true })
@@ -319,9 +316,9 @@ describe("listVendored with local state", () => {
       )
     )
 
-    expect(
-      repos.some((repo) => repo.prefix === "vendor/effect" && repo.localOnly === true)
-    ).toBe(true)
+    expect(repos.some((repo) => repo.prefix === "vendor/effect" && repo.localOnly === true)).toBe(
+      true
+    )
   })
 })
 

@@ -4,15 +4,15 @@ import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { Effect, Layer } from "effect"
 import { NodeServices } from "@effect/platform-node"
+import { Effect, Layer } from "effect"
+
 import { LiveLayer } from "../src/app/layers.ts"
+import { RuntimeConfigLive } from "../src/app/runtime.ts"
+import { readForkMode, writeForkMode, detectFork } from "../src/domain/fork-mode.ts"
+import { GitHubCli } from "../src/services/gh.ts"
 import { GitMetadataLive } from "../src/services/git-metadata.ts"
 import { GitLive } from "../src/services/git.ts"
-import { GitHubCli } from "../src/services/gh.ts"
-import { RuntimeConfigLive } from "../src/app/runtime.ts"
-
-import { readForkMode, writeForkMode, detectFork } from "../src/domain/fork-mode.ts"
 
 const initRepo = () => {
   const cwd = mkdtempSync(join(tmpdir(), "ingraft-forkmode-"))
@@ -47,7 +47,10 @@ describe("fork mode config", () => {
     process.chdir(cwd)
 
     await Effect.runPromise(
-      writeForkMode({ cwd, mode: "personal" }).pipe(Effect.provide(LiveLayer), Effect.provide(GitMetadataLive))
+      writeForkMode({ cwd, mode: "personal" }).pipe(
+        Effect.provide(LiveLayer),
+        Effect.provide(GitMetadataLive)
+      )
     )
     const mode = await Effect.runPromise(
       readForkMode({ cwd }).pipe(Effect.provide(LiveLayer), Effect.provide(GitMetadataLive))
@@ -61,7 +64,10 @@ describe("fork mode config", () => {
     process.chdir(cwd)
 
     await Effect.runPromise(
-      writeForkMode({ cwd, mode: "contribute" }).pipe(Effect.provide(LiveLayer), Effect.provide(GitMetadataLive))
+      writeForkMode({ cwd, mode: "contribute" }).pipe(
+        Effect.provide(LiveLayer),
+        Effect.provide(GitMetadataLive)
+      )
     )
     const mode = await Effect.runPromise(
       readForkMode({ cwd }).pipe(Effect.provide(LiveLayer), Effect.provide(GitMetadataLive))
@@ -134,8 +140,7 @@ describe("fork detection", () => {
     const stubGh = Layer.succeed(
       GitHubCli,
       GitHubCli.of({
-        exec: () =>
-          Effect.succeed({ stdout: "", stderr: "command not found", exitCode: 127 })
+        exec: () => Effect.succeed({ stdout: "", stderr: "command not found", exitCode: 127 })
       })
     )
 
@@ -160,8 +165,7 @@ describe("fork detection", () => {
     const stubGh = Layer.succeed(
       GitHubCli,
       GitHubCli.of({
-        exec: () =>
-          Effect.succeed({ stdout: "", stderr: "command not found", exitCode: 127 })
+        exec: () => Effect.succeed({ stdout: "", stderr: "command not found", exitCode: 127 })
       })
     )
 

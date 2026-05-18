@@ -125,9 +125,7 @@ describe("vendor filters", () => {
       maxFileSizeBytes: null
     }
 
-    expect(includedTreePaths({ entries, filter })).toEqual([
-      "packages/effect/src/effect.ts"
-    ])
+    expect(includedTreePaths({ entries, filter })).toEqual(["packages/effect/src/effect.ts"])
   })
 
   test("includedTreePaths intersects include with exclude (allow-list then deny-list)", () => {
@@ -231,6 +229,14 @@ describe("globToRegExp", () => {
     expect(re.test("a/x/y/b.ts")).toBe(true)
     expect(re.test("ab.ts")).toBe(false)
     expect(re.test("a/c.ts")).toBe(false)
+  })
+
+  test("leading **/ matches root-level and nested files", () => {
+    const re = globToRegExp("**/x.ts")
+    expect(re.test("x.ts")).toBe(true)
+    expect(re.test("src/x.ts")).toBe(true)
+    expect(re.test("src/lib/x.ts")).toBe(true)
+    expect(re.test("src/x.tsx")).toBe(false)
   })
 
   test("single * matches one path segment", () => {

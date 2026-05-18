@@ -15,10 +15,7 @@ const RELATIVE = /^(\d+)([dwm])$/
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
-export const parseSince = (
-  input: string | null,
-  now: Date = new Date()
-): Option.Option<Date> => {
+export const parseSince = (input: string | null, now: Date = new Date()): Option.Option<Date> => {
   const trimmed = (input ?? "").trim().toLowerCase()
   if (trimmed.length === 0) return Option.none()
   const match = RELATIVE.exec(trimmed)
@@ -39,30 +36,21 @@ export const parseSince = (
   return Option.some(new Date(parsed))
 }
 
-const matchesLanguage = (
-  primary: string | null,
-  languages: ReadonlyArray<string>
-): boolean => {
+const matchesLanguage = (primary: string | null, languages: ReadonlyArray<string>): boolean => {
   if (languages.length === 0) return true
   if (primary === null) return false
   const lower = primary.toLowerCase()
   return languages.some((value) => value.toLowerCase() === lower)
 }
 
-const matchesSince = (
-  pushedAt: string | null,
-  cutoff: Option.Option<Date>
-): boolean =>
+const matchesSince = (pushedAt: string | null, cutoff: Option.Option<Date>): boolean =>
   Option.match(cutoff, {
     onNone: () => true,
-    onSome: (date) =>
-      pushedAt !== null && new Date(pushedAt).getTime() >= date.getTime()
+    onSome: (date) => pushedAt !== null && new Date(pushedAt).getTime() >= date.getTime()
   })
 
-const matchesVisibility = (
-  visibility: string,
-  selected: OrgFilter["visibility"]
-): boolean => (selected === "all" ? true : visibility === selected)
+const matchesVisibility = (visibility: string, selected: OrgFilter["visibility"]): boolean =>
+  selected === "all" ? true : visibility === selected
 
 const matchesSearch = (repo: OrgRepository, search: string): boolean => {
   const trimmed = search.trim().toLowerCase()

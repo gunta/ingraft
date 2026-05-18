@@ -182,6 +182,9 @@ export const globToRegExp = (pattern: string): RegExp => {
         // followed by a mandatory separator so patterns like src/**/*.ts don't match srca.ts
         source = source.slice(0, -1) + "(?:/[^/]+)*/"
         index += 2 // skip the second * and the following /
+      } else if (index === 0 && nextSlash) {
+        source += "(?:[^/]+/)*"
+        index += 2 // skip the second * and the following /
       } else {
         source += ".*"
         index += 1
@@ -237,8 +240,7 @@ export const includedTreePaths = ({
 }: IncludedTreePathsParams): ReadonlyArray<string> =>
   entries
     .filter(
-      (entry) =>
-        entry.path.length > 0 && isIncluded(entry, filter) && !isExcluded(entry, filter)
+      (entry) => entry.path.length > 0 && isIncluded(entry, filter) && !isExcluded(entry, filter)
     )
     .map((entry) => entry.path)
     .sort((a, b) => a.localeCompare(b))

@@ -154,7 +154,7 @@ export const dispatchAddOrg = (state: AddOrgState, action: AddOrgAction): AddOrg
     case "Confirm":
       return { ...state, mode: "confirming-run" }
     case "Cancel":
-      return { ...state, mode: "browsing" }
+      return { ...state, mode: "done" }
     case "StartRun":
       return { ...state, mode: "running" }
     case "TickProgress": {

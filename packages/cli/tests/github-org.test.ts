@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+
 import { Effect, Exit } from "effect"
 
 import { RuntimeConfig } from "../src/app/runtime.ts"
@@ -139,8 +140,7 @@ describe("listOrgRepos", () => {
   test("fails with GitHubCliMissing on unparseable gh stdout", async () => {
     const exit = await Effect.runPromiseExit(
       provide(listOrgRepos({ owner: "gunta" }), {
-        exec: () =>
-          Effect.succeed({ stdout: "not-json", stderr: "", exitCode: 0 })
+        exec: () => Effect.succeed({ stdout: "not-json", stderr: "", exitCode: 0 })
       })
     )
     expect(Exit.isFailure(exit)).toBe(true)

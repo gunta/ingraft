@@ -1,9 +1,6 @@
 import { AddOrgAction, type AddOrgState } from "./state.ts"
 
-export const handleAddOrgKey = (
-  key: string,
-  state: AddOrgState
-): AddOrgAction | null => {
+export const handleAddOrgKey = (key: string, state: AddOrgState): AddOrgAction | null => {
   if (state.mode === "done") return null
   switch (key) {
     case "j":

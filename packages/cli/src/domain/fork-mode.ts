@@ -1,7 +1,7 @@
 import { Effect, Schema } from "effect"
 
-import { git } from "../services/git.ts"
 import { GitHubCli } from "../services/gh.ts"
+import { git } from "../services/git.ts"
 
 export type ForkMode = "personal" | "contribute"
 
@@ -28,9 +28,7 @@ const parseForkMode = (value: string): ForkMode | undefined => {
 
 export const readForkMode = ({ cwd }: ReadForkModeParams) =>
   git(["config", "--get", FORK_MODE_CONFIG_KEY], { cwd }).pipe(
-    Effect.map((result) =>
-      result.exitCode === 0 ? parseForkMode(result.stdout) : undefined
-    ),
+    Effect.map((result) => (result.exitCode === 0 ? parseForkMode(result.stdout) : undefined)),
     Effect.catch(() => Effect.succeed(undefined))
   )
 

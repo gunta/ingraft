@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { execSync } from "node:child_process"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -166,6 +166,73 @@ describe("add-org non-interactive", () => {
           listVendored(project).pipe(Effect.provide(LiveLayer), Effect.provide(GitMetadataLive))
         )
         expect(vendored.some((r) => r.name === "ok")).toBe(true)
+      } finally {
+        process.chdir(originalCwd)
+      }
+    } finally {
+      rmSync(upstream, { recursive: true, force: true })
+      rmSync(project, { recursive: true, force: true })
+    }
+  })
+
+  test("passes explicit ref through to each add operation", async () => {
+    const upstream = initUpstreamRepo()
+    const project = initProject()
+    try {
+      execSync("git switch -q -c feature", { cwd: upstream })
+      writeFileSync(join(upstream, "README.md"), "from feature\n")
+      execSync("git add README.md && git commit -m feature -q", { cwd: upstream })
+
+      const upstreamUrl = `file://${upstream}`
+      const orgRepos = [buildOrgRepo({ name: "alpha", url: upstreamUrl })]
+
+      process.chdir(project)
+      try {
+        await Effect.runPromise(
+          addOrgImpl({
+            owner: "gunta",
+            language: [],
+            since: Option.none(),
+            includeArchived: false,
+            includeForks: false,
+            visibility: "all",
+            yes: true,
+            dryRun: false,
+            refresh: false,
+            concurrency: 8,
+            strategy: "clone-ignore",
+            ref: Option.some("feature"),
+            tag: Option.none(),
+            release: Option.none()
+          }).pipe(
+            Effect.provideService(
+              GitHubCli,
+              GitHubCli.of({
+                exec: (args) => {
+                  if (args[0] === "repo" && args[1] === "list") {
+                    return Effect.succeed({
+                      stdout: JSON.stringify(orgRepos),
+                      stderr: "",
+                      exitCode: 0
+                    })
+                  }
+                  return Effect.die(`unexpected gh call: ${args.join(" ")}`)
+                }
+              })
+            ),
+            Effect.provide(LiveLayer),
+            Effect.provide(GitMetadataLive)
+          )
+        )
+
+        const vendored = await Effect.runPromise(
+          listVendored(project).pipe(Effect.provide(LiveLayer), Effect.provide(GitMetadataLive))
+        )
+        const alpha = vendored.find((r) => r.name === "alpha")
+        expect(alpha?.ref).toBe("feature")
+        expect(readFileSync(join(project, alpha!.prefix, "README.md"), "utf-8")).toBe(
+          "from feature\n"
+        )
       } finally {
         process.chdir(originalCwd)
       }

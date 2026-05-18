@@ -1,10 +1,6 @@
 import { Context, Effect, Layer, Option } from "effect"
 
-import {
-  GitHubCliMissing,
-  GitHubCliUnauthenticated,
-  GitHubOrgNotFound
-} from "../domain/errors.ts"
+import { GitHubCliMissing, GitHubCliUnauthenticated, GitHubOrgNotFound } from "../domain/errors.ts"
 import { githubRepoFromInput } from "../domain/repo.ts"
 import { GitHubCli } from "./gh.ts"
 import type { RepoMeta, UserIdentity } from "./local-state.ts"
@@ -72,13 +68,7 @@ export const fetchUserIdentity = () =>
 
 export const fetchRepoMeta = ({ ownerName }: { readonly ownerName: string }) =>
   Effect.gen(function* () {
-    const view = (yield* ghJson([
-      "repo",
-      "view",
-      ownerName,
-      "--json",
-      REPO_VIEW_FIELDS
-    ])) as {
+    const view = (yield* ghJson(["repo", "view", ownerName, "--json", REPO_VIEW_FIELDS])) as {
       readonly isFork: boolean
       readonly parent: { readonly nameWithOwner: string } | null
       readonly visibility: string
@@ -99,17 +89,18 @@ export interface GitHubRepoMetaShape {
     GitHubCliMissing | GitHubCliUnauthenticated | GitHubOrgNotFound,
     GitHubCli
   >
-  readonly repo: (params: { readonly ownerName: string }) => Effect.Effect<
+  readonly repo: (params: {
+    readonly ownerName: string
+  }) => Effect.Effect<
     RepoMeta,
     GitHubCliMissing | GitHubCliUnauthenticated | GitHubOrgNotFound,
     GitHubCli
   >
 }
 
-export class GitHubRepoMeta extends Context.Service<
-  GitHubRepoMeta,
-  GitHubRepoMetaShape
->()("ingraft/GitHubRepoMeta") {}
+export class GitHubRepoMeta extends Context.Service<GitHubRepoMeta, GitHubRepoMetaShape>()(
+  "ingraft/GitHubRepoMeta"
+) {}
 
 export const GitHubRepoMetaLive = Layer.sync(GitHubRepoMeta, () => ({
   user: Effect.fn("GitHubRepoMeta.user")(() => fetchUserIdentity()),

@@ -18,8 +18,8 @@ import {
   VendorStrategyCommandFailed,
   VendoredRepoNotFound
 } from "../domain/errors.ts"
-import { formatVendorFilterTrailer, hasVendorFilter } from "../domain/vendor-filter.ts"
 import { upsertLocalVendorEntry, type LocalVendorEntry } from "../domain/local-state.ts"
+import { formatVendorFilterTrailer, hasVendorFilter } from "../domain/vendor-filter.ts"
 import { listVendored, type VendoredRepo } from "../domain/vendor-state.ts"
 import type { VendorStrategy } from "../domain/vendor-strategy.ts"
 import { PackageVersionSync } from "../package-sync/service.ts"

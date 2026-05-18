@@ -42,8 +42,7 @@ export const computeForkModeReport = ({ cwd, repos }: ComputeForkModeReportParam
     const mode = yield* readForkMode({ cwd })
     const detected = yield* detectFork({ cwd })
     const trackedRepos = repos.filter((repo) => repo.localOnly !== true)
-    const parentNameWithOwner =
-      detected.source === "gh" ? detected.parentNameWithOwner : undefined
+    const parentNameWithOwner = detected.source === "gh" ? detected.parentNameWithOwner : undefined
 
     if (!detected.isFork) {
       return {

@@ -82,9 +82,7 @@ describe("default vendor prefix shape", () => {
     const owner = repo?.nameWithOwner?.split("/")[0]
     const finalName = "effect"
     const defaultPrefix =
-      owner === undefined
-        ? `vendor/${finalName}`
-        : `vendor/${owner}/${finalName}`
+      owner === undefined ? `vendor/${finalName}` : `vendor/${owner}/${finalName}`
     expect(defaultPrefix).toBe("vendor/Effect-TS/effect")
   })
 

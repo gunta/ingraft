@@ -1,8 +1,8 @@
+import { describe, expect, test } from "bun:test"
 import { execSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { describe, expect, test } from "bun:test"
 import { Effect, Option } from "effect"
 
 import { LiveLayer } from "../src/app/layers.ts"
@@ -48,9 +48,7 @@ describe("add --local-only (clone-ignore)", () => {
       "# ingraft: clone-ignore begin"
     )
     expect(existsSync(join(cwd, ".git", "ingraft", "state.json"))).toBe(true)
-    const state = JSON.parse(
-      readFileSync(join(cwd, ".git", "ingraft", "state.json"), "utf-8")
-    )
+    const state = JSON.parse(readFileSync(join(cwd, ".git", "ingraft", "state.json"), "utf-8"))
     expect(state.vendors.map((entry: { prefix: string }) => entry.prefix)).toContain(
       "vendor/upstream"
     )

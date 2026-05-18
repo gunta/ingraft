@@ -1,16 +1,15 @@
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { execSync, spawnSync } from "node:child_process"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-
 import { NodeServices } from "@effect/platform-node"
 import { Effect, Layer, Option } from "effect"
 
 import { LiveLayer } from "../src/app/layers.ts"
-import { computeForkModeReport, fixDoctor } from "../src/commands/doctor.tsx"
 import { addImpl } from "../src/commands/add.tsx"
+import { computeForkModeReport, fixDoctor } from "../src/commands/doctor.tsx"
 import { VENDOR_DIR } from "../src/domain/constants.ts"
 import { EMPTY_VENDOR_FILTER } from "../src/domain/vendor-filter.ts"
 import { listVendored } from "../src/domain/vendor-state.ts"
@@ -316,7 +315,17 @@ describe("doctor Type column classification", () => {
       spawnSync("git", ["init", "-q", "--initial-branch=main"], { cwd: dir })
       spawnSync(
         "git",
-        ["-c", "user.email=t@t", "-c", "user.name=T", "commit", "--allow-empty", "-q", "-m", "init"],
+        [
+          "-c",
+          "user.email=t@t",
+          "-c",
+          "user.name=T",
+          "commit",
+          "--allow-empty",
+          "-q",
+          "-m",
+          "init"
+        ],
         { cwd: dir }
       )
 

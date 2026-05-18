@@ -92,11 +92,12 @@ export const readLocalVendorState = ({ cwd }: ReadLocalVendorStateParams) =>
     const raw = yield* fs.readFileString(target)
     try {
       const decoded = decodeState(JSON.parse(raw))
+      if (decoded.version !== STATE_VERSION) {
+        throw new Error(`unsupported state version ${decoded.version}`)
+      }
       return decoded.vendors.map(normalizeEntry)
     } catch (cause) {
-      yield* Effect.logWarning(
-        `Ignoring corrupt ingraft state.json at ${target}: ${String(cause)}`
-      )
+      yield* Effect.logWarning(`Ignoring corrupt ingraft state.json at ${target}: ${String(cause)}`)
       return [] as ReadonlyArray<LocalVendorEntry>
     }
   })

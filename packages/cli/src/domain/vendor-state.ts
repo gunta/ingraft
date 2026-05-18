@@ -1,9 +1,8 @@
 import { Effect, FileSystem, Option, Path, Result, Schema } from "effect"
 
 import { GitMetadata, type GitMetadataCommit } from "../services/git-metadata.ts"
-import { LocalState } from "../services/local-state.ts"
-import { readLocalVendorState } from "./local-state.ts"
 import { git } from "../services/git.ts"
+import { LocalState } from "../services/local-state.ts"
 import {
   TRAILER_ACTION,
   TRAILER_DIR,
@@ -14,6 +13,7 @@ import {
   TRAILER_SYNC_PACKAGE,
   TRAILER_URL
 } from "./constants.ts"
+import { readLocalVendorState } from "./local-state.ts"
 import {
   EMPTY_VENDOR_FILTER,
   parseVendorFilterTrailer,
@@ -446,11 +446,9 @@ const parseTrailers = (cwd: string) =>
       Effect.map(parseVendoredCommitsWithDiagnostics),
       Effect.catch(() => listVendoredWithGit(cwd))
     )
-    yield* Effect.forEach(
-      parsed.diagnostics,
-      (diagnostic) => Effect.logDebug(diagnostic.reason),
-      { discard: true }
-    )
+    yield* Effect.forEach(parsed.diagnostics, (diagnostic) => Effect.logDebug(diagnostic.reason), {
+      discard: true
+    })
     return parsed.repos
   })
 

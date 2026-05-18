@@ -1,14 +1,14 @@
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { execSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { Effect, Option } from "effect"
 
 import { LiveLayer } from "../src/app/layers.ts"
-import { GitMetadataLive } from "../src/services/git-metadata.ts"
 import { addImpl } from "../src/commands/add.tsx"
 import { removeImpl } from "../src/commands/remove.tsx"
+import { GitMetadataLive } from "../src/services/git-metadata.ts"
 import {
   defaultAddParams,
   initBareUpstream,

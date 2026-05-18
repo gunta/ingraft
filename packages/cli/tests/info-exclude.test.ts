@@ -1,9 +1,9 @@
+import { describe, expect, test } from "bun:test"
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { NodeServices } from "@effect/platform-node"
-import { describe, expect, test } from "bun:test"
 import { Effect } from "effect"
 
 import { updateIgnoreFile } from "../src/project/gitignore.ts"

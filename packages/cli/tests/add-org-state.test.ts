@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test"
 
+import { Option } from "effect"
+
 import type { OrgRepository } from "../src/services/local-state.ts"
 import { handleAddOrgKey } from "../src/tui/add-org/keyboard.ts"
+import { addOrgRepoParams } from "../src/tui/add-org/runner.ts"
 import {
   AddOrgAction,
   createAddOrgState,
@@ -92,6 +95,11 @@ describe("dispatchAddOrg", () => {
     expect(done.mode).toBe("done")
   })
 
+  test("Cancel exits the TUI loop", () => {
+    const canceled = dispatchAddOrg(initial, AddOrgAction.Cancel())
+    expect(canceled.mode).toBe("done")
+  })
+
   test("TickProgress updates runProgress", () => {
     const running = dispatchAddOrg(
       dispatchAddOrg(initial, AddOrgAction.Confirm()),
@@ -129,12 +137,34 @@ describe("handleAddOrgKey", () => {
 
   test("ignores keys in done mode", () => {
     const done = dispatchAddOrg(
-      dispatchAddOrg(
-        dispatchAddOrg(browsing, AddOrgAction.Confirm()),
-        AddOrgAction.StartRun()
-      ),
+      dispatchAddOrg(dispatchAddOrg(browsing, AddOrgAction.Confirm()), AddOrgAction.StartRun()),
       AddOrgAction.FinishRun()
     )
     expect(handleAddOrgKey("j", done)).toBeNull()
+  })
+})
+
+describe("addOrgRepoParams", () => {
+  test("preserves command version selectors for the TUI runner", () => {
+    const state = createAddOrgState({
+      owner: "gunta",
+      repos,
+      vendored: new Set(),
+      strategy: "clone-ignore"
+    })
+    const params = addOrgRepoParams({
+      repo: repos[0]!,
+      state,
+      ref: Option.some("release"),
+      tag: Option.none(),
+      release: Option.none()
+    })
+
+    expect(params.ref).toEqual(Option.some("release"))
+    expect(params.tag).toEqual(Option.none())
+    expect(params.release).toEqual(Option.none())
+    expect(params.repo).toBe("https://github.com/gunta/demo.git")
+    expect(params.name).toEqual(Option.some("alpha"))
+    expect(params.strategy).toBe("clone-ignore")
   })
 })

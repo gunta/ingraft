@@ -3,12 +3,7 @@ import { Command } from "effect/unstable/cli"
 
 import { ok, withCommandTelemetry } from "../app/log.tsx"
 import { RuntimeConfig } from "../app/runtime.ts"
-import {
-  detectFork,
-  readForkMode,
-  writeForkMode,
-  type ForkMode
-} from "../domain/fork-mode.ts"
+import { detectFork, readForkMode, writeForkMode, type ForkMode } from "../domain/fork-mode.ts"
 import { listVendored } from "../domain/vendor-state.ts"
 import { commandInvocation } from "../project/script.ts"
 import { ProjectFiles } from "../project/service.ts"

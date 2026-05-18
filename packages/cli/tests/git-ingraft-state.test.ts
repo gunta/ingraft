@@ -1,9 +1,9 @@
+import { describe, expect, test } from "bun:test"
 import { mkdtempSync, mkdirSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { NodeServices } from "@effect/platform-node"
-import { describe, expect, test } from "bun:test"
 import { Effect } from "effect"
 
 import {
@@ -126,6 +126,25 @@ describe("local-state store", () => {
     const { writeFileSync, mkdirSync } = await import("node:fs")
     mkdirSync(join(cwd, ".git", "ingraft"), { recursive: true })
     writeFileSync(join(cwd, ".git", "ingraft", "state.json"), "{not valid json")
+
+    const result = await Effect.runPromise(
+      readLocalVendorState({ cwd }).pipe(Effect.provide(NodeServices.layer))
+    )
+
+    expect(result).toEqual([])
+  })
+
+  test("returns empty list when state.json uses an unsupported version", async () => {
+    const cwd = makeRepo()
+    const { writeFileSync, mkdirSync } = await import("node:fs")
+    mkdirSync(join(cwd, ".git", "ingraft"), { recursive: true })
+    writeFileSync(
+      join(cwd, ".git", "ingraft", "state.json"),
+      JSON.stringify({
+        version: 999,
+        vendors: [sampleEntry()]
+      })
+    )
 
     const result = await Effect.runPromise(
       readLocalVendorState({ cwd }).pipe(Effect.provide(NodeServices.layer))

@@ -1,8 +1,7 @@
+import { describe, expect, test } from "bun:test"
 import { execSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
-
-import { describe, expect, test } from "bun:test"
 
 import { Effect, Option } from "effect"
 
@@ -111,9 +110,7 @@ test("updating a local-only entry does not create a commit and advances resolved
 
     const headAfter = execSync("git rev-parse HEAD", { cwd }).toString().trim()
     expect(headAfter).toBe(headBefore)
-    const stateAfter = JSON.parse(
-      readFileSync(join(cwd, ".git", "ingraft", "state.json"), "utf-8")
-    )
+    const stateAfter = JSON.parse(readFileSync(join(cwd, ".git", "ingraft", "state.json"), "utf-8"))
     expect(stateAfter.vendors[0].resolvedRef).not.toBe(resolvedBefore)
   } finally {
     process.chdir(originalCwd)

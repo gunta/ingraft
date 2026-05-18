@@ -1,4 +1,13 @@
-import { Context, Effect, FileSystem, Layer, Option, Path, type PlatformError, Schema } from "effect"
+import {
+  Context,
+  Effect,
+  FileSystem,
+  Layer,
+  Option,
+  Path,
+  type PlatformError,
+  Schema
+} from "effect"
 
 const CURRENT_SCHEMA_VERSION = 1
 const STATE_DIR = ".ingraft/state"
@@ -85,13 +94,15 @@ const orgFile = (path: Path.Path, cwd: string, owner: string) =>
   path.join(orgsDir(path, cwd), `${owner}.json`)
 const indexFile = (path: Path.Path, cwd: string) => path.join(cwd, STATE_DIR, "index.json")
 const userFile = (path: Path.Path, cwd: string) => path.join(cwd, STATE_DIR, "user.json")
-const repoMetaFile = (path: Path.Path, cwd: string) =>
-  path.join(cwd, STATE_DIR, "repo-meta.json")
+const repoMetaFile = (path: Path.Path, cwd: string) => path.join(cwd, STATE_DIR, "repo-meta.json")
 
-const readJson = <A>(
-  decode: (input: unknown) => Option.Option<A>,
-  file: string
-) =>
+const hasCurrentSchemaVersion = (value: unknown): boolean =>
+  typeof value === "object" &&
+  value !== null &&
+  "schemaVersion" in value &&
+  (value as { readonly schemaVersion: unknown }).schemaVersion === CURRENT_SCHEMA_VERSION
+
+const readJson = <A>(decode: (input: unknown) => Option.Option<A>, file: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const exists = yield* fs.exists(file).pipe(Effect.catch(() => Effect.succeed(false)))
@@ -111,6 +122,10 @@ const readJson = <A>(
       yield* fs.remove(file).pipe(Effect.ignore)
       return Option.none<A>()
     }
+    if (!hasCurrentSchemaVersion(decoded.value)) {
+      yield* fs.remove(file).pipe(Effect.ignore)
+      return Option.none<A>()
+    }
     return decoded
   })
 
@@ -121,12 +136,10 @@ const writeJson = (file: string, value: unknown) =>
     yield* fs.makeDirectory(path.dirname(file), { recursive: true })
     const tmp = `${file}.tmp.${process.pid}.${Date.now()}`
     const body = JSON.stringify(value, null, 2)
-    yield* fs.writeFileString(tmp, body).pipe(
-      Effect.onError(() => fs.remove(tmp).pipe(Effect.ignore))
-    )
-    yield* fs.rename(tmp, file).pipe(
-      Effect.onError(() => fs.remove(tmp).pipe(Effect.ignore))
-    )
+    yield* fs
+      .writeFileString(tmp, body)
+      .pipe(Effect.onError(() => fs.remove(tmp).pipe(Effect.ignore)))
+    yield* fs.rename(tmp, file).pipe(Effect.onError(() => fs.remove(tmp).pipe(Effect.ignore)))
   })
 
 export interface LocalStateShape {
