@@ -21,7 +21,8 @@ import {
 import { formatVendorFilterTrailer } from "../domain/vendor-filter.ts"
 import { findByName, listVendored, type VendoredRepo } from "../domain/vendor-state.ts"
 import { isLocalIgnoredVendorStrategy } from "../domain/vendor-strategy.ts"
-import { updateGitignore } from "../project/gitignore.ts"
+import { updateGitignore, updateIgnoreFile } from "../project/gitignore.ts"
+import { removeLocalVendorEntry } from "../domain/local-state.ts"
 import { ProjectFiles } from "../project/service.ts"
 import {
   assertCleanTree,
@@ -129,7 +130,10 @@ const removeCloneIgnore = ({ cwd, reposBefore, target }: RemoveCloneIgnoreParams
       cwd,
       prefixes: reposBefore
         .filter(
-          (repo) => isLocalIgnoredVendorStrategy(repo.strategy) && repo.prefix !== target.prefix
+          (repo) =>
+            isLocalIgnoredVendorStrategy(repo.strategy) &&
+            repo.localOnly !== true &&
+            repo.prefix !== target.prefix
         )
         .map((repo) => repo.prefix)
     })
@@ -139,6 +143,27 @@ const removeCloneIgnore = ({ cwd, reposBefore, target }: RemoveCloneIgnoreParams
       message: removeMessage(target)
     })
     if (!committed) yield* emptyCommit({ cwd, message: removeMessage(target) })
+  })
+
+const removeLocalOnly = ({ cwd, reposBefore, target }: RemoveCloneIgnoreParams) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    yield* fs.remove(path.resolve(cwd, target.prefix), {
+      force: true,
+      recursive: true
+    })
+    yield* updateIgnoreFile({
+      cwd,
+      target: "info-exclude",
+      prefixes: reposBefore
+        .filter(
+          (repo) =>
+            repo.localOnly === true && repo.prefix !== target.prefix
+        )
+        .map((repo) => repo.prefix)
+    })
+    yield* removeLocalVendorEntry({ cwd, prefix: target.prefix })
   })
 
 const assertGitFilterRepoInstalled = (cwd: string) =>
@@ -186,21 +211,26 @@ export const removeImpl = ({ dangerouslyRewriteHistory, name }: RemoveCommandPar
     }
 
     yield* info(`Removing ${target.prefix}/`)
-    if (isLocalIgnoredVendorStrategy(target.strategy)) {
+    if (target.localOnly === true) {
+      yield* removeLocalOnly({ cwd, reposBefore, target })
+    } else if (isLocalIgnoredVendorStrategy(target.strategy)) {
       yield* removeCloneIgnore({ cwd, reposBefore, target })
     } else {
       yield* removeFromGit({ cwd, target })
       yield* gitChecked(["commit", "-m", removeMessage(target)], { cwd })
     }
 
-    const projectFiles = yield* ProjectFiles
     const reposAfter = yield* listVendored(cwd)
-    yield* projectFiles.refresh({
-      cwd,
-      repos: reposAfter,
-      commitMessage: `vendor: refresh project vendor files after removing ${target.name}`,
-      editorSettings: true
-    })
+    const trackedRemain = reposAfter.some((repo) => repo.localOnly !== true)
+    if (trackedRemain || target.localOnly !== true) {
+      const projectFiles = yield* ProjectFiles
+      yield* projectFiles.refresh({
+        cwd,
+        repos: reposAfter,
+        commitMessage: `vendor: refresh project vendor files after removing ${target.name}`,
+        editorSettings: true
+      })
+    }
 
     if (dangerouslyRewriteHistory) {
       yield* rewriteVendorPathHistory({ cwd, target })
