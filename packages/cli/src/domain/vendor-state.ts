@@ -1,6 +1,7 @@
 import { Effect, FileSystem, Option, Path, Result, Schema } from "effect"
 
 import { GitMetadata, type GitMetadataCommit } from "../services/git-metadata.ts"
+import { readLocalVendorState } from "./local-state.ts"
 import { git } from "../services/git.ts"
 import {
   TRAILER_ACTION,
@@ -34,7 +35,8 @@ export const VendoredRepoSchema = Schema.Struct({
   filter: VendorFilterSchema,
   syncPackage: Schema.optionalKey(Schema.String.pipe(Schema.check(Schema.isMinLength(1)))),
   sha: Schema.String.pipe(Schema.check(Schema.isMinLength(1))),
-  date: Schema.String.pipe(Schema.check(Schema.isMinLength(1)))
+  date: Schema.String.pipe(Schema.check(Schema.isMinLength(1))),
+  localOnly: Schema.optionalKey(Schema.Boolean)
 })
 
 export type VendoredRepo = typeof VendoredRepoSchema.Type
@@ -438,11 +440,29 @@ export const listVendored = (cwd: string) =>
     yield* Effect.forEach(parsed.diagnostics, (diagnostic) => Effect.logDebug(diagnostic.reason), {
       discard: true
     })
-    return yield* Effect.filter(parsed.repos, (repo) =>
+    const trailerRepos = yield* Effect.filter(parsed.repos, (repo) =>
       repo.strategy === "clone-ignore" || repo.strategy === "cache-link"
         ? Effect.succeed(true)
         : fs.exists(path.resolve(cwd, repo.prefix))
     )
+    const localEntries = yield* readLocalVendorState({ cwd })
+    const trailerByPrefix = new Map(trailerRepos.map((repo) => [repo.prefix, repo] as const))
+    const localRepos = localEntries
+      .filter((entry) => !trailerByPrefix.has(entry.prefix))
+      .map<VendoredRepo>((entry) => ({
+        name: entry.name,
+        prefix: entry.prefix,
+        url: entry.url,
+        ref: entry.ref,
+        ...(entry.resolvedRef === undefined ? {} : { resolvedRef: entry.resolvedRef }),
+        strategy: entry.strategy,
+        filter: entry.filter,
+        ...(entry.syncPackage === undefined ? {} : { syncPackage: entry.syncPackage }),
+        sha: "local-only",
+        date: entry.addedAt,
+        localOnly: true
+      }))
+    return [...trailerRepos, ...localRepos].sort((a, b) => a.name.localeCompare(b.name))
   })
 
 export const findByName = ({ cwd, name }: FindVendoredRepoParams) =>

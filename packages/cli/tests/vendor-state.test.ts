@@ -1,6 +1,14 @@
-import { describe, expect, test } from "bun:test"
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
+import { NodeServices } from "@effect/platform-node"
+import { describe, expect, test } from "bun:test"
+import { Effect } from "effect"
+
+import { GitMetadataLive } from "../src/services/git-metadata.ts"
 import {
+  listVendored,
   parseVendoredCommits,
   parseVendoredLog,
   parseVendoredLogWithDiagnostics
@@ -252,5 +260,56 @@ describe("vendor state parsing", () => {
     expect(result.repos).toEqual([])
     expect(result.diagnostics).toHaveLength(1)
     expect(result.diagnostics[0]?.reason).toContain("filter")
+  })
+})
+
+describe("listVendored with local state", () => {
+  test("includes local-only entries from .git/ingraft/state.json", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "ingraft-merge-"))
+    const { execSync } = await import("node:child_process")
+    execSync("git init -q", { cwd })
+    execSync(
+      "git config user.email tests@example.com && git config user.name tests",
+      { cwd }
+    )
+    execSync("git commit --allow-empty -m init -q", { cwd })
+
+    mkdirSync(join(cwd, ".git", "ingraft"), { recursive: true })
+    writeFileSync(
+      join(cwd, ".git", "ingraft", "state.json"),
+      JSON.stringify({
+        version: 1,
+        vendors: [
+          {
+            name: "effect",
+            prefix: "vendor/effect",
+            url: "https://github.com/Effect-TS/effect.git",
+            ref: "main",
+            resolvedRef: "abc",
+            strategy: "clone-ignore",
+            filter: {
+              exclude: [],
+              excludeDirs: [],
+              excludeExtensions: [],
+              include: [],
+              includeDirs: [],
+              maxFileSizeBytes: null
+            },
+            addedAt: "2026-05-19T00:00:00.000Z"
+          }
+        ]
+      })
+    )
+
+    const repos = await Effect.runPromise(
+      listVendored(cwd).pipe(
+        Effect.provide(GitMetadataLive),
+        Effect.provide(NodeServices.layer)
+      )
+    )
+
+    expect(
+      repos.some((repo) => repo.prefix === "vendor/effect" && repo.localOnly === true)
+    ).toBe(true)
   })
 })
