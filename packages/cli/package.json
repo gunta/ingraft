@@ -50,8 +50,11 @@
     "format:check": "oxfmt . --check",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
+    "link:dev": "bun scripts/link-dev.ts",
+    "prepublishOnly": "bun run build",
     "test": "cd ../.. && bun test packages/cli/tests",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "unlink:dev": "bun scripts/link-dev.ts --remove"
   },
   "dependencies": {
     "@effect/platform-bun": ">=4.0.0-beta.60 || >=4.0.0",

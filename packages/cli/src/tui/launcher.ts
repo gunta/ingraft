@@ -12,8 +12,6 @@ import {
   TuiLaunchFailed,
   TuiRendererFailed
 } from "../domain/errors.ts"
-import { runTuiApp } from "./app.ts"
-import { TuiRendererLive } from "./renderer.ts"
 
 export interface TuiLaunchPlan {
   readonly _tag: "direct" | "spawn"
@@ -65,6 +63,10 @@ export const launchTui = (
   Effect.gen(function* () {
     const plan = yield* tuiLaunchPlan(options)
     if (plan._tag === "direct") {
+      const [{ runTuiApp }, { TuiRendererLive }] = yield* Effect.tryPromise({
+        try: () => Promise.all([import("./app.ts"), import("./renderer.ts")]),
+        catch: (cause) => new TuiLaunchFailed({ command: "direct", cause })
+      })
       return yield* runTuiApp.pipe(Effect.provide(TuiRendererLive))
     }
     const command = plan.command ?? "bun"
