@@ -6,6 +6,8 @@ export interface VendorFilter {
   readonly exclude: ReadonlyArray<string>
   readonly excludeDirs: ReadonlyArray<string>
   readonly excludeExtensions: ReadonlyArray<string>
+  readonly include: ReadonlyArray<string>
+  readonly includeDirs: ReadonlyArray<string>
   readonly maxFileSizeBytes: number | null
 }
 
@@ -13,6 +15,8 @@ export interface VendorFilterOptionParams {
   readonly exclude: ReadonlyArray<string>
   readonly excludeDirs: ReadonlyArray<string>
   readonly excludeExtensions: ReadonlyArray<string>
+  readonly include: ReadonlyArray<string>
+  readonly includeDirs: ReadonlyArray<string>
   readonly maxFileSize: string | null
 }
 
@@ -33,6 +37,8 @@ export const VendorFilterSchema = Schema.Struct({
   exclude: Schema.Array(Schema.String),
   excludeDirs: Schema.Array(Schema.String),
   excludeExtensions: Schema.Array(Schema.String),
+  include: Schema.optional(Schema.Array(Schema.String)),
+  includeDirs: Schema.optional(Schema.Array(Schema.String)),
   maxFileSizeBytes: Schema.NullOr(Schema.Number)
 })
 
@@ -40,6 +46,8 @@ export const EMPTY_VENDOR_FILTER: VendorFilter = {
   exclude: [],
   excludeDirs: [],
   excludeExtensions: [],
+  include: [],
+  includeDirs: [],
   maxFileSizeBytes: null
 }
 
@@ -89,6 +97,8 @@ export const hasVendorFilter = (filter: VendorFilter): boolean =>
   filter.exclude.length > 0 ||
   filter.excludeDirs.length > 0 ||
   filter.excludeExtensions.length > 0 ||
+  filter.include.length > 0 ||
+  filter.includeDirs.length > 0 ||
   filter.maxFileSizeBytes !== null
 
 export const parseSizeToBytes = (value: string) =>
@@ -113,12 +123,16 @@ export const vendorFilterFromOptions = ({
   exclude,
   excludeDirs,
   excludeExtensions,
+  include,
+  includeDirs,
   maxFileSize
 }: VendorFilterOptionParams) =>
   Effect.gen(function* () {
     const normalizedExclude = yield* normalizedList(exclude, normalizePathLike)
     const normalizedDirs = yield* normalizedList(excludeDirs, normalizePathLike)
     const normalizedExtensions = yield* normalizedList(excludeExtensions, normalizeExtension)
+    const normalizedInclude = yield* normalizedList(include, normalizePathLike)
+    const normalizedIncludeDirs = yield* normalizedList(includeDirs, normalizePathLike)
     const maxFileSizeBytes =
       maxFileSize === null || maxFileSize.trim().length === 0
         ? null
@@ -128,6 +142,8 @@ export const vendorFilterFromOptions = ({
       exclude: normalizedExclude,
       excludeDirs: normalizedDirs,
       excludeExtensions: normalizedExtensions,
+      include: normalizedInclude,
+      includeDirs: normalizedIncludeDirs,
       maxFileSizeBytes
     } satisfies VendorFilter
   })
@@ -141,6 +157,15 @@ const pathExtension = (value: string): string => {
 const inExcludedDir = (relativePath: string, excludeDirs: ReadonlyArray<string>): boolean =>
   excludeDirs.some((dir) => relativePath === dir || relativePath.startsWith(`${dir}/`))
 
+const inIncludedDir = (relativePath: string, includeDirs: ReadonlyArray<string>): boolean =>
+  includeDirs.some((dir) => relativePath === dir || relativePath.startsWith(`${dir}/`))
+
+const isIncluded = (entry: GitTreeEntry, filter: VendorFilter): boolean => {
+  if (filter.include.length === 0 && filter.includeDirs.length === 0) return true
+  if (inIncludedDir(entry.path, filter.includeDirs)) return true
+  return matchesAnyGlob(entry.path, filter.include)
+}
+
 const regexpEscape = (char: string): string => (/[|\\{}()[\]^$+?.]/.test(char) ? `\\${char}` : char)
 
 const globToRegExp = (pattern: string): RegExp => {
@@ -149,8 +174,17 @@ const globToRegExp = (pattern: string): RegExp => {
     const char = pattern[index]
     const next = pattern[index + 1]
     if (char === "*" && next === "*") {
-      source += ".*"
-      index += 1
+      // When /**/ appears, allow zero or more path segments (e.g. src/**/*.ts matches src/index.ts)
+      const prevSlash = index > 0 && pattern[index - 1] === "/"
+      const nextSlash = pattern[index + 2] === "/"
+      if (prevSlash && nextSlash) {
+        // Remove the preceding "/" we already added, then emit optional segment group
+        source = source.slice(0, -1) + "(?:/.*)?"
+        index += 2 // skip the second * and the following /
+      } else {
+        source += ".*"
+        index += 1
+      }
     } else if (char === "*") {
       source += "[^/]*"
     } else if (char === "?") {
@@ -201,7 +235,10 @@ export const includedTreePaths = ({
   filter
 }: IncludedTreePathsParams): ReadonlyArray<string> =>
   entries
-    .filter((entry) => entry.path.length > 0 && !isExcluded(entry, filter))
+    .filter(
+      (entry) =>
+        entry.path.length > 0 && isIncluded(entry, filter) && !isExcluded(entry, filter)
+    )
     .map((entry) => entry.path)
     .sort((a, b) => a.localeCompare(b))
 
@@ -210,5 +247,13 @@ export const formatVendorFilterTrailer = (filter: VendorFilter): string =>
 
 export const parseVendorFilterTrailer = (value: string): VendorFilter => {
   if (value.trim().length === 0) return EMPTY_VENDOR_FILTER
-  return Schema.decodeUnknownSync(VendorFilterSchema)(JSON.parse(value))
+  const decoded = Schema.decodeUnknownSync(VendorFilterSchema)(JSON.parse(value))
+  return {
+    exclude: decoded.exclude,
+    excludeDirs: decoded.excludeDirs,
+    excludeExtensions: decoded.excludeExtensions,
+    include: decoded.include ?? [],
+    includeDirs: decoded.includeDirs ?? [],
+    maxFileSizeBytes: decoded.maxFileSizeBytes
+  }
 }

@@ -37,6 +37,8 @@ describe("vendor state parsing", () => {
           exclude: [],
           excludeDirs: [],
           excludeExtensions: [],
+          include: [],
+          includeDirs: [],
           maxFileSizeBytes: null
         },
         syncPackage: "effect",
@@ -75,6 +77,8 @@ describe("vendor state parsing", () => {
           exclude: [],
           excludeDirs: [],
           excludeExtensions: [],
+          include: [],
+          includeDirs: [],
           maxFileSizeBytes: null
         },
         sha: "new-sha",
@@ -88,6 +92,8 @@ describe("vendor state parsing", () => {
       exclude: ["*.snap"],
       excludeDirs: ["docs"],
       excludeExtensions: ["png"],
+      include: [],
+      includeDirs: [],
       maxFileSizeBytes: 1048576
     }
     const log = [
