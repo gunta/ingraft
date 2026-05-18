@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import type { OrgRepository } from "../src/services/local-state.ts"
+import { handleAddOrgKey } from "../src/tui/add-org/keyboard.ts"
 import {
   AddOrgAction,
   createAddOrgState,
@@ -101,5 +102,39 @@ describe("dispatchAddOrg", () => {
       AddOrgAction.TickProgress({ id: "gunta/alpha", status: "success" })
     )
     expect(ticked.runProgress.get("gunta/alpha")).toBe("success")
+  })
+})
+
+describe("handleAddOrgKey", () => {
+  const browsing = initial
+
+  test.each([
+    ["j", "MoveDown"],
+    ["k", "MoveUp"],
+    [" ", "ToggleSelected"],
+    ["a", "SelectAllFiltered"],
+    ["c", "ClearSelection"],
+    ["A", "ToggleArchived"],
+    ["F", "ToggleForks"],
+    ["q", "Cancel"]
+  ] as const)("maps %s to %s", (key, tag) => {
+    const action = handleAddOrgKey(key, browsing)
+    expect(action?._tag).toBe(tag)
+  })
+
+  test("Enter confirms when in browsing mode", () => {
+    const action = handleAddOrgKey("\r", browsing)
+    expect(action?._tag).toBe("Confirm")
+  })
+
+  test("ignores keys in done mode", () => {
+    const done = dispatchAddOrg(
+      dispatchAddOrg(
+        dispatchAddOrg(browsing, AddOrgAction.Confirm()),
+        AddOrgAction.StartRun()
+      ),
+      AddOrgAction.FinishRun()
+    )
+    expect(handleAddOrgKey("j", done)).toBeNull()
   })
 })
