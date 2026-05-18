@@ -19,6 +19,7 @@ import {
   VendoredRepoNotFound
 } from "../domain/errors.ts"
 import { formatVendorFilterTrailer, hasVendorFilter } from "../domain/vendor-filter.ts"
+import { upsertLocalVendorEntry, type LocalVendorEntry } from "../domain/local-state.ts"
 import { listVendored, type VendoredRepo } from "../domain/vendor-state.ts"
 import type { VendorStrategy } from "../domain/vendor-strategy.ts"
 import { PackageVersionSync } from "../package-sync/service.ts"
@@ -30,9 +31,25 @@ import {
   commitPathsIfChanged,
   emptyCommit,
   git,
+  readResolvedRef,
   repoRoot
 } from "../services/git.ts"
 import { RepositoryHosts } from "../services/repository-hosts.ts"
+
+const localEntryFromVendoredRepo = (
+  repo: VendoredRepo,
+  resolvedRef: string | undefined
+): LocalVendorEntry => ({
+  name: repo.name,
+  prefix: repo.prefix,
+  url: repo.url,
+  ref: repo.ref,
+  ...(resolvedRef === undefined ? {} : { resolvedRef }),
+  strategy: repo.strategy,
+  filter: repo.filter,
+  ...(repo.syncPackage === undefined ? {} : { syncPackage: repo.syncPackage }),
+  addedAt: repo.date
+})
 
 export interface SelectUpdateTargetsParams {
   readonly all: boolean
@@ -259,6 +276,13 @@ const updateCacheLink = ({ cwd, repo }: VendoredRepoCommandParams) =>
       cwd,
       prefix: repo.prefix
     })
+    if (repo.localOnly === true) {
+      yield* upsertLocalVendorEntry({
+        cwd,
+        entry: localEntryFromVendoredRepo(repo, checkout.resolvedRef)
+      })
+      return
+    }
     if (checkout.resolvedRef !== repo.resolvedRef) {
       yield* emptyCommit({
         cwd,
@@ -337,13 +361,29 @@ const resolveRepoForUpdate = ({ cwd, repo }: VendoredRepoCommandParams) => {
   })
 }
 
+const syncLocalState = ({ cwd, repo }: VendoredRepoCommandParams) =>
+  Effect.gen(function* () {
+    const resolvedRefValue = yield* readResolvedRef({ cwd, prefix: repo.prefix })
+    yield* upsertLocalVendorEntry({
+      cwd,
+      entry: localEntryFromVendoredRepo(repo, resolvedRefValue)
+    })
+  })
+
 const updateOne = ({ cwd, repo }: VendoredRepoCommandParams) =>
   resolveRepoForUpdate({ cwd, repo }).pipe(
     Effect.tap((resolvedRepo) =>
       info(`Updating ${resolvedRepo.name}: ${resolvedRepo.url} @ ${resolvedRepo.ref}`)
     ),
     Effect.flatMap((resolvedRepo) =>
-      updateByStrategy({ cwd, repo: resolvedRepo }).pipe(Effect.as(resolvedRepo))
+      updateByStrategy({ cwd, repo: resolvedRepo }).pipe(
+        Effect.flatMap(() =>
+          resolvedRepo.localOnly === true
+            ? syncLocalState({ cwd, repo: resolvedRepo })
+            : Effect.void
+        ),
+        Effect.as(resolvedRepo)
+      )
     ),
     Effect.result,
     Effect.flatMap((result) =>
@@ -362,6 +402,8 @@ const refreshAfterUpdate = (cwd: string) =>
   Effect.gen(function* () {
     const projectFiles = yield* ProjectFiles
     const reposAfter = yield* listVendored(cwd)
+    const trackedRepos = reposAfter.filter((repo) => repo.localOnly !== true)
+    if (trackedRepos.length === 0) return
     yield* projectFiles.refresh({
       cwd,
       repos: reposAfter,
