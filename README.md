@@ -77,6 +77,10 @@ ingraft deps --yes
 ingraft context
 ingraft context pack vendor/effect --compress
 ingraft context source zod
+ingraft add Effect-TS/effect --local-only --include-dir packages/effect/src
+git config ingraft.forkMode personal
+ingraft init
+ingraft doctor
 ```
 
 `ingraft` with no arguments opens the interactive dashboard. Use `ingraft deps` for the non-interactive dependency scanner across npm `package.json`, Elixir `mix.exs`, Swift `Package.swift`, and Android Gradle manifests.
@@ -106,3 +110,19 @@ bun run dev:website:local
 The CLI is written with Effect and `@effect/platform` abstractions. The production layer uses `@effect/platform-node`, so non-interactive commands remain usable from Node.js while Bun remains the workspace test/dev runner. The default dashboard uses OpenTUI, so zero-arg `ingraft` launches it with Bun when the command is started from Node.
 
 See [packages/cli/README.md](packages/cli/README.md) for CLI usage and [packages/skill/SKILL.md](packages/skill/SKILL.md) for the skill wrapper.
+
+## Local-only mode
+
+`--local-only` (alias `--no-commit`) vendors a repository entirely outside tracked git state. The ignore block is written to `.git/info/exclude` (untracked, per-clone) and metadata is persisted in `.git/ingraft/state.json` (also untracked). No commits are added to the host repository — vendored source never leaks to a fork's upstream when you push.
+
+The flag is valid only with the `clone-ignore` and `cache-link` strategies. The `subtree` and `submodule` strategies commit upstream source by definition and are incompatible.
+
+When the repo is a fork and you set `git config ingraft.forkMode personal`, `--local-only` becomes the implicit default for `add`. Use `ingraft init` to set fork mode interactively; `ingraft doctor` flags when a fork in personal mode has tracked vendor commits that would push upstream.
+
+## Include filters
+
+In addition to the existing `--exclude`, `--exclude-dir`, `--exclude-ext`, and `--max-file-size` filters, `--include` and `--include-dir` provide positive selection — only matching paths are vendored. Combine for fine-grained control:
+
+```sh
+ingraft add Effect-TS/effect --include-dir packages/effect/src --include 'src/**/*.ts' --exclude '*.snap'
+```

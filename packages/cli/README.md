@@ -61,6 +61,11 @@ ingraft add Effect-TS/effect --strategy submodule
 ingraft add Effect-TS/effect --strategy clone-ignore
 ingraft add Effect-TS/effect --strategy cache-link
 ingraft add Effect-TS/effect --cloudflare-artifact
+ingraft add Effect-TS/effect --local-only
+ingraft add Effect-TS/effect --no-commit
+ingraft add Effect-TS/effect --include-dir packages/effect/src
+ingraft add Effect-TS/effect --include 'src/**/*.ts'
+ingraft add Effect-TS/effect --local-only --include-dir packages/effect
 ingraft update effect
 ingraft update --all
 ingraft list
@@ -77,6 +82,12 @@ ingraft remove effect
 ingraft remove effect --dangerously-rewrite-history
 ingraft refresh
 ```
+
+## Local-only mode and include filters
+
+- `--local-only` (alias `--no-commit`) writes the vendor ignore to `.git/info/exclude` (untracked) and persists metadata in `.git/ingraft/state.json` (untracked). It is valid only with `clone-ignore` and `cache-link`. When `git config ingraft.forkMode personal` is set, `--local-only` becomes the implicit default.
+- `--include` and `--include-dir` are positive filters. When set, only matching paths are vendored. Combine with `--exclude*` for fine-grained selection.
+- `ingraft init` prompts for `ingraft.forkMode` (personal or contribute) when a fork is detected and the mode is unset. `ingraft doctor` warns when personal mode leaves tracked vendor commits on a branch.
 
 Running `ingraft` with no arguments opens the interactive dashboard. Use `ingraft deps` for the non-interactive package scan: it reads project `package.json`, `mix.exs`, `Package.swift`, Gradle build files, and Gradle version catalogs; resolves npm, Hex, Swift source, and Maven SCM metadata; groups packages that share the same source repo; and asks which source repos to add or update. Passing positional targets is shorthand for adding them, so `ingraft zod hex:jason swift:apple/swift-argument-parser Effect-TS/effect` routes npm, Hex, Swift, and GitHub source context in one run. Repository aliases expand before package resolution, so `ingraft add effect` expands to `Effect-TS/effect`, and `ingraft add convex` expands to the Convex client and helper repositories. `deps --yes` processes every matched task without prompting; `deps --json` prints the detected candidates and planned tasks for tools such as the dashboard.
 

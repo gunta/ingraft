@@ -45,6 +45,9 @@ Do not run `scripts/vendor.ts` from the repository. The skill intentionally dele
 | "detect optional context tools"              | `bunx ingraft@latest context`                             |
 | "pack repository or vendor context for chat" | `bunx ingraft@latest context pack`                        |
 | "fetch dependency source path"               | `bunx ingraft@latest context source <package>`            |
+| "vendor without committing", "fork-safe vendor"      | `bunx ingraft@latest add <repo> --local-only`            |
+| "vendor only these dirs"                              | `bunx ingraft@latest add <repo> --include-dir <path>`    |
+| "configure fork mode"                                 | `bunx ingraft@latest init`                                |
 | "remove durable source context"              | `bunx ingraft@latest remove <name>`                       |
 | "purge vendored source from git history"     | See "Destructive history rewrite" below                   |
 
@@ -70,6 +73,11 @@ bunx ingraft@latest add Effect-TS/effect --strategy subtree
 bunx ingraft@latest add Effect-TS/effect --strategy submodule
 bunx ingraft@latest add Effect-TS/effect --strategy clone-ignore
 bunx ingraft@latest add Effect-TS/effect --strategy cache-link
+bunx ingraft@latest add Effect-TS/effect --local-only
+bunx ingraft@latest add Effect-TS/effect --no-commit
+bunx ingraft@latest add Effect-TS/effect --include-dir packages/effect/src
+bunx ingraft@latest add Effect-TS/effect --include 'src/**/*.ts'
+bunx ingraft@latest add Effect-TS/effect --local-only --include-dir packages/effect
 bunx ingraft@latest update effect
 bunx ingraft@latest update --all
 bunx ingraft@latest list
@@ -95,6 +103,9 @@ bunx ingraft@latest refresh
 - Hex package targets use `mix.lock` when available and fall back to Hex package metadata.
 - Swift package targets read direct `Package.swift` source URLs. Android package targets read Gradle coordinates and Maven POM SCM metadata.
 - Running `ingraft` with no arguments opens the interactive TUI. Agents should use `ingraft deps` for the non-interactive package scan.
+- `--local-only` (alias `--no-commit`) writes the vendor ignore to `.git/info/exclude` (untracked) and persists metadata in `.git/ingraft/state.json` (untracked). It is valid only with `clone-ignore` and `cache-link`. When `git config ingraft.forkMode personal` is set, `--local-only` becomes the implicit default.
+- `--include` and `--include-dir` are positive filters. When set, only matching paths are vendored. Combine with `--exclude*` for fine-grained selection.
+- `ingraft init` prompts for `ingraft.forkMode` (personal or contribute) when a fork is detected and the mode is unset. `ingraft doctor` warns when personal mode leaves tracked vendor commits on a branch.
 - `doctor` is the first diagnostic command to run when tooling/editor ignore behavior looks wrong.
 - `doctor --fix` repairs generated agent docs, repository hygiene files, editor settings, and detected tool ignores before reporting.
 - `context` detects curated optional context tools. `context pack` wraps Repomix for snapshots, and `context source` wraps OpenSrc for local source paths.
