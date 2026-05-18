@@ -85,12 +85,45 @@ const selectMany = ({ choices, message }: SelectManyParams) =>
     return indexes.map((index) => choices[index]).filter((choice) => choice !== undefined)
   })
 
+export interface SelectOneParams {
+  readonly choices: ReadonlyArray<SelectionChoice>
+  readonly message: string
+}
+
+const selectOne = ({ choices, message }: SelectOneParams) =>
+  Effect.gen(function* () {
+    if (choices.length === 0) return undefined
+    if (!input.isTTY || !output.isTTY) return undefined
+    yield* Effect.tryPromise({
+      try: () => renderInkOnce(<ChoicesView choices={choices} />),
+      catch: (cause) => new InkRenderFailed({ view: "ChoicesView", cause })
+    })
+    const answer = yield* Effect.tryPromise({
+      try: async () => {
+        const rl = createInterface({ input, output })
+        try {
+          return await rl.question(`${message} `)
+        } finally {
+          rl.close()
+        }
+      },
+      catch: (cause) => new PromptInputFailed({ cause })
+    })
+    const index = Number.parseInt(answer.trim(), 10) - 1
+    return Number.isInteger(index) && index >= 0 && index < choices.length
+      ? choices[index]
+      : undefined
+  })
+
 export interface PromptsShape {
   readonly selectMany: (
     params: SelectManyParams
   ) => Effect.Effect<ReadonlyArray<SelectionChoice>, InkRenderFailed | PromptInputFailed>
+  readonly selectOne: (
+    params: SelectOneParams
+  ) => Effect.Effect<SelectionChoice | undefined, InkRenderFailed | PromptInputFailed>
 }
 
 export class Prompts extends Context.Service<Prompts, PromptsShape>()("ingraft/Prompts") {}
 
-export const PromptsLive = Layer.sync(Prompts, () => ({ selectMany }))
+export const PromptsLive = Layer.sync(Prompts, () => ({ selectMany, selectOne }))
