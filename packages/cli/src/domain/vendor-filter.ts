@@ -168,7 +168,7 @@ const isIncluded = (entry: GitTreeEntry, filter: VendorFilter): boolean => {
 
 const regexpEscape = (char: string): string => (/[|\\{}()[\]^$+?.]/.test(char) ? `\\${char}` : char)
 
-const globToRegExp = (pattern: string): RegExp => {
+export const globToRegExp = (pattern: string): RegExp => {
   let source = ""
   for (let index = 0; index < pattern.length; index += 1) {
     const char = pattern[index]
@@ -178,8 +178,9 @@ const globToRegExp = (pattern: string): RegExp => {
       const prevSlash = index > 0 && pattern[index - 1] === "/"
       const nextSlash = pattern[index + 2] === "/"
       if (prevSlash && nextSlash) {
-        // Remove the preceding "/" we already added, then emit optional segment group
-        source = source.slice(0, -1) + "(?:/.*)?"
+        // Remove the preceding "/" we already added, then emit zero-or-more directory segments
+        // followed by a mandatory separator so patterns like src/**/*.ts don't match srca.ts
+        source = source.slice(0, -1) + "(?:/[^/]+)*/"
         index += 2 // skip the second * and the following /
       } else {
         source += ".*"

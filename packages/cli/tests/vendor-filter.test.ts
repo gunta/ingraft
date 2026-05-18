@@ -5,6 +5,7 @@ import { Effect } from "effect"
 import {
   EMPTY_VENDOR_FILTER,
   formatVendorFilterTrailer,
+  globToRegExp,
   hasVendorFilter,
   includedTreePaths,
   parseGitTreeEntries,
@@ -206,5 +207,43 @@ describe("vendor filters", () => {
     }
 
     expect(parseVendorFilterTrailer(formatVendorFilterTrailer(filter))).toEqual(filter)
+  })
+})
+
+describe("globToRegExp", () => {
+  test("/**/ matches zero or more intermediate directory segments", () => {
+    const re = globToRegExp("src/**/*.ts")
+    expect(re.test("src/index.ts")).toBe(true)
+    expect(re.test("src/a/b/index.ts")).toBe(true)
+  })
+
+  test("/**/ does not match prefix-of-directory filenames", () => {
+    const re = globToRegExp("src/**/*.ts")
+    expect(re.test("srca.ts")).toBe(false)
+    expect(re.test("src.ts")).toBe(false)
+    expect(re.test("source/index.ts")).toBe(false)
+  })
+
+  test("/**/ in middle of pattern requires both halves", () => {
+    const re = globToRegExp("a/**/b.ts")
+    expect(re.test("a/b.ts")).toBe(true)
+    expect(re.test("a/x/b.ts")).toBe(true)
+    expect(re.test("a/x/y/b.ts")).toBe(true)
+    expect(re.test("ab.ts")).toBe(false)
+    expect(re.test("a/c.ts")).toBe(false)
+  })
+
+  test("single * matches one path segment", () => {
+    const re = globToRegExp("*.snap")
+    expect(re.test("foo.snap")).toBe(true)
+    expect(re.test("src/foo.snap")).toBe(true) // no slash in pattern → (^|/) prefix, so matches anywhere
+    expect(re.test("foo.ts")).toBe(false)
+  })
+
+  test("? matches a single non-separator character", () => {
+    const re = globToRegExp("file?.ts")
+    expect(re.test("file1.ts")).toBe(true)
+    expect(re.test("file12.ts")).toBe(false)
+    expect(re.test("file/.ts")).toBe(false)
   })
 })
