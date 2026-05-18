@@ -181,6 +181,24 @@ export interface InvalidLocalOnlyStrategyParams {
   readonly strategy: VendorStrategy
 }
 
+export interface GitHubCliMissingParams {
+  readonly cause?: unknown
+}
+
+export interface GitHubCliUnauthenticatedParams {
+  readonly output: string
+}
+
+export interface GitHubOrgNotFoundParams {
+  readonly owner: string
+}
+
+export interface OrgFilterParseFailedParams {
+  readonly flag: string
+  readonly value: string
+  readonly reason: string
+}
+
 export interface GitMetadataFailedParams {
   readonly operation: string
   readonly cwd?: string
@@ -359,6 +377,22 @@ export class InvalidLocalOnlyStrategy extends Data.TaggedError(
   "InvalidLocalOnlyStrategy"
 )<InvalidLocalOnlyStrategyParams> {}
 
+export class GitHubCliMissing extends Data.TaggedError(
+  "GitHubCliMissing"
+)<GitHubCliMissingParams> {}
+
+export class GitHubCliUnauthenticated extends Data.TaggedError(
+  "GitHubCliUnauthenticated"
+)<GitHubCliUnauthenticatedParams> {}
+
+export class GitHubOrgNotFound extends Data.TaggedError(
+  "GitHubOrgNotFound"
+)<GitHubOrgNotFoundParams> {}
+
+export class OrgFilterParseFailed extends Data.TaggedError(
+  "OrgFilterParseFailed"
+)<OrgFilterParseFailedParams> {}
+
 export type VendorError =
   | GitCommandFailed
   | NotGitRepository
@@ -402,6 +436,10 @@ export type VendorError =
   | VendorNotesFailed
   | CommandPlanFailed
   | InvalidLocalOnlyStrategy
+  | GitHubCliMissing
+  | GitHubCliUnauthenticated
+  | GitHubOrgNotFound
+  | OrgFilterParseFailed
 
 const gitCommand = (args: ReadonlyArray<string>) => `git ${args.join(" ")}`
 
@@ -711,6 +749,34 @@ export const errorPresentation = (error: VendorError): ErrorPresentation => {
             ? "subtree commits the upstream source into the host repository, which contradicts --local-only."
             : "submodule commits a gitlink, which contradicts --local-only.",
         hint: "Use --strategy clone-ignore (default) or --strategy cache-link with --local-only.",
+        code: 2
+      }
+    case "GitHubCliMissing":
+      return {
+        title: "GitHub CLI not found",
+        detail: "ingraft add-org requires the `gh` command to discover repositories.",
+        hint: "Install GitHub CLI: `brew install gh`, then `gh auth login`.",
+        code: 127
+      }
+    case "GitHubCliUnauthenticated":
+      return {
+        title: "GitHub CLI is not authenticated",
+        detail: error.output,
+        hint: "Run `gh auth login` to authenticate, then retry.",
+        code: 4
+      }
+    case "GitHubOrgNotFound":
+      return {
+        title: `GitHub owner '${error.owner}' not found`,
+        detail: "gh returned no repositories for this owner, or the owner does not exist.",
+        hint: "Check the spelling, or run `gh auth status` if private repos should be visible.",
+        code: 5
+      }
+    case "OrgFilterParseFailed":
+      return {
+        title: `Invalid value for ${error.flag}`,
+        detail: `${error.value}: ${error.reason}`,
+        hint: "Use ISO date (2026-01-01) or relative (90d, 12w, 6m).",
         code: 2
       }
   }

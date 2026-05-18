@@ -138,7 +138,11 @@ const app = Effect.gen(function* () {
     GitMetadataFailed: handleVendorError,
     MetadataFetchFailed: handleVendorError,
     VendorNotesFailed: handleVendorError,
-    CommandPlanFailed: handleVendorError
+    CommandPlanFailed: handleVendorError,
+    GitHubCliMissing: handleVendorError,
+    GitHubCliUnauthenticated: handleVendorError,
+    GitHubOrgNotFound: handleVendorError,
+    OrgFilterParseFailed: handleVendorError
   })
 )
 
