@@ -9,6 +9,7 @@ import { renderInkOnce } from "./app/ink/render.tsx"
 import { LiveLayer } from "./app/layers.ts"
 import { withCommandTelemetry } from "./app/log.tsx"
 import { RuntimeConfig } from "./app/runtime.ts"
+import { addOrgCmd } from "./commands/add-org.tsx"
 import { addCmd, addManyImpl } from "./commands/add.tsx"
 import { contextCmd } from "./commands/context.tsx"
 import { depsCmd } from "./commands/deps.tsx"
@@ -71,6 +72,7 @@ export const vendorCommand = Command.make("ingraft", { targets: rootTargetsArg }
     initCmd,
     depsCmd,
     addCmd,
+    addOrgCmd,
     updateCmd,
     removeCmd,
     listCmd,
