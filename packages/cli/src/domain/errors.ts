@@ -177,6 +177,10 @@ export interface ToolIgnoreCheckFailedParams {
   readonly cause: unknown
 }
 
+export interface InvalidLocalOnlyStrategyParams {
+  readonly strategy: VendorStrategy
+}
+
 export interface GitMetadataFailedParams {
   readonly operation: string
   readonly cwd?: string
@@ -351,6 +355,10 @@ export class CommandPlanFailed extends Data.TaggedError(
   "CommandPlanFailed"
 )<CommandPlanFailedParams> {}
 
+export class InvalidLocalOnlyStrategy extends Data.TaggedError(
+  "InvalidLocalOnlyStrategy"
+)<InvalidLocalOnlyStrategyParams> {}
+
 export type VendorError =
   | GitCommandFailed
   | NotGitRepository
@@ -393,6 +401,7 @@ export type VendorError =
   | MetadataFetchFailed
   | VendorNotesFailed
   | CommandPlanFailed
+  | InvalidLocalOnlyStrategy
 
 const gitCommand = (args: ReadonlyArray<string>) => `git ${args.join(" ")}`
 
@@ -693,6 +702,16 @@ export const errorPresentation = (error: VendorError): ErrorPresentation => {
         detail: [`args: ${error.args.join(" ")}`, String(error.cause)].join("\n"),
         hint: "Re-run the underlying ingraft subcommand directly to see the full output.",
         code: 3
+      }
+    case "InvalidLocalOnlyStrategy":
+      return {
+        title: `--local-only is not compatible with ${error.strategy}`,
+        detail:
+          error.strategy === "subtree"
+            ? "subtree commits the upstream source into the host repository, which contradicts --local-only."
+            : "submodule commits a gitlink, which contradicts --local-only.",
+        hint: "Use --strategy clone-ignore (default) or --strategy cache-link with --local-only.",
+        code: 2
       }
   }
 }

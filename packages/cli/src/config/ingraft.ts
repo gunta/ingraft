@@ -36,7 +36,10 @@ const DefaultsSchema = Schema.Struct({
   exclude: Schema.optionalKey(Schema.Array(NonEmptyString)),
   "exclude-dirs": Schema.optionalKey(Schema.Array(NonEmptyString)),
   "exclude-extensions": Schema.optionalKey(Schema.Array(NonEmptyString)),
-  "max-file-size": Schema.optionalKey(NonEmptyString)
+  "max-file-size": Schema.optionalKey(NonEmptyString),
+  include: Schema.optionalKey(Schema.Array(NonEmptyString)),
+  "include-dirs": Schema.optionalKey(Schema.Array(NonEmptyString)),
+  "local-only": Schema.optionalKey(Schema.Boolean)
 })
 
 const IngraftConfigSchema = Schema.Struct({
@@ -57,6 +60,9 @@ export interface IngraftAddDefaults {
   readonly exclude: ReadonlyArray<string>
   readonly excludeDirs: ReadonlyArray<string>
   readonly excludeExtensions: ReadonlyArray<string>
+  readonly include: ReadonlyArray<string>
+  readonly includeDirs: ReadonlyArray<string>
+  readonly localOnly: boolean | undefined
   readonly maxFileSize: string | undefined
   readonly ref: string | undefined
   readonly release: string | undefined
@@ -78,6 +84,9 @@ export interface ConfigurableAddParams {
   readonly exclude: ReadonlyArray<string>
   readonly excludeDirs: ReadonlyArray<string>
   readonly excludeExtensions: ReadonlyArray<string>
+  readonly include: ReadonlyArray<string>
+  readonly includeDirs: ReadonlyArray<string>
+  readonly localOnly: boolean
   readonly maxFileSize: Option.Option<string>
   readonly ref: Option.Option<string>
   readonly release: Option.Option<string>
@@ -93,6 +102,9 @@ export const emptyAddDefaults = (): IngraftAddDefaults => ({
   exclude: [],
   excludeDirs: [],
   excludeExtensions: [],
+  include: [],
+  includeDirs: [],
+  localOnly: undefined,
   maxFileSize: undefined,
   ref: undefined,
   release: undefined,
@@ -152,6 +164,9 @@ export const applyAddDefaults = <Params extends ConfigurableAddParams>(
     exclude: mergeStringArrays(defaults.exclude, params.exclude),
     excludeDirs: mergeStringArrays(defaults.excludeDirs, params.excludeDirs),
     excludeExtensions: mergeStringArrays(defaults.excludeExtensions, params.excludeExtensions),
+    include: mergeStringArrays(defaults.include, params.include),
+    includeDirs: mergeStringArrays(defaults.includeDirs, params.includeDirs),
+    localOnly: params.localOnly || defaults.localOnly === true,
     maxFileSize: optionOrDefault(params.maxFileSize, defaults.maxFileSize),
     ref: versionSelectorProvided ? params.ref : optionOrDefault(params.ref, defaults.ref),
     release: versionSelectorProvided
@@ -172,6 +187,9 @@ const defaultsFromRaw = (defaults: RawDefaults | undefined): IngraftAddDefaults 
   exclude: defaults?.exclude ?? [],
   excludeDirs: defaults?.["exclude-dirs"] ?? [],
   excludeExtensions: defaults?.["exclude-extensions"] ?? [],
+  include: defaults?.include ?? [],
+  includeDirs: defaults?.["include-dirs"] ?? [],
+  localOnly: defaults?.["local-only"],
   maxFileSize: defaults?.["max-file-size"],
   ref: defaults?.ref,
   release: defaults?.release,

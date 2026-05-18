@@ -19,6 +19,7 @@ import {
 import {
   InkRenderFailed,
   InvalidAddTargets,
+  InvalidLocalOnlyStrategy,
   SubtreeAddFailed,
   UnsupportedVendorFilter,
   VendorPathAlreadyExists,
@@ -83,10 +84,13 @@ export interface AddCommandParams {
   readonly exclude: ReadonlyArray<string>
   readonly excludeDirs: ReadonlyArray<string>
   readonly excludeExtensions: ReadonlyArray<string>
+  readonly include: ReadonlyArray<string>
+  readonly includeDirs: ReadonlyArray<string>
   readonly maxFileSize: Option.Option<string>
   readonly prefix: Option.Option<string>
   readonly name: Option.Option<string>
   readonly strategy: VendorStrategy
+  readonly localOnly: boolean
 }
 
 export interface AddManyCommandParams extends Omit<AddCommandParams, "repo" | "strategy"> {
@@ -277,6 +281,27 @@ const addMaxFileSizeOption = Flag.string("max-file-size").pipe(
     "Omit files larger than this size from materialized source, for example 1MB or 512KB."
   ),
   Flag.optional
+)
+
+const addIncludeOption = Flag.string("include").pipe(
+  Flag.withDescription(
+    "Repo-relative glob to keep from materialized source. Repeatable, for example --include 'src/**/*.ts'. When set, only matching paths are vendored (allow-list)."
+  ),
+  Flag.atLeast(0)
+)
+
+const addIncludeDirOption = Flag.string("include-dir").pipe(
+  Flag.withDescription(
+    "Repo-relative directory to keep from materialized source. Repeatable, for example --include-dir src. When set, only matching subtrees are vendored (allow-list)."
+  ),
+  Flag.atLeast(0)
+)
+
+const addLocalOnlyOption = Flag.boolean("local-only").pipe(
+  Flag.withAlias("no-commit"),
+  Flag.withDescription(
+    "Vendor entirely outside tracked git state. Writes the ignore block to .git/info/exclude, persists metadata in .git/ingraft/state.json, and skips host repository commits. Valid only with clone-ignore or cache-link."
+  )
 )
 
 const addPrefixOption = Flag.string("prefix").pipe(
@@ -944,6 +969,9 @@ export const addImpl = ({
   exclude,
   excludeDirs,
   excludeExtensions,
+  include,
+  includeDirs,
+  localOnly,
   maxFileSize,
   name,
   prefix,
@@ -1022,6 +1050,8 @@ export const addImpl = ({
       exclude,
       excludeDirs,
       excludeExtensions,
+      include,
+      includeDirs,
       maxFileSize: Option.getOrNull(maxFileSize)
     })
     if (
@@ -1037,6 +1067,9 @@ export const addImpl = ({
               : "cache-link points vendor paths at a shared read-only checkout; filtered materialization needs a project-local strategy"
         })
       )
+    }
+    if (localOnly && (finalStrategy === "subtree" || finalStrategy === "submodule")) {
+      return yield* Effect.fail(new InvalidLocalOnlyStrategy({ strategy: finalStrategy }))
     }
 
     yield* ensureNewVendorTarget({ cwd, finalName, finalPrefix, fs, path })
@@ -1108,10 +1141,13 @@ export const addManyImpl = ({ repos, ...params }: AddManyCommandParams) =>
       yield* addImpl({
         ...addParams,
         repo: target.target,
-        strategy: resolveVendorStrategyPreference({
-          recommended: target.strategy,
-          requested: addParams.strategy
-        })
+        strategy:
+          addParams.localOnly && Option.isNone(addParams.strategy)
+            ? "clone-ignore"
+            : resolveVendorStrategyPreference({
+                recommended: target.strategy,
+                requested: addParams.strategy
+              })
       })
       return
     }
@@ -1129,10 +1165,13 @@ export const addManyImpl = ({ repos, ...params }: AddManyCommandParams) =>
           yield* addImpl({
             ...addParams,
             repo,
-            strategy: resolveVendorStrategyPreference({
-              recommended: target.strategy,
-              requested: addParams.strategy
-            })
+            strategy:
+              addParams.localOnly && Option.isNone(addParams.strategy)
+                ? "clone-ignore"
+                : resolveVendorStrategyPreference({
+                    recommended: target.strategy,
+                    requested: addParams.strategy
+                  })
           }).pipe(
             Effect.match({
               onSuccess: () => progress.complete({ id: repo, label: repo, status: "success" }),
@@ -1164,10 +1203,13 @@ export const addCmd = Command.make(
     exclude: addExcludeOption,
     excludeDirs: addExcludeDirOption,
     excludeExtensions: addExcludeExtOption,
+    include: addIncludeOption,
+    includeDirs: addIncludeDirOption,
     maxFileSize: addMaxFileSizeOption,
     prefix: addPrefixOption,
     name: addNameOption,
-    strategy: addStrategyOption
+    strategy: addStrategyOption,
+    localOnly: addLocalOnlyOption
   },
   addManyImpl
 ).pipe(

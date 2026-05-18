@@ -146,12 +146,12 @@ const runTask = (strategy: Option.Option<VendorStrategy>, task: DependencyVendor
         exclude: [],
         excludeDirs: [],
         excludeExtensions: [],
+        include: [],
+        includeDirs: [],
+        localOnly: false,
         maxFileSize: Option.none(),
-        name: Option.none(),
-        prefix: Option.none(),
         ref: Option.none(),
         release: Option.none(),
-        repo: task.repositoryUrl,
         strategy,
         syncPackage: Option.some(task.syncPackage),
         tag: Option.none()
@@ -161,6 +161,9 @@ const runTask = (strategy: Option.Option<VendorStrategy>, task: DependencyVendor
 
     return yield* addImpl({
       ...addParams,
+      name: Option.none(),
+      prefix: Option.none(),
+      repo: task.repositoryUrl,
       strategy: resolveVendorStrategyPreference({
         recommended: undefined,
         requested: addParams.strategy
