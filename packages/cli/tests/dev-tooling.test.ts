@@ -23,10 +23,14 @@ describe("workspace dev tooling", () => {
     const gitignore = await Bun.file(join(workspaceRoot, ".gitignore")).text()
 
     expect(rootPackage.devDependencies).toMatchObject({
+      hyperfine: expect.any(String),
       portless: expect.any(String),
       turbo: expect.any(String)
     })
     expect(rootPackage.scripts).toMatchObject({
+      bench: "bun scripts/benchmark.ts",
+      "bench:quick": "bun scripts/benchmark.ts --quick",
+      "bench:update-baseline": "bun scripts/benchmark.ts --write-baseline",
       build: "turbo run build",
       check: "turbo run check check:root",
       "check:root": "bun run lint && bun run format:check",

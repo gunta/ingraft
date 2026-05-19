@@ -673,6 +673,57 @@ export const listPackageManifestPaths = (
   cwd: string
 ): Effect.Effect<ReadonlyArray<string>> => listManifestPaths(fs, path, cwd, "package.json")
 
+const listManifestPathsByName = (
+  fs: FileSystem.FileSystem,
+  path: Path.Path,
+  cwd: string,
+  manifestNames: ReadonlyArray<string>
+): Effect.Effect<ReadonlyMap<string, ReadonlyArray<string>>> => {
+  const names = new Set(manifestNames)
+  const emptyManifestMap = () => new Map(manifestNames.map((name) => [name, [] as Array<string>]))
+
+  const walk = (relativeDir: string): Effect.Effect<Map<string, Array<string>>> =>
+    Effect.gen(function* () {
+      const absoluteDir = relativeDir === "" ? cwd : path.resolve(cwd, relativeDir)
+      const entries = yield* fs
+        .readDirectory(absoluteDir)
+        .pipe(Effect.catch(() => Effect.succeed([] as Array<string>)))
+      const nested = yield* Effect.forEach(
+        entries,
+        (entry) =>
+          Effect.gen(function* () {
+            const relativePath = relativeDir === "" ? entry : `${relativeDir}/${entry}`
+            if (isIgnoredManifestPath(relativePath)) return emptyManifestMap()
+            if (names.has(entry)) {
+              const found = emptyManifestMap()
+              found.set(entry, [relativePath])
+              return found
+            }
+            const info = yield* fs.stat(path.resolve(cwd, relativePath)).pipe(Effect.option)
+            if (Option.isNone(info) || info.value.type !== "Directory") return emptyManifestMap()
+            return yield* walk(relativePath)
+          }),
+        { concurrency: 8 }
+      )
+      const found = emptyManifestMap()
+      for (const group of nested) {
+        for (const [name, paths] of group) {
+          found.get(name)?.push(...paths)
+        }
+      }
+      return found
+    })
+
+  return walk("").pipe(
+    Effect.map((found) => {
+      for (const [name, paths] of found) {
+        found.set(name, sortManifestPaths(paths, name))
+      }
+      return found
+    })
+  )
+}
+
 export const listMixManifestPaths = (
   fs: FileSystem.FileSystem,
   path: Path.Path,
@@ -1002,6 +1053,14 @@ export const tagCandidatesForPackageVersion = (
 const npmDescriptor = (packageName: string, spec: string): string =>
   spec === "" || spec === "*" ? packageName : `${packageName}@${spec}`
 
+const exactNpmVersionPattern = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/
+
+const npmRegistrySelectorUrl = (packageName: string, selector: string): string =>
+  `https://registry.npmjs.org/${encodeURIComponent(packageName)}/${encodeURIComponent(selector)}`
+
+const canReadNpmRegistrySelector = (selector: string): boolean =>
+  selector === "latest" || exactNpmVersionPattern.test(selector)
+
 const readDependenciesFromManifests = (
   fs: FileSystem.FileSystem,
   path: Path.Path,
@@ -1313,15 +1372,6 @@ export const detectVendoredPackageVersion = ({
     return Option.none<VendoredPackageVersion>()
   })
 
-const npmDescriptorForProjectVersion = (
-  packageName: string,
-  detected: ProjectPackageVersion
-): string =>
-  Option.match(detected.version, {
-    onNone: () => npmDescriptor(packageName, detected.packageSpec),
-    onSome: (version) => npmDescriptor(packageName, version)
-  })
-
 const npmViewPackageMetadata = (
   executor: ChildProcessSpawner.ChildProcessSpawner["Service"],
   cwd: string,
@@ -1353,17 +1403,74 @@ const npmViewPackageMetadata = (
     })
   )
 
-const npmLatestMetadata = (
+const npmViewPackageMetadataOption = (
   executor: ChildProcessSpawner.ChildProcessSpawner["Service"],
   cwd: string,
-  packageName: string
+  descriptor: string
 ): Effect.Effect<Option.Option<NpmPackageMetadata>> =>
-  npmViewPackageMetadata(executor, cwd, npmDescriptor(packageName, "latest")).pipe(
+  npmViewPackageMetadata(executor, cwd, descriptor).pipe(
     Effect.map((result) =>
       result.exitCode === 0 ? parseNpmPackageMetadata(result.stdout) : Option.none()
     ),
     Effect.catch(() => Effect.succeed(Option.none<NpmPackageMetadata>()))
   )
+
+const npmRegistryPackageMetadata = (
+  client: HttpClient.HttpClient,
+  packageName: string,
+  selector: string
+): Effect.Effect<Option.Option<NpmPackageMetadata>, MetadataFetchFailed> => {
+  const url = npmRegistrySelectorUrl(packageName, selector)
+  return Effect.gen(function* () {
+    const request = HttpClientRequest.get(url).pipe(HttpClientRequest.accept("application/json"))
+    const response = yield* client
+      .execute(request)
+      .pipe(Effect.mapError((cause) => new MetadataFetchFailed({ source: "npm", url, cause })))
+    if (response.status < 200 || response.status >= 300) {
+      return Option.none<NpmPackageMetadata>()
+    }
+    const text = yield* response.text.pipe(
+      Effect.mapError((cause) => new MetadataFetchFailed({ source: "npm", url, cause }))
+    )
+    return parseNpmPackageMetadata(text)
+  })
+}
+
+const npmSelectorMetadata = (
+  client: HttpClient.HttpClient,
+  executor: ChildProcessSpawner.ChildProcessSpawner["Service"],
+  cwd: string,
+  packageName: string,
+  selector: string
+): Effect.Effect<Option.Option<NpmPackageMetadata>> =>
+  canReadNpmRegistrySelector(selector)
+    ? npmRegistryPackageMetadata(client, packageName, selector).pipe(
+        Effect.catch(() =>
+          npmViewPackageMetadataOption(executor, cwd, npmDescriptor(packageName, selector))
+        )
+      )
+    : npmViewPackageMetadataOption(executor, cwd, npmDescriptor(packageName, selector))
+
+const npmProjectVersionMetadata = (
+  client: HttpClient.HttpClient,
+  executor: ChildProcessSpawner.ChildProcessSpawner["Service"],
+  cwd: string,
+  packageName: string,
+  detected: ProjectPackageVersion
+): Effect.Effect<Option.Option<NpmPackageMetadata>> =>
+  Option.match(detected.version, {
+    onNone: () =>
+      npmViewPackageMetadataOption(executor, cwd, npmDescriptor(packageName, detected.packageSpec)),
+    onSome: (version) => npmSelectorMetadata(client, executor, cwd, packageName, version)
+  })
+
+const npmLatestMetadata = (
+  client: HttpClient.HttpClient,
+  executor: ChildProcessSpawner.ChildProcessSpawner["Service"],
+  cwd: string,
+  packageName: string
+): Effect.Effect<Option.Option<NpmPackageMetadata>> =>
+  npmSelectorMetadata(client, executor, cwd, packageName, "latest")
 
 const hexPackageMetadata = (
   client: HttpClient.HttpClient,
@@ -2026,25 +2133,14 @@ const resolvePackageVersion = (
       onSome: Effect.succeed
     })
     const detected = yield* detectProjectPackageVersionWith(fs, path, params.cwd, dependency)
-    const npm = yield* npmViewPackageMetadata(
-      executor,
-      params.cwd,
-      npmDescriptorForProjectVersion(identity.name, detected)
-    ).pipe(Effect.catch(() => Effect.fail(failedSync(params, "npm view could not be executed."))))
-    if (npm.exitCode !== 0) {
-      return yield* Effect.fail(
-        failedSync(
-          params,
-          npm.stderr.trim() || npm.stdout.trim() || "npm view returned no metadata."
-        )
-      )
-    }
-
-    const metadata = yield* Option.match(parseNpmPackageMetadata(npm.stdout), {
-      onNone: () =>
-        Effect.fail(failedSync(params, "npm metadata did not include a usable version.")),
-      onSome: Effect.succeed
-    })
+    const metadata = yield* Option.match(
+      yield* npmProjectVersionMetadata(client, executor, params.cwd, identity.name, detected),
+      {
+        onNone: () =>
+          Effect.fail(failedSync(params, "npm metadata did not include a usable version.")),
+        onSome: Effect.succeed
+      }
+    )
 
     if (Option.isSome(metadata.gitHead)) {
       return {
@@ -2118,29 +2214,16 @@ const resolvePackageSource = (
       spec: "latest"
     }))
     const detected = yield* detectProjectPackageVersionWith(fs, path, params.cwd, dependency)
-    const npm = yield* npmViewPackageMetadata(
-      executor,
-      params.cwd,
-      npmDescriptorForProjectVersion(identity.name, detected)
-    ).pipe(
-      Effect.catch(() =>
-        Effect.fail(failedPackageSource(params, "npm view could not be executed."))
-      )
+    const metadata = yield* Option.match(
+      yield* npmProjectVersionMetadata(client, executor, params.cwd, identity.name, detected),
+      {
+        onNone: () =>
+          Effect.fail(
+            failedPackageSource(params, "npm metadata did not include a usable version.")
+          ),
+        onSome: Effect.succeed
+      }
     )
-    if (npm.exitCode !== 0) {
-      return yield* Effect.fail(
-        failedPackageSource(
-          params,
-          npm.stderr.trim() || npm.stdout.trim() || "npm view returned no metadata."
-        )
-      )
-    }
-
-    const metadata = yield* Option.match(parseNpmPackageMetadata(npm.stdout), {
-      onNone: () =>
-        Effect.fail(failedPackageSource(params, "npm metadata did not include a usable version.")),
-      onSome: Effect.succeed
-    })
     const repoUrl = yield* Option.match(metadata.repositoryUrl, {
       onNone: () =>
         Effect.fail(failedPackageSource(params, "npm metadata did not include a repository URL.")),
@@ -2276,25 +2359,13 @@ const scanPackageDependency = (
       )
     }
 
-    const remoteMetadata = yield* npmLatestMetadata(executor, cwd, dependency.name)
-    const result = yield* npmViewPackageMetadata(
-      executor,
-      cwd,
-      npmDescriptorForProjectVersion(dependency.name, detected)
-    ).pipe(Effect.catch(() => Effect.succeed({ exitCode: 1, stderr: "", stdout: "" })))
-    if (result.exitCode !== 0) {
-      return withRemoteVersion(
-        {
-          ...unavailableCandidate(
-            dependency,
-            result.stderr.trim() || result.stdout.trim() || "npm view returned no metadata"
-          ),
-          versionSource: detected.source
-        },
-        remoteMetadata
-      )
-    }
-    const metadata = parseNpmPackageMetadata(result.stdout)
+    const [remoteMetadata, metadata] = yield* Effect.all(
+      [
+        npmLatestMetadata(client, executor, cwd, dependency.name),
+        npmProjectVersionMetadata(client, executor, cwd, dependency.name, detected)
+      ],
+      { concurrency: 2 }
+    )
     const candidate = Option.match(metadata, {
       onNone: () => ({
         ...unavailableCandidate(dependency, "npm metadata did not include a usable version"),
@@ -2316,18 +2387,27 @@ const scanPackageDependency = (
   )
 
 const listProjectPackageDependencies = (fs: FileSystem.FileSystem, path: Path.Path, cwd: string) =>
-  Effect.all(
-    [
-      listPackageManifestPaths(fs, path, cwd),
-      listMixManifestPaths(fs, path, cwd),
-      listSwiftManifestPaths(fs, path, cwd),
-      listAndroidGradleManifestPaths(fs, path, cwd),
-      listAndroidVersionCatalogPaths(fs, path, cwd)
-    ],
-    { concurrency: 5 }
-  ).pipe(
-    Effect.flatMap(([packageManifests, mixManifests, swiftManifests, gradleManifests, catalogs]) =>
-      Effect.all(
+  listManifestPathsByName(fs, path, cwd, [
+    "package.json",
+    "mix.exs",
+    "Package.swift",
+    "build.gradle",
+    "build.gradle.kts",
+    "libs.versions.toml"
+  ]).pipe(
+    Effect.flatMap((manifestPaths) => {
+      const packageManifests = manifestPaths.get("package.json") ?? []
+      const mixManifests = manifestPaths.get("mix.exs") ?? []
+      const swiftManifests = manifestPaths.get("Package.swift") ?? []
+      const gradleManifests = sortManifestPaths(
+        [
+          ...(manifestPaths.get("build.gradle") ?? []),
+          ...(manifestPaths.get("build.gradle.kts") ?? [])
+        ],
+        "build.gradle"
+      )
+      const catalogs = manifestPaths.get("libs.versions.toml") ?? []
+      return Effect.all(
         [
           readDependenciesFromManifests(fs, path, cwd, packageManifests, packageJsonDependencies),
           readDependenciesFromManifests(fs, path, cwd, mixManifests, mixExsDependencies),
@@ -2337,7 +2417,7 @@ const listProjectPackageDependencies = (fs: FileSystem.FileSystem, path: Path.Pa
         ],
         { concurrency: 5 }
       )
-    ),
+    }),
     Effect.map((manifests) => {
       const dependencies = manifests.flat()
       const seen = new Set<string>()
@@ -2362,7 +2442,7 @@ const scanPackageDependencies = (
       Effect.forEach(
         dependencies,
         (dependency) => scanPackageDependency(client, fs, path, executor, cwd, dependency),
-        { concurrency: 6 }
+        { concurrency: 16 }
       )
     )
   )

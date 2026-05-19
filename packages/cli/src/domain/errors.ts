@@ -211,7 +211,7 @@ export interface GitMetadataFailedParams {
   readonly cause: unknown
 }
 
-export type MetadataFetchSource = "hex" | "maven-search" | "maven-pom"
+export type MetadataFetchSource = "hex" | "maven-search" | "maven-pom" | "npm"
 
 export interface MetadataFetchFailedParams {
   readonly source: MetadataFetchSource
