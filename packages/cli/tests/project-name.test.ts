@@ -23,7 +23,7 @@ describe("project naming", () => {
     expect(cliPackage.name).toBe("ingraft")
     expect(skillPackage.name).toBe("@ingraft/skill")
     expect(cliPackage.bin).toEqual({
-      ingraft: "./dist/bin/ingraft.js"
+      ingraft: "dist/bin/ingraft.js"
     })
     expect(rootSkill).toContain("name: ingraft")
     expect(packagedSkill).toContain("name: ingraft")

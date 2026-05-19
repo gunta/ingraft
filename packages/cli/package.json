@@ -26,7 +26,7 @@
     "directory": "packages/cli"
   },
   "bin": {
-    "ingraft": "./dist/bin/ingraft.js"
+    "ingraft": "dist/bin/ingraft.js"
   },
   "files": [
     "dist",

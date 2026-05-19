@@ -233,7 +233,12 @@ const updatePackageLockVersion = async (version: string): Promise<void> => {
   lock.version = version
   lock.packages ??= {}
   lock.packages[""] ??= {}
-  lock.packages[""].version = version
+  const rootPackage = lock.packages[""]
+  rootPackage.version = version
+  rootPackage.bin = {
+    ...(rootPackage.bin as Record<string, unknown> | undefined),
+    ingraft: "dist/bin/ingraft.js"
+  }
   await writeJson(paths.cliPackageLock, lock)
 }
 
@@ -389,6 +394,11 @@ const checkRelease = async (): Promise<void> => {
   assert(
     lock.packages?.[""]?.version === version,
     "packages/cli/package-lock.json root package version is stale"
+  )
+  assert(
+    (lock.packages?.[""]?.bin as Record<string, unknown> | undefined)?.ingraft ===
+      "dist/bin/ingraft.js",
+    "packages/cli/package-lock.json CLI bin path is stale"
   )
   assert(
     rootPackage.scripts?.["release:prepare"] === "bun scripts/release.ts prepare",
