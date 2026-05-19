@@ -4,6 +4,13 @@ All notable changes to ingraft are recorded here.
 
 ## Unreleased
 
+## 0.3.4 - 2026-05-20
+
+### Changed
+
+- Harden packaged install smoke coverage across Linux, macOS, and Windows in CI.
+- Keep the CI package artifact upload path compatible with GitHub artifact handling and Windows command shims.
+
 ## 0.3.3 - 2026-05-20
 
 ### Changed
