@@ -40,6 +40,7 @@ const git_log_format = "%H%x00%cI%x00%(trailers:key=git-subtree-dir,valueonly)%x
 
 const Cli = struct {
     npm_concurrency: usize,
+    npm_latest_api: []const u8,
     root: []const u8,
     npm_registry: []const u8,
 };
@@ -104,6 +105,7 @@ const ProjectVersion = struct {
 
 const DetectedDependency = struct {
     dependency: Dependency,
+    localMetadata: ?NpmMetadata,
     version: ProjectVersion,
 };
 
@@ -122,6 +124,8 @@ const CandidateJob = struct {
     cli: Cli,
     dependency: Dependency,
     index: usize,
+    latestVersions: *const std.StringHashMap([]const u8),
+    localMetadata: ?NpmMetadata,
     version: ProjectVersion,
 };
 
@@ -166,13 +170,16 @@ fn runDeps(allocator: Allocator, io: Io, cli: Cli) !Output {
 
     var detected: std.ArrayList(DetectedDependency) = .empty;
     for (dependencies) |dependency| {
+        const version = try detectProjectPackageVersion(allocator, io, root_dir, bun_lock_text, dependency.packageName);
         try detected.append(allocator, .{
             .dependency = dependency,
-            .version = try detectProjectPackageVersion(allocator, io, root_dir, bun_lock_text, dependency.packageName),
+            .localMetadata = readLocalPackageMetadata(allocator, io, root_dir, dependency, version.version),
+            .version = version,
         });
     }
 
-    const candidates = try scanDetectedDependencies(allocator, io, cli, detected.items);
+    var latest_versions = try fetchLatestVersionsBatch(allocator, io, cli, detected.items);
+    const candidates = try scanDetectedDependencies(allocator, io, cli, detected.items, &latest_versions);
     const repos = try listVendoredRepos(allocator, io, cli.root);
     const vendored_versions = try detectVendoredVersions(allocator, io, cli.root, repos, candidates);
     const tasks = try dependencyVendorTasks(allocator, candidates, repos, vendored_versions);
@@ -282,6 +289,7 @@ fn scanDetectedDependencies(
     io: Io,
     cli: Cli,
     dependencies: []const DetectedDependency,
+    latest_versions: *const std.StringHashMap([]const u8),
 ) ![]const Candidate {
     var candidates = try allocator.alloc(Candidate, dependencies.len);
     if (dependencies.len == 0) return candidates;
@@ -300,8 +308,8 @@ fn scanDetectedDependencies(
     var active: usize = 0;
     var completed: usize = 0;
     while (next < dependencies.len and active < concurrency) {
-        startCandidateJob(&select, &client, cli, dependencies[next], next) catch {
-            if (active == 0) return scanDetectedDependenciesSerial(allocator, &client, cli, dependencies);
+        startCandidateJob(&select, &client, cli, dependencies[next], latest_versions, next) catch {
+            if (active == 0) return scanDetectedDependenciesSerial(allocator, &client, cli, dependencies, latest_versions);
             break;
         };
         next += 1;
@@ -311,7 +319,7 @@ fn scanDetectedDependencies(
     while (completed < dependencies.len) {
         if (active == 0) {
             while (next < dependencies.len) : (next += 1) {
-                candidates[next] = scanDetectedDependencySerial(std.heap.smp_allocator, &client, cli, dependencies[next]);
+                candidates[next] = scanDetectedDependencySerial(std.heap.smp_allocator, &client, cli, dependencies[next], latest_versions);
                 completed += 1;
             }
             break;
@@ -324,8 +332,8 @@ fn scanDetectedDependencies(
         active -= 1;
 
         if (next < dependencies.len) {
-            startCandidateJob(&select, &client, cli, dependencies[next], next) catch {
-                candidates[next] = scanDetectedDependencySerial(allocator, &client, cli, dependencies[next]);
+            startCandidateJob(&select, &client, cli, dependencies[next], latest_versions, next) catch {
+                candidates[next] = scanDetectedDependencySerial(allocator, &client, cli, dependencies[next], latest_versions);
                 next += 1;
                 completed += 1;
                 continue;
@@ -342,6 +350,7 @@ fn startCandidateJob(
     client: *std.http.Client,
     cli: Cli,
     detected: DetectedDependency,
+    latest_versions: *const std.StringHashMap([]const u8),
     index: usize,
 ) Io.ConcurrentError!void {
     try select.concurrent(.result, scanCandidateJob, .{CandidateJob{
@@ -350,6 +359,8 @@ fn startCandidateJob(
         .cli = cli,
         .dependency = detected.dependency,
         .index = index,
+        .latestVersions = latest_versions,
+        .localMetadata = detected.localMetadata,
         .version = detected.version,
     }});
 }
@@ -359,23 +370,30 @@ fn scanDetectedDependenciesSerial(
     client: *std.http.Client,
     cli: Cli,
     dependencies: []const DetectedDependency,
+    latest_versions: *const std.StringHashMap([]const u8),
 ) ![]const Candidate {
     var candidates = try allocator.alloc(Candidate, dependencies.len);
     for (dependencies, 0..) |dependency, index| {
-        candidates[index] = scanDetectedDependencySerial(std.heap.smp_allocator, client, cli, dependency);
+        candidates[index] = scanDetectedDependencySerial(std.heap.smp_allocator, client, cli, dependency, latest_versions);
     }
     return candidates;
 }
 
-fn scanDetectedDependencySerial(allocator: Allocator, client: *std.http.Client, cli: Cli, detected: DetectedDependency) Candidate {
-    return scanDependencyMetadata(allocator, client, cli, detected.dependency, detected.version) catch
+fn scanDetectedDependencySerial(
+    allocator: Allocator,
+    client: *std.http.Client,
+    cli: Cli,
+    detected: DetectedDependency,
+    latest_versions: *const std.StringHashMap([]const u8),
+) Candidate {
+    return scanDependencyMetadata(allocator, client, cli, detected.dependency, detected.version, detected.localMetadata, latest_versions) catch
         unavailableCandidate(detected.dependency, "package metadata scan failed", detected.version.source);
 }
 
 fn scanCandidateJob(job: CandidateJob) CandidateResult {
     return .{
         .index = job.index,
-        .candidate = scanDependencyMetadata(job.allocator, job.client, job.cli, job.dependency, job.version) catch
+        .candidate = scanDependencyMetadata(job.allocator, job.client, job.cli, job.dependency, job.version, job.localMetadata, job.latestVersions) catch
             unavailableCandidate(job.dependency, "package metadata scan failed", job.version.source),
     };
 }
@@ -386,15 +404,19 @@ fn scanDependencyMetadata(
     cli: Cli,
     dependency: Dependency,
     detected: ProjectVersion,
+    local_metadata: ?NpmMetadata,
+    latest_versions: *const std.StringHashMap([]const u8),
 ) !Candidate {
     if (std.mem.startsWith(u8, dependency.packageSpec, "npm:")) {
         return unavailableCandidate(dependency, "npm metadata did not include a usable version", detected.source);
     }
-    const metadata = fetchProjectMetadata(allocator, client, cli.npm_registry, dependency.packageName, detected);
-    const remote_metadata = if (detected.version == null)
-        metadata
+    const metadata = if (local_metadata) |value|
+        if (value.repositoryUrl == null) fetchProjectMetadata(allocator, client, cli.npm_registry, dependency.packageName, detected) else value
     else
-        fetchNpmMetadata(allocator, client, cli.npm_registry, dependency.packageName, "latest");
+        fetchProjectMetadata(allocator, client, cli.npm_registry, dependency.packageName, detected);
+    const remote_version = latest_versions.get(dependency.packageName) orelse if (detected.version == null)
+        if (metadata) |value| value.version else null
+    else if (fetchNpmMetadata(allocator, client, cli.npm_registry, dependency.packageName, "latest")) |value| value.version else null;
 
     var candidate = if (metadata) |value|
         try candidateFromMetadata(allocator, dependency, value)
@@ -402,7 +424,7 @@ fn scanDependencyMetadata(
         unavailableCandidate(dependency, "npm metadata did not include a usable version", detected.source);
     candidate.version = detected.version orelse candidate.version;
     candidate.versionSource = detected.source;
-    if (remote_metadata) |value| candidate.remoteVersion = value.version;
+    candidate.remoteVersion = remote_version;
     return candidate;
 }
 
@@ -479,6 +501,64 @@ fn readPackageVersion(allocator: Allocator, io: Io, dir: Io.Dir, path: []const u
     return cleanVersion(allocator, version);
 }
 
+fn readLocalPackageMetadata(
+    allocator: Allocator,
+    io: Io,
+    root_dir: Io.Dir,
+    dependency: Dependency,
+    version: ?[]const u8,
+) ?NpmMetadata {
+    var level: usize = 0;
+    while (true) : (level += 1) {
+        const path = nodeModulesPackagePath(allocator, dependency.manifestPath, dependency.packageName, level) catch return null;
+        const text = root_dir.readFileAlloc(io, path, allocator, Io.Limit.limited(8 * 1024 * 1024)) catch {
+            if (!hasManifestAncestorAtLevel(dependency.manifestPath, level + 1)) break;
+            continue;
+        };
+        return parseNpmMetadata(allocator, text);
+    }
+    if (version) |value| {
+        const path = bunStorePackagePath(allocator, dependency.packageName, value) catch return null;
+        const text = root_dir.readFileAlloc(io, path, allocator, Io.Limit.limited(8 * 1024 * 1024)) catch return null;
+        return parseNpmMetadata(allocator, text);
+    }
+    return null;
+}
+
+fn nodeModulesPackagePath(allocator: Allocator, manifest_path: []const u8, package_name: []const u8, level: usize) ![]const u8 {
+    var dir = std.fs.path.dirname(manifest_path) orelse "";
+    var remaining = level;
+    while (remaining > 0) : (remaining -= 1) {
+        dir = std.fs.path.dirname(dir) orelse "";
+    }
+    if (dir.len == 0) {
+        return std.fmt.allocPrint(allocator, "node_modules/{s}/package.json", .{package_name});
+    }
+    return std.fmt.allocPrint(allocator, "{s}/node_modules/{s}/package.json", .{ dir, package_name });
+}
+
+fn hasManifestAncestorAtLevel(manifest_path: []const u8, level: usize) bool {
+    var dir = std.fs.path.dirname(manifest_path) orelse "";
+    var remaining = level;
+    while (remaining > 0) : (remaining -= 1) {
+        if (dir.len == 0) return false;
+        dir = std.fs.path.dirname(dir) orelse "";
+    }
+    return true;
+}
+
+fn bunStorePackagePath(allocator: Allocator, package_name: []const u8, version: []const u8) ![]const u8 {
+    const store_name = try allocator.dupe(u8, package_name);
+    for (store_name) |*byte| {
+        if (byte.* == '/') byte.* = '+';
+    }
+    return std.fmt.allocPrint(allocator, "node_modules/.bun/{s}@{s}/node_modules/{s}/package.json", .{
+        store_name,
+        version,
+        package_name,
+    });
+}
+
 fn parseBunLockVersion(allocator: Allocator, bun_lock_text: ?[]const u8, package_name: []const u8) ?[]const u8 {
     const text = bun_lock_text orelse return null;
     const direct = std.fmt.allocPrint(allocator, "\"{s}\": [\"{s}@", .{ package_name, package_name }) catch return null;
@@ -502,6 +582,81 @@ fn cleanVersion(allocator: Allocator, value: []const u8) ?[]const u8 {
     var end = start;
     while (end < trimmed.len and trimmed[end] != '(') : (end += 1) {}
     return allocator.dupe(u8, std.mem.trim(u8, trimmed[start..end], " \t\r\n")) catch null;
+}
+
+fn fetchLatestVersionsBatch(
+    allocator: Allocator,
+    io: Io,
+    cli: Cli,
+    dependencies: []const DetectedDependency,
+) !std.StringHashMap([]const u8) {
+    var versions: std.StringHashMap([]const u8) = .init(allocator);
+    var packages: std.ArrayList([]const u8) = .empty;
+    var seen: std.StringHashMap(void) = .init(allocator);
+    for (dependencies) |detected| {
+        const dependency = detected.dependency;
+        if (std.mem.startsWith(u8, dependency.packageSpec, "npm:")) continue;
+        if (seen.contains(dependency.packageName)) continue;
+        try seen.put(dependency.packageName, {});
+        try packages.append(allocator, try encodePathComponent(allocator, dependency.packageName));
+    }
+    if (packages.items.len == 0) return versions;
+
+    const package_path = try std.mem.join(allocator, "+", packages.items);
+    const url = try std.fmt.allocPrint(allocator, "{s}/{s}", .{
+        trimRightByte(cli.npm_latest_api, '/'),
+        package_path,
+    });
+    var argv: std.ArrayList([]const u8) = .empty;
+    try argv.appendSlice(allocator, &.{
+        "curl",
+        "-sS",
+        "--fail",
+        "--compressed",
+        "--http2",
+        "-H",
+        "Accept: application/json",
+        url,
+    });
+
+    const result = std.process.run(allocator, io, .{
+        .argv = argv.items,
+        .cwd = .{ .path = cli.root },
+        .stdout_limit = Io.Limit.limited(64 * 1024 * 1024),
+        .stderr_limit = Io.Limit.limited(1024 * 1024),
+    }) catch return versions;
+    switch (result.term) {
+        .exited => |code| if (code != 0) return versions,
+        else => return versions,
+    }
+
+    try parseLatestVersionsResponse(allocator, result.stdout, &versions);
+    return versions;
+}
+
+fn parseLatestVersionsResponse(allocator: Allocator, text: []const u8, versions: *std.StringHashMap([]const u8)) !void {
+    const parsed = std.json.parseFromSliceLeaky(std.json.Value, allocator, text, .{}) catch return;
+    switch (parsed) {
+        .array => |array| {
+            for (array.items) |item| try putLatestVersion(allocator, item, versions);
+        },
+        else => try putLatestVersion(allocator, parsed, versions),
+    }
+}
+
+fn putLatestVersion(allocator: Allocator, value: std.json.Value, versions: *std.StringHashMap([]const u8)) !void {
+    const object = switch (value) {
+        .object => |object| object,
+        else => return,
+    };
+    const package_name = jsonString(object.get("name") orelse return) orelse return;
+    const dist_tags_value = object.get("distTags") orelse return;
+    const dist_tags = switch (dist_tags_value) {
+        .object => |dist_tags| dist_tags,
+        else => return,
+    };
+    const latest = cleanVersion(allocator, jsonString(dist_tags.get("latest") orelse return) orelse return) orelse return;
+    try versions.put(package_name, latest);
 }
 
 fn fetchProjectMetadata(
@@ -544,6 +699,10 @@ fn fetchNpmMetadata(
 }
 
 fn parseNpmMetadata(allocator: Allocator, text: []const u8) ?NpmMetadata {
+    return parseNpmMetadataJson(allocator, text);
+}
+
+fn parseNpmMetadataJson(allocator: Allocator, text: []const u8) ?NpmMetadata {
     const parsed = std.json.parseFromSliceLeaky(std.json.Value, allocator, text, .{}) catch return null;
     const value = switch (parsed) {
         .array => |array| if (array.items.len == 0) return null else array.items[array.items.len - 1],
@@ -555,7 +714,10 @@ fn parseNpmMetadata(allocator: Allocator, text: []const u8) ?NpmMetadata {
     };
     const version = tryDupe(allocator, jsonString(object.get("version") orelse return null) orelse return null) orelse return null;
     const repository_url = repositoryUrlFromValue(allocator, object.get("repository"));
-    return .{ .repositoryUrl = repository_url, .version = version };
+    return .{
+        .repositoryUrl = repository_url,
+        .version = version,
+    };
 }
 
 fn repositoryUrlFromValue(allocator: Allocator, value: ?std.json.Value) ?[]const u8 {
@@ -674,6 +836,12 @@ fn detectVendoredVersions(
     candidates: []const Candidate,
 ) !std.StringHashMap([]const u8) {
     var versions: std.StringHashMap([]const u8) = .init(allocator);
+    var wanted: std.StringHashMap(void) = .init(allocator);
+    for (candidates) |candidate| {
+        if (!std.mem.eql(u8, candidate.status, "matched")) continue;
+        try wanted.put(candidate.packageName, {});
+    }
+
     for (repos) |repo| {
         const vendor_root_path = try std.fs.path.join(allocator, &.{ root, repo.prefix });
         var vendor_root = if (std.fs.path.isAbsolute(vendor_root_path))
@@ -681,19 +849,19 @@ fn detectVendoredVersions(
         else
             Io.Dir.cwd().openDir(io, vendor_root_path, .{ .iterate = true }) catch continue;
         defer vendor_root.close(io);
-        for (candidates) |candidate| {
-            if (!std.mem.eql(u8, candidate.status, "matched")) continue;
-            const version = detectVendoredPackageVersion(allocator, io, vendor_root, candidate.packageName) catch null;
-            if (version) |value| {
-                const key = try std.fmt.allocPrint(allocator, "{s}\x00{s}", .{ repo.name, candidate.packageName });
-                try versions.put(key, value);
-            }
-        }
+        try detectVendoredPackageVersions(allocator, io, vendor_root, repo.name, wanted, &versions);
     }
     return versions;
 }
 
-fn detectVendoredPackageVersion(allocator: Allocator, io: Io, vendor_root: Io.Dir, package_name: []const u8) !?[]const u8 {
+fn detectVendoredPackageVersions(
+    allocator: Allocator,
+    io: Io,
+    vendor_root: Io.Dir,
+    repo_name: []const u8,
+    wanted: std.StringHashMap(void),
+    versions: *std.StringHashMap([]const u8),
+) !void {
     var walker = try vendor_root.walkSelectively(allocator);
     defer walker.deinit();
     while (try walker.next(io)) |entry| {
@@ -708,14 +876,15 @@ fn detectVendoredPackageVersion(allocator: Allocator, io: Io, vendor_root: Io.Di
                     else => continue,
                 };
                 const name = jsonString(object.get("name") orelse continue) orelse continue;
-                if (!std.mem.eql(u8, name, package_name)) continue;
+                if (!wanted.contains(name)) continue;
                 const version = jsonString(object.get("version") orelse continue) orelse continue;
-                return cleanVersion(allocator, version);
+                const clean = cleanVersion(allocator, version) orelse continue;
+                const key = try std.fmt.allocPrint(allocator, "{s}\x00{s}", .{ repo_name, name });
+                try versions.put(key, clean);
             },
             else => {},
         }
     }
-    return null;
 }
 
 fn dependencyVendorTasks(
@@ -837,6 +1006,7 @@ fn packageVersionLabel(allocator: Allocator, package_name: []const u8, version: 
 fn parseArgs(allocator: Allocator, init: std.process.Init) !Cli {
     const args = try init.minimal.args.toSlice(allocator);
     var npm_concurrency: usize = 12;
+    var npm_latest_api: []const u8 = "https://npm.antfu.dev/versions";
     var root: []const u8 = ".";
     var npm_registry: []const u8 = "https://registry.npmjs.org";
 
@@ -855,6 +1025,12 @@ fn parseArgs(allocator: Allocator, init: std.process.Init) !Cli {
             npm_registry = args[index];
             continue;
         }
+        if (std.mem.eql(u8, arg, "--npm-latest-api")) {
+            index += 1;
+            if (index >= args.len) return error.MissingNpmLatestApi;
+            npm_latest_api = args[index];
+            continue;
+        }
         if (std.mem.eql(u8, arg, "--npm-concurrency")) {
             index += 1;
             if (index >= args.len) return error.MissingNpmConcurrency;
@@ -864,7 +1040,12 @@ fn parseArgs(allocator: Allocator, init: std.process.Init) !Cli {
         return error.InvalidArgument;
     }
 
-    return .{ .npm_concurrency = npm_concurrency, .root = root, .npm_registry = npm_registry };
+    return .{
+        .npm_concurrency = npm_concurrency,
+        .npm_latest_api = npm_latest_api,
+        .root = root,
+        .npm_registry = npm_registry,
+    };
 }
 
 fn parseConcurrency(value: []const u8) !usize {
@@ -987,4 +1168,20 @@ test "npm concurrency parser keeps request fanout bounded" {
     try std.testing.expectEqual(@as(usize, 12), try parseConcurrency("12"));
     try std.testing.expectError(error.InvalidNpmConcurrency, parseConcurrency("0"));
     try std.testing.expectError(error.InvalidNpmConcurrency, parseConcurrency("65"));
+}
+
+test "node modules metadata search starts next to the manifest" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+
+    const path = try nodeModulesPackagePath(
+        arena_state.allocator(),
+        "packages/cli/package.json",
+        "@effect/platform-bun",
+        0,
+    );
+    try std.testing.expectEqualStrings(
+        "packages/cli/node_modules/@effect/platform-bun/package.json",
+        path,
+    );
 }

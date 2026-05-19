@@ -46,6 +46,7 @@ const DEPENDENCY_SECTIONS: &[&str] = &[
 
 #[derive(Clone)]
 struct Cli {
+    npm_latest_api: String,
     root: PathBuf,
     npm_registry: String,
 }
@@ -151,13 +152,23 @@ fn main() {
 fn run() -> Result<(), Box<dyn Error>> {
     let cli = parse_args()?;
     let dependencies = list_project_dependencies(&cli.root)?;
+    let bun_lock = fs::read_to_string(cli.root.join("bun.lock")).ok();
     let agent = ureq::Agent::config_builder()
         .user_agent("ingraft-optimized-deps/0.1")
         .build()
         .into();
+    let latest_versions = fetch_latest_versions(&agent, &cli.npm_latest_api, &dependencies);
     let candidates: Vec<Candidate> = dependencies
         .par_iter()
-        .map(|dependency| scan_dependency(&agent, &cli, dependency))
+        .map(|dependency| {
+            scan_dependency(
+                &agent,
+                &cli,
+                dependency,
+                bun_lock.as_deref(),
+                &latest_versions,
+            )
+        })
         .collect();
     let repos = list_vendored_repos(&cli.root);
     let vendored_versions = detect_vendored_versions(&cli.root, &repos, &candidates);
@@ -173,6 +184,7 @@ fn run() -> Result<(), Box<dyn Error>> {
 
 fn parse_args() -> Result<Cli, Box<dyn Error>> {
     let mut args = std::env::args().skip(1);
+    let mut npm_latest_api = String::from("https://npm.antfu.dev/versions");
     let mut root = PathBuf::from(".");
     let mut npm_registry = String::from("https://registry.npmjs.org");
     while let Some(arg) = args.next() {
@@ -189,14 +201,21 @@ fn parse_args() -> Result<Cli, Box<dyn Error>> {
                 };
                 npm_registry = value;
             }
+            "--npm-latest-api" => {
+                let Some(value) = args.next() else {
+                    return Err("missing value for --npm-latest-api".into());
+                };
+                npm_latest_api = value;
+            }
             "--help" | "-h" => {
-                println!("Usage: ingraft-deps-rust [--root <path>] [--npm-registry <url>]");
+                println!("Usage: ingraft-deps-rust [--root <path>] [--npm-registry <url>] [--npm-latest-api <url>]");
                 std::process::exit(0);
             }
             _ => return Err(format!("unknown argument: {arg}").into()),
         }
     }
     Ok(Cli {
+        npm_latest_api,
         root: root.canonicalize()?,
         npm_registry,
     })
@@ -360,8 +379,14 @@ fn sync_package_name(ecosystem: &str, package_name: &str) -> String {
     }
 }
 
-fn scan_dependency(agent: &ureq::Agent, cli: &Cli, dependency: &Dependency) -> Candidate {
-    let detected = detect_project_package_version(&cli.root, dependency);
+fn scan_dependency(
+    agent: &ureq::Agent,
+    cli: &Cli,
+    dependency: &Dependency,
+    bun_lock: Option<&str>,
+    latest_versions: &HashMap<String, String>,
+) -> Candidate {
+    let detected = detect_project_package_version(&cli.root, dependency, bun_lock);
     if dependency.spec.starts_with("npm:") {
         return unavailable_candidate(
             dependency,
@@ -369,8 +394,19 @@ fn scan_dependency(agent: &ureq::Agent, cli: &Cli, dependency: &Dependency) -> C
             detected.source,
         );
     }
-    let metadata = metadata_for_project_version(agent, &cli.npm_registry, dependency, &detected);
-    let remote_metadata = fetch_npm_metadata(agent, &cli.npm_registry, &dependency.name, "latest");
+    let metadata = read_local_package_metadata(&cli.root, dependency)
+        .filter(|metadata| {
+            metadata
+                .repository
+                .as_ref()
+                .and_then(repository_url_value)
+                .is_some()
+        })
+        .or_else(|| metadata_for_project_version(agent, &cli.npm_registry, dependency, &detected));
+    let remote_version = latest_versions.get(&dependency.name).cloned().or_else(|| {
+        fetch_npm_metadata(agent, &cli.npm_registry, &dependency.name, "latest")
+            .map(|metadata| metadata.version)
+    });
 
     let mut candidate = match metadata {
         Some(metadata) => candidate_from_metadata(dependency, &metadata),
@@ -382,7 +418,7 @@ fn scan_dependency(agent: &ureq::Agent, cli: &Cli, dependency: &Dependency) -> C
     };
     candidate.version = detected.version.clone().or(candidate.version);
     candidate.version_source = Some(detected.source.to_string());
-    candidate.remote_version = remote_metadata.map(|metadata| metadata.version);
+    candidate.remote_version = remote_version;
     candidate
 }
 
@@ -440,7 +476,11 @@ fn candidate_from_metadata(dependency: &Dependency, metadata: &NpmMetadata) -> C
     }
 }
 
-fn detect_project_package_version(root: &Path, dependency: &Dependency) -> ProjectVersion {
+fn detect_project_package_version(
+    root: &Path,
+    dependency: &Dependency,
+    bun_lock: Option<&str>,
+) -> ProjectVersion {
     if let Some(version) =
         read_package_version(&root.join(node_modules_package_path(&dependency.name)))
     {
@@ -449,7 +489,7 @@ fn detect_project_package_version(root: &Path, dependency: &Dependency) -> Proje
             version: Some(version),
         };
     }
-    if let Some(version) = parse_bun_lock_version(root, &dependency.name) {
+    if let Some(version) = parse_bun_lock_version(bun_lock, &dependency.name) {
         return ProjectVersion {
             source: "bun-lock",
             version: Some(version),
@@ -467,14 +507,43 @@ fn read_package_version(path: &Path) -> Option<String> {
     clean_version(value.get("version")?.as_str()?)
 }
 
-fn node_modules_package_path(package_name: &str) -> PathBuf {
-    ["node_modules", package_name, "package.json"]
-        .iter()
-        .collect()
+fn read_local_package_metadata(root: &Path, dependency: &Dependency) -> Option<NpmMetadata> {
+    node_modules_package_paths(Path::new(&dependency.manifest_path), &dependency.name)
+        .find_map(|path| read_package_metadata(&root.join(path)))
 }
 
-fn parse_bun_lock_version(root: &Path, package_name: &str) -> Option<String> {
-    let text = fs::read_to_string(root.join("bun.lock")).ok()?;
+fn read_package_metadata(path: &Path) -> Option<NpmMetadata> {
+    let text = fs::read_to_string(path).ok()?;
+    parse_npm_metadata(&text)
+}
+
+fn node_modules_package_path(package_name: &str) -> PathBuf {
+    PathBuf::from("node_modules")
+        .join(package_name)
+        .join("package.json")
+}
+
+fn node_modules_package_paths(
+    manifest_path: &Path,
+    package_name: &str,
+) -> impl Iterator<Item = PathBuf> {
+    let mut dir = manifest_path.parent().unwrap_or_else(|| Path::new(""));
+    let mut paths = Vec::new();
+    loop {
+        paths.push(dir.join(node_modules_package_path(package_name)));
+        let Some(parent) = dir.parent() else {
+            break;
+        };
+        if parent == dir {
+            break;
+        }
+        dir = parent;
+    }
+    paths.into_iter()
+}
+
+fn parse_bun_lock_version(text: Option<&str>, package_name: &str) -> Option<String> {
+    let text = text?;
     let direct = format!("\"{package_name}\": [\"{package_name}@");
     if let Some(version) = version_after_bun_lock_pattern(&text, &direct) {
         return Some(version);
@@ -508,6 +577,66 @@ fn clean_version(value: &str) -> Option<String> {
     } else {
         None
     }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NpmLatestEntry {
+    name: String,
+    dist_tags: Option<HashMap<String, String>>,
+}
+
+fn fetch_latest_versions(
+    agent: &ureq::Agent,
+    api_base: &str,
+    dependencies: &[Dependency],
+) -> HashMap<String, String> {
+    let mut seen = HashSet::new();
+    let packages: Vec<String> = dependencies
+        .iter()
+        .filter(|dependency| !dependency.spec.starts_with("npm:"))
+        .filter_map(|dependency| {
+            if seen.insert(dependency.name.clone()) {
+                Some(utf8_percent_encode(&dependency.name, NON_ALPHANUMERIC).to_string())
+            } else {
+                None
+            }
+        })
+        .collect();
+    if packages.is_empty() {
+        return HashMap::new();
+    }
+
+    let url = format!("{}/{}", api_base.trim_end_matches('/'), packages.join("+"));
+    let Ok(mut response) = agent.get(&url).call() else {
+        return HashMap::new();
+    };
+    if !response.status().is_success() {
+        return HashMap::new();
+    }
+    let Ok(text) = response.body_mut().read_to_string() else {
+        return HashMap::new();
+    };
+    let Ok(value) = serde_json::from_str::<Value>(&text) else {
+        return HashMap::new();
+    };
+    let entries = if let Some(items) = value.as_array() {
+        items.clone()
+    } else {
+        vec![value]
+    };
+
+    entries
+        .into_iter()
+        .filter_map(|value| serde_json::from_value::<NpmLatestEntry>(value).ok())
+        .filter_map(|entry| {
+            entry
+                .dist_tags
+                .and_then(|tags| tags.get("latest").cloned())
+                .and_then(|latest| clean_version(&latest))
+                .map(|latest| (entry.name, latest))
+        })
+        .collect()
 }
 
 fn metadata_for_project_version(
@@ -664,45 +793,48 @@ fn detect_vendored_versions(
     candidates: &[Candidate],
 ) -> HashMap<String, String> {
     let mut versions = HashMap::new();
+    let wanted: HashSet<&str> = candidates
+        .iter()
+        .filter(|candidate| candidate.status == "matched")
+        .map(|candidate| candidate.package_name.as_str())
+        .collect();
     for repo in repos {
-        for candidate in candidates
-            .iter()
-            .filter(|candidate| candidate.status == "matched")
-        {
-            if let Some(version) =
-                detect_vendored_package_version(root, repo, &candidate.package_name)
-            {
-                versions.insert(
-                    vendored_version_key(&repo.name, &candidate.package_name),
-                    version,
-                );
-            }
-        }
+        detect_vendored_package_versions(root, repo, &wanted, &mut versions);
     }
     versions
 }
 
-fn detect_vendored_package_version(
+fn detect_vendored_package_versions(
     root: &Path,
     repo: &VendoredRepo,
-    package_name: &str,
-) -> Option<String> {
+    wanted: &HashSet<&str>,
+    versions: &mut HashMap<String, String>,
+) {
     let vendor_root = root.join(&repo.prefix);
-    for manifest_path in collect_manifest_paths_for_vendor(&vendor_root).ok()? {
-        let text = fs::read_to_string(vendor_root.join(&manifest_path)).ok()?;
-        let value: Value = serde_json::from_str(&text).ok()?;
+    let Ok(manifest_paths) = collect_manifest_paths_for_vendor(&vendor_root) else {
+        return;
+    };
+    for manifest_path in manifest_paths {
+        let Ok(text) = fs::read_to_string(vendor_root.join(&manifest_path)) else {
+            continue;
+        };
+        let Ok(value) = serde_json::from_str::<Value>(&text) else {
+            continue;
+        };
         let Some(name) = value.get("name").and_then(Value::as_str) else {
             continue;
         };
-        if name != package_name {
+        if !wanted.contains(name) {
             continue;
         }
         let Some(version) = value.get("version").and_then(Value::as_str) else {
             continue;
         };
-        return clean_version(version);
+        let Some(version) = clean_version(version) else {
+            continue;
+        };
+        versions.insert(vendored_version_key(&repo.name, name), version);
     }
-    None
 }
 
 fn collect_manifest_paths_for_vendor(root: &Path) -> Result<Vec<PathBuf>, Box<dyn Error>> {
@@ -891,6 +1023,24 @@ mod tests {
         assert_eq!(
             version_after_bun_lock_pattern(text, "\"effect\": [\"effect@").as_deref(),
             Some("4.0.0-beta.66")
+        );
+    }
+
+    #[test]
+    fn checks_manifest_local_node_modules_before_repo_root() {
+        let paths: Vec<_> = node_modules_package_paths(
+            Path::new("packages/cli/package.json"),
+            "@effect/platform-bun",
+        )
+        .collect();
+
+        assert_eq!(
+            paths,
+            vec![
+                PathBuf::from("packages/cli/node_modules/@effect/platform-bun/package.json"),
+                PathBuf::from("packages/node_modules/@effect/platform-bun/package.json"),
+                PathBuf::from("node_modules/@effect/platform-bun/package.json"),
+            ]
         );
     }
 }
