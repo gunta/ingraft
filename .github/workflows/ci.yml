@@ -42,19 +42,20 @@ jobs:
       - name: Pack npm packages
         shell: bash
         env:
-          ARTIFACT_DIR: ${{ github.workspace }}/.artifacts
+          ARTIFACT_DIR: ${{ github.workspace }}/artifacts/npm-packages
         run: |
           rm -rf "$ARTIFACT_DIR"
           mkdir -p "$ARTIFACT_DIR"
           (cd packages/cli && npm pack --pack-destination "$ARTIFACT_DIR")
           (cd packages/ingraft && npm pack --pack-destination "$ARTIFACT_DIR")
           (cd packages/skill && npm pack --pack-destination "$ARTIFACT_DIR")
+          find "$ARTIFACT_DIR" -maxdepth 1 -type f -name "*.tgz" -print
 
       - name: Upload npm packages
         uses: actions/upload-artifact@v6
         with:
           name: ingraft-npm-packages
-          path: ${{ github.workspace }}/.artifacts/*.tgz
+          path: ${{ github.workspace }}/artifacts/npm-packages/*.tgz
           if-no-files-found: error
           retention-days: 7
 

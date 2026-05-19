@@ -255,15 +255,19 @@ describe("release automation workflows", () => {
     expectStep(check?.steps, { run: "bun run build" })
     expectStep(check?.steps, {
       name: "Pack npm packages",
-      env: { ARTIFACT_DIR: "${{ github.workspace }}/.artifacts" },
+      env: { ARTIFACT_DIR: "${{ github.workspace }}/artifacts/npm-packages" },
       run: expect.stringContaining('npm pack --pack-destination "$ARTIFACT_DIR"')
+    })
+    expectStep(check?.steps, {
+      name: "Pack npm packages",
+      run: expect.stringContaining('find "$ARTIFACT_DIR" -maxdepth 1 -type f -name "*.tgz" -print')
     })
     expectStep(check?.steps, {
       name: "Upload npm packages",
       uses: "actions/upload-artifact@v6",
       with: expect.objectContaining({
         name: "ingraft-npm-packages",
-        path: "${{ github.workspace }}/.artifacts/*.tgz"
+        path: "${{ github.workspace }}/artifacts/npm-packages/*.tgz"
       })
     })
 
