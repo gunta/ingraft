@@ -47,6 +47,7 @@ curl -fsSL https://ingraft.dev/install.sh | sh
 Install through Homebrew or Nix:
 
 ```sh
+brew tap oven-sh/bun
 brew tap gunta/ingraft https://github.com/gunta/ingraft
 brew install ingraft
 

@@ -38,6 +38,7 @@ curl -fsSL https://ingraft.dev/install.sh | sh
 Homebrew and Nix package entrypoints are also maintained in this repository:
 
 ```sh
+brew tap oven-sh/bun
 brew tap gunta/ingraft https://github.com/gunta/ingraft
 brew install ingraft
 

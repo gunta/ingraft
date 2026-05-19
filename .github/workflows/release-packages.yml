@@ -50,10 +50,33 @@ jobs:
       - name: Generate release notes
         run: bun run release:notes -- --output release-notes.md
 
+      - name: Resolve release version
+        id: release
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check published npm packages
+        id: npm_status
+        run: |
+          version="${{ steps.release.outputs.version }}"
+          if npm view "ingraft@$version" version >/dev/null 2>&1; then
+            echo "ingraft=published" >> "$GITHUB_OUTPUT"
+          else
+            echo "ingraft=missing" >> "$GITHUB_OUTPUT"
+          fi
+          if npm view "@ingraft/skill@$version" version >/dev/null 2>&1; then
+            echo "skill=published" >> "$GITHUB_OUTPUT"
+          else
+            echo "skill=missing" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish ingraft
+        if: steps.npm_status.outputs.ingraft != 'published'
         working-directory: packages/cli
         run: npm publish --access public --provenance
 
       - name: Publish @ingraft/skill
+        if: steps.npm_status.outputs.skill != 'published'
         working-directory: packages/skill
         run: npm publish --access public --provenance

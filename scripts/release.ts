@@ -435,6 +435,14 @@ const checkRelease = async (): Promise<void> => {
     "npm publish must include provenance"
   )
   assert(
+    releaseWorkflow.includes('npm view "ingraft@$version"'),
+    "release-packages.yml must skip already-published ingraft versions"
+  )
+  assert(
+    releaseWorkflow.includes('npm view "@ingraft/skill@$version"'),
+    "release-packages.yml must skip already-published skill versions"
+  )
+  assert(
     !releaseWorkflow.includes("NPM_TOKEN"),
     "release workflow should use trusted publishing, not NPM_TOKEN"
   )

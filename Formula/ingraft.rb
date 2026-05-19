@@ -2,10 +2,11 @@ class Ingraft < Formula
   desc "Route repository context into coding-agent workflows"
   homepage "https://ingraft.dev"
   url "https://registry.npmjs.org/ingraft/-/ingraft-0.3.0.tgz"
-  sha256 "d4b4555592bbd70ce4a43ac8d5d74260398f3901b1bcc04089b55d9402f1432e"
+  sha256 "f04516ce76215b41b2182b107d17f5aa40ff65c94040a71bb4eea579d8fa18aa"
   license "MIT"
+  preserve_rpath
 
-  depends_on "bun"
+  depends_on "oven-sh/bun/bun"
   depends_on "git"
   depends_on "node"
 

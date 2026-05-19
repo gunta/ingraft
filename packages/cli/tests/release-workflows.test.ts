@@ -9,6 +9,8 @@ import { parse } from "yaml"
 const workspaceRoot = process.cwd()
 
 type WorkflowStep = {
+  readonly if?: string
+  readonly id?: string
   readonly name?: string
   readonly run?: string
   readonly uses?: string
@@ -141,7 +143,13 @@ const createReleaseFixture = async (version: string): Promise<string> => {
   )
   await Bun.write(
     join(fixture, ".github/workflows/release-packages.yml"),
-    "run: bun run release:check\nrun: npm publish --access public --provenance\n"
+    [
+      "run: bun run release:check",
+      'run: npm view "ingraft@$version" version',
+      'run: npm view "@ingraft/skill@$version" version',
+      "run: npm publish --access public --provenance",
+      ""
+    ].join("\n")
   )
   await Bun.write(
     join(fixture, ".github/workflows/prepare-release.yml"),
@@ -226,16 +234,24 @@ describe("release automation workflows", () => {
     expectStep(publish?.steps, { run: "bun run check" })
     expectStep(publish?.steps, { run: "bun run build" })
     expectStep(publish?.steps, { run: "bun run release:notes -- --output release-notes.md" })
+    expectStep(publish?.steps, { id: "release", name: "Resolve release version" })
+    expectStep(publish?.steps, { id: "npm_status", name: "Check published npm packages" })
 
-    for (const directory of ["packages/cli", "packages/skill"]) {
-      expectStep(publish?.steps, {
-        "working-directory": directory,
-        run: "npm publish --access public --provenance"
-      })
-    }
+    expectStep(publish?.steps, {
+      if: "steps.npm_status.outputs.ingraft != 'published'",
+      "working-directory": "packages/cli",
+      run: "npm publish --access public --provenance"
+    })
+    expectStep(publish?.steps, {
+      if: "steps.npm_status.outputs.skill != 'published'",
+      "working-directory": "packages/skill",
+      run: "npm publish --access public --provenance"
+    })
 
     expect(text).not.toContain("packages/tui")
     expect(text).not.toContain("ingraft-tui")
+    expect(text).toContain('npm view "ingraft@$version"')
+    expect(text).toContain('npm view "@ingraft/skill@$version"')
 
     expect(text).not.toContain("NPM_TOKEN")
     expect(text).not.toContain("NODE_AUTH_TOKEN")
@@ -428,7 +444,8 @@ describe("release automation workflows", () => {
     expect(formula).toContain("class Ingraft < Formula")
     expect(formula).toContain('url "https://registry.npmjs.org/ingraft/-/ingraft-0.3.0.tgz"')
     expect(formula).toMatch(/sha256 "[a-f0-9]{64}"/)
-    expect(formula).toContain('depends_on "bun"')
+    expect(formula).toContain("preserve_rpath")
+    expect(formula).toContain('depends_on "oven-sh/bun/bun"')
     expect(formula).toContain('depends_on "git"')
     expect(formula).toContain('depends_on "node"')
     expect(formula).toContain('system "npm", "install", *std_npm_args')
@@ -473,6 +490,7 @@ describe("release automation workflows", () => {
       expect(text).toContain("npx ingraft@latest")
       expect(text).toContain("bunx ingraft@latest")
       expect(text).toContain("npm install -g ingraft")
+      expect(text).toContain("brew tap oven-sh/bun")
       expect(text).toContain("brew install ingraft")
       expect(text).toContain("nix run github:gunta/ingraft")
       expect(text).toContain("npx skills add gunta/ingraft")

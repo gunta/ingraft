@@ -112,12 +112,13 @@ curl -fsSL https://ingraft.dev/install.sh | INGRAFT_VERSION=0.3.0 sh
   <TabItem label="Homebrew" icon="homebrew">
 
 ```sh
+brew tap oven-sh/bun
 brew tap gunta/ingraft https://github.com/gunta/ingraft
 brew install ingraft
 ```
 
-Homebrew installs the npm package tarball and makes sure `node`, `bun`, and
-`git` are present.
+Homebrew installs the npm package tarball and makes sure `node`, Bun from the
+official Bun tap, and `git` are present.
 
   </TabItem>
   <TabItem label="Nix" icon="nix">
