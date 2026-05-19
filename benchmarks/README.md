@@ -15,6 +15,9 @@ bun run bench:update-baseline
   intentionally ignored.
 - `bench:update-baseline` rewrites the committed baseline files so a future diff
   can show performance movement on the same machine.
+- `bench:optimized-deps` builds the Rust and Zig PoCs, then compares them with
+  the TypeScript `deps --json` path. Use `--out benchmarks/optimized-deps-baseline.json`
+  when intentionally refreshing the committed native comparison.
 
 The default suite intentionally skips mutating operations such as `add`,
 `update`, `remove`, `init`, and `refresh`. Benchmark those in isolated fixtures

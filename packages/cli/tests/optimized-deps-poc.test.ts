@@ -1,8 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-
-import { BENCHMARK_OPERATIONS } from "../../../scripts/benchmark.ts"
+import { pathToFileURL } from "node:url"
 
 const workspaceRoot = join(import.meta.dir, "../../..")
 
@@ -11,8 +10,22 @@ interface PackageJson {
   readonly scripts?: Record<string, string>
 }
 
+interface BenchmarkOperation {
+  readonly command: string
+  readonly name: string
+}
+
 const readJson = async <A>(path: string): Promise<A> =>
   JSON.parse(await Bun.file(join(workspaceRoot, path)).text()) as A
+
+const benchmarkOperations = async (): Promise<ReadonlyArray<BenchmarkOperation>> => {
+  const path = join(workspaceRoot, "scripts/benchmark.ts")
+  expect(await Bun.file(path).exists()).toBe(true)
+  const module = (await import(pathToFileURL(path).href)) as {
+    readonly BENCHMARK_OPERATIONS: ReadonlyArray<BenchmarkOperation>
+  }
+  return module.BENCHMARK_OPERATIONS
+}
 
 describe("optimized deps PoC", () => {
   test("adds a workspace package with Rust and Zig deps-json entrypoints", async () => {
@@ -32,8 +45,8 @@ describe("optimized deps PoC", () => {
     expect(existsSync(join(workspaceRoot, "packages/optimized/zig/build.zig"))).toBe(true)
   })
 
-  test("registers TS, Rust, and Zig deps-json benchmark operations", () => {
-    const operations = BENCHMARK_OPERATIONS.map(
+  test("registers TS, Rust, and Zig deps-json benchmark operations", async () => {
+    const operations = (await benchmarkOperations()).map(
       (operation) => [operation.name, operation.command] as const
     )
 

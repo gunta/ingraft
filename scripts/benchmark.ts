@@ -333,7 +333,7 @@ const main = async (): Promise<void> => {
 
   await runHyperfine({ exportJson, operations, runs, warmup })
   await writeMarkdownSummary({
-    baselinePath: values["write-baseline"] === true ? undefined : baselineJson,
+    ...(values["write-baseline"] === true ? {} : { baselinePath: baselineJson }),
     exportJson,
     operations
   })

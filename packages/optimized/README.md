@@ -20,7 +20,8 @@ Quick local loop:
 bun run bench:optimized-deps -- --quick
 ```
 
-The PoCs intentionally scan local manifests only. The current TypeScript
-`deps --json` command also resolves package metadata, so the numbers tell us how
-fast the local dependency discovery and JSON emission can be in native code, not
-that the PoCs are full replacements yet.
+The PoCs now execute the practical npm/package.json path for `deps --json`:
+manifest discovery, `bun.lock` and `node_modules` version detection, npm
+metadata lookups, vendored repository matching, and dependency task emission.
+They are benchmarked against the TypeScript command with the same metadata work
+enabled so a native result cannot win by skipping the expensive parts.
