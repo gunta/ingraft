@@ -12,6 +12,8 @@ const expectedVersion = JSON.parse(
   readFileSync(join(workspaceRoot, "package.json"), "utf8")
 ).version
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm"
+const isWindowsCommandShim = (command) =>
+  process.platform === "win32" && /\.(?:bat|cmd)$/i.test(command)
 
 const run = (command, args, options = {}) => {
   try {
@@ -19,6 +21,7 @@ const run = (command, args, options = {}) => {
       cwd: options.cwd,
       encoding: "utf8",
       env: options.env,
+      shell: options.shell ?? isWindowsCommandShim(command),
       stdio: ["ignore", "pipe", "pipe"]
     })
   } catch (error) {

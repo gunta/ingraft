@@ -294,6 +294,14 @@ describe("release automation workflows", () => {
     expectStep(installSmoke?.steps, { run: "node scripts/ci/smoke-install.mjs .artifacts" })
   })
 
+  test("runs package smoke commands through Windows command shims", async () => {
+    const smokeInstaller = await workflowText("scripts/ci/smoke-install.mjs")
+
+    expect(smokeInstaller).toContain("const isWindowsCommandShim =")
+    expect(smokeInstaller).toContain('process.platform === "win32"')
+    expect(smokeInstaller).toContain("shell: options.shell ?? isWindowsCommandShim(command)")
+  })
+
   test("publishes npm install packages through GitHub OIDC", async () => {
     const path = ".github/workflows/release-packages.yml"
     const workflow = await readWorkflow(path)
