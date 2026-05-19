@@ -39,6 +39,7 @@ const git_trailer_url = "vendor-source-url";
 const git_log_format = "%H%x00%cI%x00%(trailers:key=git-subtree-dir,valueonly)%x00%(trailers:key=vendor-source-url,valueonly)%x00%(trailers:key=vendor-source-ref,valueonly)%x00%(trailers:key=vendor-strategy,valueonly)%x00%(trailers:key=vendor-action,valueonly)%x00%(trailers:key=vendor-filter,valueonly)%x00%(trailers:key=vendor-sync-package,valueonly)%x00%(trailers:key=vendor-resolved-ref,valueonly)%x1e";
 
 const Cli = struct {
+    npm_concurrency: usize,
     root: []const u8,
     npm_registry: []const u8,
 };
@@ -101,6 +102,29 @@ const ProjectVersion = struct {
     version: ?[]const u8,
 };
 
+const DetectedDependency = struct {
+    dependency: Dependency,
+    version: ProjectVersion,
+};
+
+const CandidateResult = struct {
+    index: usize,
+    candidate: Candidate,
+};
+
+const CandidateCompletion = union(enum) {
+    result: CandidateResult,
+};
+
+const CandidateJob = struct {
+    allocator: Allocator,
+    client: *std.http.Client,
+    cli: Cli,
+    dependency: Dependency,
+    index: usize,
+    version: ProjectVersion,
+};
+
 const VendoredRepo = struct {
     name: []const u8,
     prefix: []const u8,
@@ -133,12 +157,6 @@ fn runDeps(allocator: Allocator, io: Io, cli: Cli) !Output {
     defer root_dir.close(io);
 
     const dependencies = try listDependencies(allocator, io, root_dir);
-    var client: std.http.Client = .{
-        .allocator = allocator,
-        .io = io,
-    };
-    defer client.deinit();
-
     const bun_lock_text = root_dir.readFileAlloc(
         io,
         "bun.lock",
@@ -146,16 +164,20 @@ fn runDeps(allocator: Allocator, io: Io, cli: Cli) !Output {
         Io.Limit.limited(64 * 1024 * 1024),
     ) catch null;
 
-    var candidates: std.ArrayList(Candidate) = .empty;
+    var detected: std.ArrayList(DetectedDependency) = .empty;
     for (dependencies) |dependency| {
-        try candidates.append(allocator, try scanDependency(allocator, io, root_dir, &client, cli, bun_lock_text, dependency));
+        try detected.append(allocator, .{
+            .dependency = dependency,
+            .version = try detectProjectPackageVersion(allocator, io, root_dir, bun_lock_text, dependency.packageName),
+        });
     }
 
+    const candidates = try scanDetectedDependencies(allocator, io, cli, detected.items);
     const repos = try listVendoredRepos(allocator, io, cli.root);
-    const vendored_versions = try detectVendoredVersions(allocator, io, cli.root, repos, candidates.items);
-    const tasks = try dependencyVendorTasks(allocator, candidates.items, repos, vendored_versions);
+    const vendored_versions = try detectVendoredVersions(allocator, io, cli.root, repos, candidates);
+    const tasks = try dependencyVendorTasks(allocator, candidates, repos, vendored_versions);
     return .{
-        .candidates = try candidates.toOwnedSlice(allocator),
+        .candidates = candidates,
         .tasks = tasks,
     };
 }
@@ -255,21 +277,124 @@ fn appendSectionDependencies(
     }
 }
 
-fn scanDependency(
+fn scanDetectedDependencies(
     allocator: Allocator,
     io: Io,
-    root_dir: Io.Dir,
+    cli: Cli,
+    dependencies: []const DetectedDependency,
+) ![]const Candidate {
+    var candidates = try allocator.alloc(Candidate, dependencies.len);
+    if (dependencies.len == 0) return candidates;
+
+    var client: std.http.Client = .{
+        .allocator = std.heap.smp_allocator,
+        .io = io,
+    };
+    defer client.deinit();
+
+    const concurrency = @min(dependencies.len, cli.npm_concurrency);
+    const buffer = try allocator.alloc(CandidateCompletion, concurrency);
+    var select = Io.Select(CandidateCompletion).init(io, buffer);
+
+    var next: usize = 0;
+    var active: usize = 0;
+    var completed: usize = 0;
+    while (next < dependencies.len and active < concurrency) {
+        startCandidateJob(&select, &client, cli, dependencies[next], next) catch {
+            if (active == 0) return scanDetectedDependenciesSerial(allocator, &client, cli, dependencies);
+            break;
+        };
+        next += 1;
+        active += 1;
+    }
+
+    while (completed < dependencies.len) {
+        if (active == 0) {
+            while (next < dependencies.len) : (next += 1) {
+                candidates[next] = scanDetectedDependencySerial(std.heap.smp_allocator, &client, cli, dependencies[next]);
+                completed += 1;
+            }
+            break;
+        }
+
+        switch (try select.await()) {
+            .result => |result| candidates[result.index] = result.candidate,
+        }
+        completed += 1;
+        active -= 1;
+
+        if (next < dependencies.len) {
+            startCandidateJob(&select, &client, cli, dependencies[next], next) catch {
+                candidates[next] = scanDetectedDependencySerial(allocator, &client, cli, dependencies[next]);
+                next += 1;
+                completed += 1;
+                continue;
+            };
+            next += 1;
+            active += 1;
+        }
+    }
+    return candidates;
+}
+
+fn startCandidateJob(
+    select: *Io.Select(CandidateCompletion),
     client: *std.http.Client,
     cli: Cli,
-    bun_lock_text: ?[]const u8,
+    detected: DetectedDependency,
+    index: usize,
+) Io.ConcurrentError!void {
+    try select.concurrent(.result, scanCandidateJob, .{CandidateJob{
+        .allocator = std.heap.smp_allocator,
+        .client = client,
+        .cli = cli,
+        .dependency = detected.dependency,
+        .index = index,
+        .version = detected.version,
+    }});
+}
+
+fn scanDetectedDependenciesSerial(
+    allocator: Allocator,
+    client: *std.http.Client,
+    cli: Cli,
+    dependencies: []const DetectedDependency,
+) ![]const Candidate {
+    var candidates = try allocator.alloc(Candidate, dependencies.len);
+    for (dependencies, 0..) |dependency, index| {
+        candidates[index] = scanDetectedDependencySerial(std.heap.smp_allocator, client, cli, dependency);
+    }
+    return candidates;
+}
+
+fn scanDetectedDependencySerial(allocator: Allocator, client: *std.http.Client, cli: Cli, detected: DetectedDependency) Candidate {
+    return scanDependencyMetadata(allocator, client, cli, detected.dependency, detected.version) catch
+        unavailableCandidate(detected.dependency, "package metadata scan failed", detected.version.source);
+}
+
+fn scanCandidateJob(job: CandidateJob) CandidateResult {
+    return .{
+        .index = job.index,
+        .candidate = scanDependencyMetadata(job.allocator, job.client, job.cli, job.dependency, job.version) catch
+            unavailableCandidate(job.dependency, "package metadata scan failed", job.version.source),
+    };
+}
+
+fn scanDependencyMetadata(
+    allocator: Allocator,
+    client: *std.http.Client,
+    cli: Cli,
     dependency: Dependency,
+    detected: ProjectVersion,
 ) !Candidate {
-    const detected = try detectProjectPackageVersion(allocator, io, root_dir, bun_lock_text, dependency.packageName);
     if (std.mem.startsWith(u8, dependency.packageSpec, "npm:")) {
         return unavailableCandidate(dependency, "npm metadata did not include a usable version", detected.source);
     }
     const metadata = fetchProjectMetadata(allocator, client, cli.npm_registry, dependency.packageName, detected);
-    const remote_metadata = fetchNpmMetadata(allocator, client, cli.npm_registry, dependency.packageName, "latest");
+    const remote_metadata = if (detected.version == null)
+        metadata
+    else
+        fetchNpmMetadata(allocator, client, cli.npm_registry, dependency.packageName, "latest");
 
     var candidate = if (metadata) |value|
         try candidateFromMetadata(allocator, dependency, value)
@@ -409,6 +534,7 @@ fn fetchNpmMetadata(
 
     var body: std.Io.Writer.Allocating = .init(allocator);
     const result = client.fetch(.{
+        .headers = .{ .user_agent = .{ .override = "ingraft-optimized-deps/0.1" } },
         .location = .{ .url = url },
         .response_writer = &body.writer,
     }) catch return null;
@@ -451,6 +577,7 @@ fn normalizeRepositoryUrl(allocator: Allocator, raw: []const u8) ?[]const u8 {
 }
 
 fn encodePathComponent(allocator: Allocator, value: []const u8) ![]const u8 {
+    if (!needsPercentEncoding(value)) return allocator.dupe(u8, value);
     const hex = "0123456789ABCDEF";
     var encoded: std.ArrayList(u8) = .empty;
     for (value) |byte| {
@@ -463,6 +590,24 @@ fn encodePathComponent(allocator: Allocator, value: []const u8) ![]const u8 {
         }
     }
     return encoded.toOwnedSlice(allocator);
+}
+
+fn needsPercentEncoding(value: []const u8) bool {
+    const vector_len = 16;
+    const Vec = @Vector(vector_len, u8);
+    const true_vec: @Vector(vector_len, bool) = @splat(true);
+    var index: usize = 0;
+    while (index + vector_len <= value.len) : (index += vector_len) {
+        const bytes: Vec = value[index..][0..vector_len].*;
+        const digit = (bytes >= @as(Vec, @splat('0'))) & (bytes <= @as(Vec, @splat('9')));
+        const upper = (bytes >= @as(Vec, @splat('A'))) & (bytes <= @as(Vec, @splat('Z')));
+        const lower = (bytes >= @as(Vec, @splat('a'))) & (bytes <= @as(Vec, @splat('z')));
+        if (@reduce(.Or, (digit | upper | lower) != true_vec)) return true;
+    }
+    while (index < value.len) : (index += 1) {
+        if (!std.ascii.isAlphanumeric(value[index])) return true;
+    }
+    return false;
 }
 
 fn suggestedNameFromRepositoryUrl(allocator: Allocator, url: []const u8) ![]const u8 {
@@ -691,6 +836,7 @@ fn packageVersionLabel(allocator: Allocator, package_name: []const u8, version: 
 
 fn parseArgs(allocator: Allocator, init: std.process.Init) !Cli {
     const args = try init.minimal.args.toSlice(allocator);
+    var npm_concurrency: usize = 12;
     var root: []const u8 = ".";
     var npm_registry: []const u8 = "https://registry.npmjs.org";
 
@@ -709,10 +855,22 @@ fn parseArgs(allocator: Allocator, init: std.process.Init) !Cli {
             npm_registry = args[index];
             continue;
         }
+        if (std.mem.eql(u8, arg, "--npm-concurrency")) {
+            index += 1;
+            if (index >= args.len) return error.MissingNpmConcurrency;
+            npm_concurrency = try parseConcurrency(args[index]);
+            continue;
+        }
         return error.InvalidArgument;
     }
 
-    return .{ .root = root, .npm_registry = npm_registry };
+    return .{ .npm_concurrency = npm_concurrency, .root = root, .npm_registry = npm_registry };
+}
+
+fn parseConcurrency(value: []const u8) !usize {
+    const parsed = try std.fmt.parseInt(usize, value, 10);
+    if (parsed == 0 or parsed > 64) return error.InvalidNpmConcurrency;
+    return parsed;
 }
 
 fn isIgnoredDir(name: []const u8) bool {
@@ -811,4 +969,22 @@ test "bun lock parser extracts package versions" {
         "\"effect\": [\"effect@",
     ).?;
     try std.testing.expectEqualStrings("4.0.0-beta.66", version);
+}
+
+test "path component encoder uses SIMD alphanumeric fast path" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+
+    try std.testing.expect(!needsPercentEncoding("effect"));
+    try std.testing.expect(!needsPercentEncoding("abcdefghijklmnop"));
+    try std.testing.expect(needsPercentEncoding("abcdefghijklmnop-"));
+
+    const encoded = try encodePathComponent(arena_state.allocator(), "@effect/platform-bun");
+    try std.testing.expectEqualStrings("%40effect%2Fplatform%2Dbun", encoded);
+}
+
+test "npm concurrency parser keeps request fanout bounded" {
+    try std.testing.expectEqual(@as(usize, 12), try parseConcurrency("12"));
+    try std.testing.expectError(error.InvalidNpmConcurrency, parseConcurrency("0"));
+    try std.testing.expectError(error.InvalidNpmConcurrency, parseConcurrency("65"));
 }

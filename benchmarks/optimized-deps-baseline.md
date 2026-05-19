@@ -1,6 +1,6 @@
 # ingraft Benchmarks
 
-Generated: 2026-05-19T22:06:11.710Z
+Generated: 2026-05-19T22:28:59.654Z
 
 Run with:
 
@@ -8,8 +8,8 @@ Run with:
 bun run bench:optimized-deps -- --runs 10 --warmup 2 --out benchmarks/optimized-deps-baseline.json
 ```
 
-| Operation                  |     Mean |   Stddev | Baseline |       Change |
-| -------------------------- | -------: | -------: | -------: | -----------: |
-| `cli-deps-json`            |  1.540 s | 282.0 ms |  1.443 s | 1.07x slower |
-| `optimized-deps-rust-json` |  1.664 s | 195.0 ms |        - |            - |
-| `optimized-deps-zig-json`  | 15.240 s |  2.795 s |        - |            - |
+| Operation                  |    Mean |   Stddev | Baseline |       Change |
+| -------------------------- | ------: | -------: | -------: | -----------: |
+| `cli-deps-json`            | 1.306 s | 256.3 ms |  1.443 s | 1.11x faster |
+| `optimized-deps-rust-json` | 1.599 s | 176.9 ms |        - |            - |
+| `optimized-deps-zig-json`  | 4.146 s | 729.6 ms |        - |            - |
