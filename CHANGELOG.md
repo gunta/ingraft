@@ -4,6 +4,13 @@ All notable changes to ingraft are recorded here.
 
 ## Unreleased
 
+## 0.3.3 - 2026-05-20
+
+### Changed
+
+- Add packaged install smoke coverage for the CLI, compatibility package, and
+  agent skill across Linux, macOS, and Windows in CI.
+
 ## 0.3.2 - 2026-05-20
 
 ### Changed

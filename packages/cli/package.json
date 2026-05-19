@@ -1,6 +1,6 @@
 {
   "name": "@ingraft/cli",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Route repository context into coding-agent workflows.",
   "keywords": [
     "cli",
