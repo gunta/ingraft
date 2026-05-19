@@ -61,7 +61,7 @@
     "unlink:dev": "bun scripts/link-dev.ts --remove"
   },
   "dependencies": {
-    "@effect/platform-bun": ">=4.0.0-beta.60 || >=4.0.0",
+    "@effect/platform-bun": ">=4.0.0-beta.68",
     "@effect/platform-node": ">=4.0.0-beta.60 || >=4.0.0",
     "@iarna/toml": "2.2.5",
     "@opentui/core": "^0.2.8",
