@@ -1,0 +1,15 @@
+{
+  "name": "ingraft-optimized",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Native performance PoCs for ingraft hot paths.",
+  "type": "module",
+  "scripts": {
+    "bench": "bun scripts/benchmark.ts",
+    "build": "bun run build:rust && bun run build:zig",
+    "build:rust": "PATH=\"/opt/homebrew/bin:$PATH\" cargo build --release --manifest-path rust/Cargo.toml",
+    "build:zig": "PATH=\"/opt/homebrew/bin:$PATH\" zig build --build-file zig/build.zig -Doptimize=ReleaseFast",
+    "deps:rust": "rust/target/release/ingraft-deps-rust --root ../..",
+    "deps:zig": "zig/zig-out/bin/ingraft-deps-zig --root ../.."
+  }
+}

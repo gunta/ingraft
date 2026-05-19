@@ -9,7 +9,7 @@ export interface BenchmarkOperation {
   readonly command: string
   readonly name: string
   readonly prepare?: string
-  readonly suite: "cli" | "tui"
+  readonly suite: "cli" | "optimized" | "tui"
 }
 
 export interface BuildHyperfineArgsOptions {
@@ -64,6 +64,16 @@ export const BENCHMARK_OPERATIONS: ReadonlyArray<BenchmarkOperation> = [
     command: `${cli} deps --json`,
     name: "cli-deps-json",
     suite: "cli"
+  },
+  {
+    command: "packages/optimized/rust/target/release/ingraft-deps-rust --root .",
+    name: "optimized-deps-rust-json",
+    suite: "optimized"
+  },
+  {
+    command: "packages/optimized/zig/zig-out/bin/ingraft-deps-zig --root .",
+    name: "optimized-deps-zig-json",
+    suite: "optimized"
   },
   {
     command: `${cli} doctor --json`,
@@ -131,19 +141,19 @@ const readHyperfineJson = async (path: string): Promise<HyperfineJson | undefine
   return JSON.parse(await readFile(resolve(workspaceRoot, path), "utf8")) as HyperfineJson
 }
 
-const benchmarkTable = (
+export const benchmarkTable = (
   operations: ReadonlyArray<BenchmarkOperation>,
   current: HyperfineJson,
   baseline: HyperfineJson | undefined
 ): string => {
-  const lines = [
-    "| Operation | Mean | Stddev | Baseline | Change |",
-    "|---|---:|---:|---:|---:|"
-  ]
+  const baselineByCommand = new Map(
+    baseline?.results.map((result) => [result.command, result] as const) ?? []
+  )
+  const lines = ["| Operation | Mean | Stddev | Baseline | Change |", "|---|---:|---:|---:|---:|"]
   for (const [index, result] of current.results.entries()) {
     const operation = operations[index]
     const name = operation?.name ?? result.command
-    const baselineResult = baseline?.results[index]
+    const baselineResult = baselineByCommand.get(result.command) ?? baselineByCommand.get(name)
     const ratio = baselineResult === undefined ? undefined : baselineResult.mean / result.mean
     const change =
       ratio === undefined
@@ -204,7 +214,10 @@ const runHyperfine = async ({
 }: BuildHyperfineArgsOptions): Promise<void> => {
   await mkdir(dirname(resolve(workspaceRoot, exportJson)), { recursive: true })
   const result = Bun.spawnSync({
-    cmd: [resolveHyperfineBinary(), ...buildHyperfineArgs({ exportJson, operations, runs, warmup })],
+    cmd: [
+      resolveHyperfineBinary(),
+      ...buildHyperfineArgs({ exportJson, operations, runs, warmup })
+    ],
     cwd: workspaceRoot,
     stderr: "inherit",
     stdout: "inherit"
@@ -215,7 +228,9 @@ const runHyperfine = async ({
 }
 
 const operationSelection = (names: string | ReadonlyArray<string> | undefined) => {
-  if (names === undefined) return BENCHMARK_OPERATIONS
+  if (names === undefined) {
+    return BENCHMARK_OPERATIONS.filter((operation) => operation.suite !== "optimized")
+  }
   const wanted = new Set(Array.isArray(names) ? names : [names])
   const operations = BENCHMARK_OPERATIONS.filter((operation) => wanted.has(operation.name))
   const missing = [...wanted].filter(
@@ -226,17 +241,25 @@ const operationSelection = (names: string | ReadonlyArray<string> | undefined) =
 }
 
 const runTuiSnapshotProbe = async (): Promise<void> => {
-  const [{ Effect }, { LiveLayer }, { listVendored }, { PackageVersionSync }, versionDetect, git, tui, meta] =
-    await Promise.all([
-      import("../packages/cli/node_modules/effect/dist/index.js"),
-      import("../packages/cli/src/app/layers.ts"),
-      import("../packages/cli/src/domain/vendor-state.ts"),
-      import("../packages/cli/src/package-sync/service.ts"),
-      import("../packages/cli/src/package-sync/version-detect.ts"),
-      import("../packages/cli/src/services/git.ts"),
-      import("../packages/cli/src/tui/cli-adapter.ts"),
-      import("../packages/cli/src/services/git-metadata.ts")
-    ])
+  const [
+    { Effect },
+    { LiveLayer },
+    { listVendored },
+    { PackageVersionSync },
+    versionDetect,
+    git,
+    tui,
+    meta
+  ] = await Promise.all([
+    import("../packages/cli/node_modules/effect/dist/index.js"),
+    import("../packages/cli/src/app/layers.ts"),
+    import("../packages/cli/src/domain/vendor-state.ts"),
+    import("../packages/cli/src/package-sync/service.ts"),
+    import("../packages/cli/src/package-sync/version-detect.ts"),
+    import("../packages/cli/src/services/git.ts"),
+    import("../packages/cli/src/tui/cli-adapter.ts"),
+    import("../packages/cli/src/services/git-metadata.ts")
+  ])
   const program = Effect.gen(function* () {
     const pkgSync = yield* PackageVersionSync
     return yield* tui.streamSnapshotWith(
@@ -252,7 +275,9 @@ const runTuiSnapshotProbe = async (): Promise<void> => {
       () => undefined
     )
   })
-  await Effect.runPromise(program.pipe(Effect.provide(LiveLayer), Effect.provide(meta.GitMetadataLive)))
+  await Effect.runPromise(
+    program.pipe(Effect.provide(LiveLayer), Effect.provide(meta.GitMetadataLive))
+  )
 }
 
 const main = async (): Promise<void> => {
@@ -260,13 +285,13 @@ const main = async (): Promise<void> => {
     allowPositionals: false,
     options: {
       "dry-run": { type: "boolean" },
-      "list": { type: "boolean" },
-      "operation": { multiple: true, type: "string" },
-      "out": { type: "string" },
-      "probe": { type: "string" },
-      "quick": { type: "boolean" },
-      "runs": { type: "string" },
-      "warmup": { type: "string" },
+      list: { type: "boolean" },
+      operation: { multiple: true, type: "string" },
+      out: { type: "string" },
+      probe: { type: "string" },
+      quick: { type: "boolean" },
+      runs: { type: "string" },
+      warmup: { type: "string" },
       "write-baseline": { type: "boolean" }
     }
   })
@@ -288,14 +313,21 @@ const main = async (): Promise<void> => {
   const quick = values.quick === true
   const runs = Number(values.runs ?? (quick ? 3 : 8))
   const warmup = Number(values.warmup ?? (quick ? 1 : 2))
-  const exportJson = values["write-baseline"] === true ? baselineJson : (values.out ?? defaultResultJson)
+  const exportJson =
+    values["write-baseline"] === true ? baselineJson : (values.out ?? defaultResultJson)
 
   if (!Number.isInteger(runs) || runs < 1) throw new Error("--runs must be a positive integer")
-  if (!Number.isInteger(warmup) || warmup < 0) throw new Error("--warmup must be a non-negative integer")
+  if (!Number.isInteger(warmup) || warmup < 0)
+    throw new Error("--warmup must be a non-negative integer")
   if (operations.length === 0) throw new Error("No benchmark operations selected")
 
   if (values["dry-run"] === true) {
-    console.log([resolveHyperfineBinary(), ...buildHyperfineArgs({ exportJson, operations, runs, warmup })].join(" "))
+    console.log(
+      [
+        resolveHyperfineBinary(),
+        ...buildHyperfineArgs({ exportJson, operations, runs, warmup })
+      ].join(" ")
+    )
     return
   }
 

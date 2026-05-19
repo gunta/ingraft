@@ -29,6 +29,7 @@
   "type": "module",
   "scripts": {
     "bench": "bun scripts/benchmark.ts",
+    "bench:optimized-deps": "bun packages/optimized/scripts/benchmark.ts",
     "bench:quick": "bun scripts/benchmark.ts --quick",
     "bench:update-baseline": "bun scripts/benchmark.ts --write-baseline",
     "build": "turbo run build",
