@@ -9,6 +9,7 @@ import { parse } from "yaml"
 const workspaceRoot = process.cwd()
 
 type WorkflowStep = {
+  readonly env?: Record<string, string>
   readonly if?: string
   readonly id?: string
   readonly name?: string
@@ -254,14 +255,15 @@ describe("release automation workflows", () => {
     expectStep(check?.steps, { run: "bun run build" })
     expectStep(check?.steps, {
       name: "Pack npm packages",
-      run: expect.stringContaining("npm pack --pack-destination ../../.artifacts")
+      env: { ARTIFACT_DIR: "${{ github.workspace }}/.artifacts" },
+      run: expect.stringContaining('npm pack --pack-destination "$ARTIFACT_DIR"')
     })
     expectStep(check?.steps, {
       name: "Upload npm packages",
       uses: "actions/upload-artifact@v6",
       with: expect.objectContaining({
         name: "ingraft-npm-packages",
-        path: ".artifacts/*.tgz"
+        path: "${{ github.workspace }}/.artifacts/*.tgz"
       })
     })
 
