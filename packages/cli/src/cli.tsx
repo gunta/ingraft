@@ -10,6 +10,7 @@ import { LiveLayer } from "./app/layers.ts"
 import { withCommandTelemetry } from "./app/log.tsx"
 import { RuntimeConfig } from "./app/runtime.ts"
 import { notifyIfCliOutdated } from "./app/update-notifier.ts"
+import { commandWaitingLabel, withDelayedWaiting } from "./app/waiting.ts"
 import { addOrgCmd } from "./commands/add-org.tsx"
 import { addCmd, addManyImpl } from "./commands/add.tsx"
 import { contextCmd } from "./commands/context.tsx"
@@ -101,7 +102,12 @@ const handleVendorError = <E extends VendorError>(cause: E) =>
 
 const app = Effect.gen(function* () {
   const runtime = yield* RuntimeConfig
-  yield* runCli(runtime.argv.slice(2))
+  const args = runtime.argv.slice(2)
+  yield* withDelayedWaiting(runCli(args), {
+    env: runtime.env,
+    label: commandWaitingLabel(args),
+    stderrIsTTY: Boolean(process.stderr.isTTY)
+  })
 }).pipe(
   Effect.catchTags({
     DirtyWorkingTree: handleVendorError,

@@ -5,6 +5,7 @@ import { Box } from "ink"
 import { Header, KeyValues, Section, Table } from "../app/ink/components.tsx"
 import { renderInkOnce } from "../app/ink/render.tsx"
 import { info, ok, warn, withCommandTelemetry } from "../app/log.tsx"
+import { clearWaitingDetail, setWaitingDetail } from "../app/waiting.ts"
 import { applyAddDefaults, IngraftConfig } from "../config/ingraft.ts"
 import { InkRenderFailed } from "../domain/errors.ts"
 import { listVendored } from "../domain/vendor-state.ts"
@@ -17,7 +18,12 @@ import {
   dependencyVendorTasks,
   type DependencyVendorTask
 } from "../package-sync/dependency-tasks.ts"
-import { PackageVersionSync } from "../package-sync/service.ts"
+import {
+  PackageVersionSync,
+  type DependencyVendorCandidate,
+  type PackageDependency,
+  type PackageVersionSyncShape
+} from "../package-sync/service.ts"
 import { detectVendoredPackageVersions } from "../package-sync/version-detect.ts"
 import {
   matchedDependencyCandidates,
@@ -40,6 +46,12 @@ export interface DepsCommandParams {
 export type DependencyVersionDriftStatus = PackageVersionDriftStatus
 export type DependencyVendorTaskVersions = PackageVersionReport
 export { dependencyVendorTasks, vendoredPackageVersionKey, type DependencyVendorTask }
+
+export const dependencyScanDetail = (
+  dependency: PackageDependency,
+  index: number,
+  total: number
+): string => `${dependency.name} (${index + 1}/${total})`
 
 const depsJsonOption = Flag.boolean("json").pipe(
   Flag.withDescription("Print dependency source-context candidates as JSON.")
@@ -174,11 +186,34 @@ const runTask = (strategy: Option.Option<VendorStrategy>, task: DependencyVendor
   )
 }
 
+const scanCandidatesWithProgress = (
+  pkgSync: PackageVersionSyncShape,
+  cwd: string
+): Effect.Effect<ReadonlyArray<DependencyVendorCandidate>, unknown> =>
+  Effect.gen(function* () {
+    const dependencies = yield* pkgSync.listDependencies(cwd)
+    let completed = 0
+    return yield* Effect.forEach(
+      dependencies.map((dependency, index) => ({ dependency, index })),
+      ({ dependency, index }) =>
+        Effect.gen(function* () {
+          yield* setWaitingDetail(dependencyScanDetail(dependency, index, dependencies.length))
+          yield* Effect.yieldNow
+          const candidate = yield* pkgSync.scanDependency(cwd, dependency)
+          completed += 1
+          yield* setWaitingDetail(`scanned ${completed}/${dependencies.length}: ${dependency.name}`)
+          yield* Effect.yieldNow
+          return candidate
+        }),
+      { concurrency: 16 }
+    )
+  })
+
 export const depsImpl = ({ dryRun, json, strategy, yes }: DepsCommandParams) =>
   Effect.gen(function* () {
     const cwd = yield* repoRoot
     const pkgSync = yield* PackageVersionSync
-    const candidates = yield* pkgSync.scan(cwd)
+    const candidates = yield* scanCandidatesWithProgress(pkgSync, cwd)
     const repos = yield* listVendored(cwd)
     const vendoredPackageVersions = yield* detectVendoredPackageVersions(cwd, candidates, repos)
     const tasks = dependencyVendorTasks(candidates, repos, vendoredPackageVersions)
@@ -234,7 +269,7 @@ export const depsImpl = ({ dryRun, json, strategy, yes }: DepsCommandParams) =>
       concurrency: 1
     })
     yield* ok(`Processed ${selected.length} dependency source-context task(s).`)
-  }).pipe(withCommandTelemetry("deps"))
+  }).pipe(Effect.ensuring(clearWaitingDetail()), withCommandTelemetry("deps"))
 
 export const depsCmd = Command.make(
   "deps",
